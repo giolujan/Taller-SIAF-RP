@@ -14,6 +14,10 @@ export type DocumentsRecordsSelectionChange = {
   selected: boolean;
 };
 
+type HeaderGroupCell =
+  | { kind: 'group'; label: string; colspan: number }
+  | { kind: 'column'; column: DocumentsRecordsColumn };
+
 /**
  * Tabla de las pestañas Documentos / Registros: columnas configurables, celdas por tipo
  * (enlace al documento, tag de flujo, tag de registro), checkbox de selección y botón de historial.
@@ -28,6 +32,8 @@ export type DocumentsRecordsSelectionChange = {
  *   panel de columnas decide cuáles se ven.
  * - Con `selectionDisabled` para dejar marcables solo los documentos de la acción masiva: Elaborados para el creador
  *   (Verificar) y Verificados para el aprobador (Aprobar).
+ * - Con `headerGroup` en columnas consecutivas, para una cabecera de dos filas (un título agrupador arriba, sus
+ *   columnas abajo), como «Info del documento» → Número / Nombre en Registros de Ingresos tributarios SUNAT.
  * @evitar
  * - Para un listado de solo lectura con texto plano: `siaf-table`.
  * - Usarla sola, sin barra ni paginado: va dentro de la grilla estándar (`siaf-table-controls` arriba, con el
@@ -68,16 +74,39 @@ export type DocumentsRecordsSelectionChange = {
     <div class="siaf-table-scroll min-w-0">
       <table class="w-full border-collapse text-left text-sm" [ngClass]="minWidthClass">
         <thead>
-          <tr class="bg-surface-high text-[10px] font-bold uppercase text-text">
-            @if (activeTab === 'documents') {
-              <th class="w-10 rounded-l-siaf-sm px-siaf-sm py-siaf-sm"></th>
-            }
-            @for (column of columns; track column.key) {
-              <!-- MFD RF-01: al superponer el mouse se muestra el texto completo de la columna -->
-              <th class="truncate px-siaf-md py-siaf-sm" siafTooltip [ngClass]="[column.widthClass || 'w-[180px]', column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left']">{{ column.label }}</th>
-            }
-            <th class="sticky right-0 w-14 rounded-r-siaf-sm border-l border-[var(--sys-color-divider-strong)] bg-surface-high px-siaf-sm py-siaf-sm"></th>
-          </tr>
+          @if (hasHeaderGroups) {
+            <tr class="bg-surface-high text-[10px] font-bold uppercase text-text">
+              @if (activeTab === 'documents') {
+                <th class="w-10 rounded-l-siaf-sm px-siaf-sm py-siaf-sm" rowspan="2"></th>
+              }
+              @for (cell of headerGroupRow1; track $index) {
+                @if (cell.kind === 'group') {
+                  <th class="truncate px-siaf-md py-siaf-sm text-center" [attr.colspan]="cell.colspan">{{ cell.label }}</th>
+                } @else {
+                  <th class="truncate px-siaf-md py-siaf-sm" rowspan="2" siafTooltip [ngClass]="[cell.column.widthClass || 'w-[180px]', cell.column.align === 'right' ? 'text-right' : cell.column.align === 'center' ? 'text-center' : 'text-left']">{{ cell.column.label }}</th>
+                }
+              }
+              <th class="sticky right-0 w-14 rounded-r-siaf-sm border-l border-[var(--sys-color-divider-strong)] bg-surface-high px-siaf-sm py-siaf-sm" rowspan="2"></th>
+            </tr>
+            <tr class="bg-surface-high text-[10px] font-bold uppercase text-text">
+              @for (column of columns; track column.key) {
+                @if (column.headerGroup) {
+                  <th class="truncate px-siaf-md py-siaf-sm text-center" siafTooltip [ngClass]="[column.widthClass || 'w-[180px]']">{{ column.label }}</th>
+                }
+              }
+            </tr>
+          } @else {
+            <tr class="bg-surface-high text-[10px] font-bold uppercase text-text">
+              @if (activeTab === 'documents') {
+                <th class="w-10 rounded-l-siaf-sm px-siaf-sm py-siaf-sm"></th>
+              }
+              @for (column of columns; track column.key) {
+                <!-- MFD RF-01: al superponer el mouse se muestra el texto completo de la columna -->
+                <th class="truncate px-siaf-md py-siaf-sm" siafTooltip [ngClass]="[column.widthClass || 'w-[180px]', column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left']">{{ column.label }}</th>
+              }
+              <th class="sticky right-0 w-14 rounded-r-siaf-sm border-l border-[var(--sys-color-divider-strong)] bg-surface-high px-siaf-sm py-siaf-sm"></th>
+            </tr>
+          }
         </thead>
         <tbody>
           @for (row of rows; track rowTrackValue(row, $index)) {
@@ -137,6 +166,26 @@ export class DocumentsRecordsTableComponent {
 
   @Output() selectionChanged = new EventEmitter<DocumentsRecordsSelectionChange>();
   @Output() historyOpened = new EventEmitter<DocumentsRecordsRow>();
+
+  get hasHeaderGroups(): boolean {
+    return this.columns.some((c) => c.headerGroup);
+  }
+
+  /** Primera fila de cabecera cuando hay `headerGroup`: títulos agrupadores y columnas sueltas (a ocupar con `rowspan`). */
+  get headerGroupRow1(): HeaderGroupCell[] {
+    const cells: HeaderGroupCell[] = [];
+    for (const column of this.columns) {
+      const ultima = cells[cells.length - 1];
+      if (column.headerGroup && ultima?.kind === 'group' && ultima.label === column.headerGroup) {
+        ultima.colspan++;
+      } else if (column.headerGroup) {
+        cells.push({ kind: 'group', label: column.headerGroup, colspan: 1 });
+      } else {
+        cells.push({ kind: 'column', column });
+      }
+    }
+    return cells;
+  }
 
   rowTrackValue(row: DocumentsRecordsRow, index: number): string | number {
     const key = this.activeTab === 'documents' ? 'number' : this.recordTrackKey;

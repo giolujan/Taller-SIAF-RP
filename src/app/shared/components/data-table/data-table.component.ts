@@ -20,7 +20,8 @@ export type DataTableRow = Record<string, string | number>;
  * - Hoy solo la pinta `siaf-table`, que ninguna pantalla usa: es la base para un listado nuevo antes de escribir otra
  *   `<table>` a mano.
  * @evitar
- * - Para celdas con enlace al documento, tag de estado, checkbox o historial: `siaf-documents-records-table`.
+ * - Para celdas con enlace al documento, tag de estado, checkbox o historial, o con cabecera agrupada en dos filas:
+ *   `siaf-documents-records-table` (con `headerGroup` en sus columnas).
  * - Para seleccionar o paginar: no lo hace sola; va dentro de la grilla estándar (`siaf-table-controls` arriba y
  *   `siaf-pagination` con `position="Bottom"` y `rowPage` abajo).
  * - Para ítems sin columnas (título, descripción, ícono): `siaf-list`.

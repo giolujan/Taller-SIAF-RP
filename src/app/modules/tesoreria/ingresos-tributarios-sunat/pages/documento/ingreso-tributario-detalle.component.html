@@ -1,0 +1,48 @@
+<div class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
+  <siaf-solicitude-page-layout
+    [breadcrumbs]="breadcrumbs"
+    role="creator"
+    state="processed"
+    [loading]="cargando()"
+    [heading]="detalle()?.documento ?? ''"
+    secondaryText="Creación"
+    [showReturn]="true"
+    [showTag]="false"
+    [showButtonGroup]="false"
+    (returned)="regresar()"
+  >
+    @if (cargando()) {
+      <div class="rounded-siaf-md bg-surface p-siaf-xl">
+        <div class="grid grid-cols-3 gap-siaf-md">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="siaf-skeleton-pulse h-4 w-32 rounded bg-[var(--sys-color-bg-surfaces-surface-low)]"></div>
+          }
+        </div>
+      </div>
+    } @else if (!detalle()) {
+      <div class="rounded-siaf-md bg-surface p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-medium)]">
+        No se encontró el detalle de este documento.
+      </div>
+    } @else {
+      <siaf-alert
+        tone="info"
+        title="Información generada automáticamente"
+        description="Fuente de datos: Servicio web del Sistema."
+        [showClose]="true"
+        [class.hidden]="!avisoAbierto()"
+        (closed)="avisoAbierto.set(false)"
+      />
+
+      <section class="grid gap-siaf-md lg:grid-cols-[1fr_360px]">
+        <siaf-solicitude-info-card [fields]="campos()" />
+        <siaf-document-summary-card [documentNumber]="detalle()!.numero" [status]="detalle()!.estado" />
+      </section>
+
+      <siaf-solicitude-form-card title="Detalle">
+        <siaf-table [columns]="columnasDetalle" [rows]="filas()" idKey="campo" />
+      </siaf-solicitude-form-card>
+
+      <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
+    }
+  </siaf-solicitude-page-layout>
+</div>
