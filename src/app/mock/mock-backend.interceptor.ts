@@ -10,6 +10,10 @@ import type { CuentaBancariaDatos } from '../modules/tesoreria/cuentas-bancarias
 import type { SaldoInicialDatos } from '../modules/tesoreria/saldos-iniciales/models/saldo-inicial.model';
 import {
   DatosTaller,
+  DETALLES_DOCUMENTOS_INGRESOS_TRIBUTARIOS,
+  detalleIngresoTributarioVivo,
+  documentosIngresosTributariosVivos,
+  registrosIngresosTributariosVivos,
   ENTIDAD_CREADORA,
   NotificacionMock,
   TIPO_DOCUMENTO,
@@ -447,6 +451,33 @@ const registrosCuentas: Manejador = ({ datos, sesion }) =>
 const registrosSaldos: Manejador = ({ datos, sesion }) =>
   ok(datos.registrosSaldos.filter((r) => !sesion || r.entidadSiglas === sesion.perfil.entidadSiglas));
 
+// Proceso de solo consulta: no hay bandeja por rol, cualquier sesión ve los mismos documentos. Al Reporte y la
+// Nota de ejemplo (ya «Procesados») se suman el Reporte y la Nota en vivo, calculados contra la hora actual —
+// ver «Simulación en vivo» en mock-db.ts.
+const ingresosTributariosSunat: Manejador = ({ datos }) => ok([
+  ...datos.ingresosTributarios,
+  ...documentosIngresosTributariosVivos(datos.demoIngresosTributariosInicio, new Date()),
+]);
+
+const ingresosTributariosSunatRegistros: Manejador = ({ datos }) => ok([
+  ...datos.registrosIngresosTributarios,
+  ...registrosIngresosTributariosVivos(datos.demoIngresosTributariosInicio, new Date()),
+]);
+
+const ingresosTributariosSunatDetalle: Manejador = ({ datos, params }) => {
+  const detalle = DETALLES_DOCUMENTOS_INGRESOS_TRIBUTARIOS[params[0]]
+    ?? detalleIngresoTributarioVivo(params[0], datos.demoIngresosTributariosInicio, new Date());
+  return detalle ? ok(detalle) : error(404, 'Este documento todavía no tiene pantalla de detalle.');
+};
+
+// Al entrar a la bandeja desde el menú (no al volver con «Regresar» del detalle), el Reporte y la Nota en vivo
+// vuelven a arrancar desde Registrado: el taller es para demostrar el flujo una y otra vez.
+const ingresosTributariosSunatReiniciarSimulacion: Manejador = ({ datos }) => {
+  datos.demoIngresosTributariosInicio = new Date().toISOString();
+  guardarDatos(datos);
+  return ok({ message: 'Simulación reiniciada' });
+};
+
 // ─── Enrutador ─────────────────────────────────────────────────────
 
 const RUTAS: [string, RegExp, Manejador][] = [
@@ -477,6 +508,10 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['PATCH', /^\/solicitudes\/([^/]+)$/, actualizarSolicitud],
   ['GET', /^\/cuentas-bancarias$/, registrosCuentas],
   ['GET', /^\/saldos-iniciales$/, registrosSaldos],
+  ['GET', /^\/ingresos-tributarios-sunat$/, ingresosTributariosSunat],
+  ['GET', /^\/ingresos-tributarios-sunat\/registros$/, ingresosTributariosSunatRegistros],
+  ['GET', /^\/ingresos-tributarios-sunat\/([^/]+)\/detalle$/, ingresosTributariosSunatDetalle],
+  ['POST', /^\/ingresos-tributarios-sunat\/reiniciar-simulacion$/, ingresosTributariosSunatReiniciarSimulacion],
 ];
 
 export const mockBackendInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEvent<unknown>> => {

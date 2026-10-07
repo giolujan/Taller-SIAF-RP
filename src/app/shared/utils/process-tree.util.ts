@@ -47,7 +47,27 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
     label: 'Gestión de tesorería',
     expanded: true,
     children: [
-      { id: 'gestion-ingresos', label: 'Gestión de ingresos', comingSoon: true },
+      {
+        id: 'gestion-ingresos',
+        label: 'Gestión de ingresos',
+        expanded: true,
+        children: [
+          {
+            id: 'ingresos-tributarios-sunat',
+            label: 'Ingresos tributarios SUNAT',
+            expanded: true,
+            children: [
+              {
+                id: 'ingresos-tributarios-sunat-documentos',
+                label: 'Documentos de Ingresos tributarios SUNAT',
+                selected: true,
+                moduleRoute: '/procesos/ingresos-tributarios-sunat',
+              },
+              { id: 'ingresos-tributarios-sunat-consultas', label: 'Consulta de Ingresos tributarios SUNAT', comingSoon: true },
+            ],
+          },
+        ],
+      },
       {
         id: 'gestion-liquidez',
         label: 'Gestión de liquidez',
@@ -95,7 +115,13 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
           },
         ],
       },
-      { id: 'gestion-pagos', label: 'Gestión de Pagos', comingSoon: true },
+      {
+        id: 'gestion-pagos',
+        label: 'Gestión de Pagos',
+        comingSoon: true,
+        // Sin opciones cargadas todavía: una hoja placeholder solo para mostrar la flecha de desglose.
+        children: [{ id: 'gestion-pagos-proximamente', label: 'Próximamente', comingSoon: true }],
+      },
     ],
   },
   { id: 'clasificadores-catalogos', label: 'Clasificadores y catálogos', comingSoon: true },

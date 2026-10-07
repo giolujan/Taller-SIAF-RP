@@ -13,6 +13,13 @@ import {
   SaldoInicialDatos,
   SaldoInicialRegistro,
 } from '../modules/tesoreria/saldos-iniciales/models/saldo-inicial.model';
+import {
+  CampoDetalleDocumento,
+  DetalleDocumentoIngresoTributario,
+  EstadoIngresoTributario,
+  IngresoTributarioRegistro,
+  RegistroIngresoTributario,
+} from '../modules/tesoreria/ingresos-tributarios-sunat/models/ingreso-tributario.model';
 import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
 
 /**
@@ -21,7 +28,7 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 2;
+const VERSION = 5;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol. */
@@ -34,6 +41,10 @@ export interface DatosTaller {
   solicitudes: SolicitudResponse[];
   registros: CuentaBancariaRegistro[];
   registrosSaldos: SaldoInicialRegistro[];
+  ingresosTributarios: IngresoTributarioRegistro[];
+  registrosIngresosTributarios: RegistroIngresoTributario[];
+  /** Instante (ISO) en que arrancó la simulación en vivo de Ingresos tributarios SUNAT — ver más abajo. */
+  demoIngresosTributariosInicio: string;
   notificaciones: NotificacionMock[];
   correlativoDocumento: number;
   correlativoDocumentoSaldos: number;
@@ -184,12 +195,455 @@ function enFecha(dia: string, horas: number, dias = 0): string {
   return fecha.toISOString();
 }
 
+/**
+ * Semilla de «Ingresos tributarios SUNAT»: documentos generados por el motor de integración, no por un creador.
+ * `id` se completa en `crearDatosIniciales()`.
+ */
+const INGRESOS_TRIBUTARIOS_SEMILLA: Omit<IngresoTributarioRegistro, 'id'>[] = [
+  {
+    documento: 'Solicitud automática de Nota de débito',
+    numero: '987654-2026',
+    tipoAccion: 'Creación',
+    estado: 'Procesado',
+    fecha: '2026-11-09T15:06:30',
+    entidad: '009 - Ministerio de Economia y Finanzas',
+  },
+  {
+    documento: 'Solicitud automática de Reporte de recaudación',
+    numero: '123456-2026',
+    tipoAccion: 'Creación',
+    estado: 'Procesado',
+    fecha: '2026-11-09T15:06:27',
+    entidad: '009 - Ministerio de Economia y Finanzas',
+  },
+];
+
+/**
+ * Detalle clave-valor de «Solicitud automática de Nota de débito» (documento `itb-1`, primero de
+ * `INGRESOS_TRIBUTARIOS_SEMILLA`): la pantalla a la que lleva su fila en la tab Documentos. Calcado del Figma
+ * node-id=1476-39617. Los demás documentos todavía no tienen esta pantalla diseñada.
+ */
+const DETALLE_NOTA_DEBITO: DetalleDocumentoIngresoTributario = {
+  documentoId: 'itb-1',
+  documento: 'Solicitud automática de Nota de débito',
+  numero: '987654-2026',
+  fecha: '09/11/2026     15:06:30',
+  enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
+  estado: 'Procesado',
+  campos: [
+    { campo: '001', descripcion: 'Número de Reporte de Recaudación', valor: '02698147' },
+    { campo: '002', descripcion: 'Fecha de emisión de la Nota de Débito', valor: '09/11/2026 15:06:30' },
+    { campo: '003', descripcion: 'Código de la Entidad Financiera', valor: '02' },
+    { campo: '004', descripcion: 'Nombre de la Entidad Financiera', valor: 'BANCO DE CRÉDITO DEL PERÚ' },
+    { campo: '005', descripcion: 'Monto total', valor: '35.50' },
+    { campo: '006', descripcion: 'Moneda', valor: 'PEN' },
+    { campo: '007', descripcion: 'Cuenta bancaria', valor: '000698456321' },
+    { campo: '008', descripcion: 'Cargo / Propietario', valor: 'SUNAT' },
+    { campo: '009', descripcion: 'Cargo / Nro de cuenta bancaria', valor: '000698456321' },
+    { campo: '010', descripcion: 'Abono / Propietario', valor: 'BANCO DE CRÉDITO DEL PERÚ' },
+    { campo: '011', descripcion: 'Abono / Nro de cuenta bancaria', valor: '0033-429384-0-12' },
+    { campo: '012', descripcion: 'Concepto / Código', valor: '418' },
+    { campo: '013', descripcion: 'Concepto / Importe', valor: '35.50' },
+    { campo: '014', descripcion: 'Gastos bancarios / Código', valor: '418' },
+    { campo: '015', descripcion: 'Gastos bancarios / Concepto', valor: 'Gastos bancarios' },
+    { campo: '016', descripcion: 'Gastos bancarios / Importe', valor: '35.50' },
+  ],
+  registradoPor: 'SIAF RP',
+  fechaRegistrado: '09/11/2026     15:06:30',
+  procesadoPor: 'SIAF RP',
+  fechaProcesado: '09/11/2026     15:06:39',
+};
+
+/**
+ * Detalle clave-valor de «Solicitud automática de Reporte de recaudación» (documento `itb-2`, segundo de
+ * `INGRESOS_TRIBUTARIOS_SEMILLA`). Calcado del Figma node-id=1481-43880: el reporte reparte la recaudación entre
+ * 4 beneficiarios, cada uno con sus tipos de tributo y clasificadores de ingreso.
+ */
+const DETALLE_REPORTE_RECAUDACION: DetalleDocumentoIngresoTributario = {
+  documentoId: 'itb-2',
+  documento: 'Solicitud automática de Reporte de recaudación',
+  numero: '123456-2026',
+  fecha: '09/11/2026     15:06:27',
+  enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
+  estado: 'Procesado',
+  campos: [
+    { campo: '001', descripcion: 'Número del Reporte de recaudación', valor: '02698147' },
+    { campo: '002', descripcion: 'Fecha de emisión del Reporte de recaudación', valor: '09/11/2026 11:00:56' },
+    { campo: '003', descripcion: 'Código de la Entidad financiera', valor: '002' },
+    { campo: '004', descripcion: 'Entidad financiera', valor: 'BANCO DE CRÉDITO DEL PERÚ' },
+    { campo: '005', descripcion: 'Monto total', valor: '4,077.54' },
+    { campo: '006', descripcion: 'Moneda', valor: 'PEN' },
+    { campo: '007', descripcion: 'Cuenta bancaria (CUT)', valor: '000392930212' },
+    { campo: '008', descripcion: 'RUC de la Entidad administradora del ingreso', valor: '20345678901' },
+    { campo: '009', descripcion: 'ID CAT CLAS Y CAT', valor: 'Clasificador Institucional' },
+    { campo: '010', descripcion: 'Código clasificador', valor: '1.1.1.1.1001.000' },
+    { campo: '011', descripcion: 'Nombre de la Entidad administradora del ingreso', valor: 'SUNAT' },
+    { campo: '012', descripcion: 'Beneficiario 1 / Código ente', valor: '0001' },
+    { campo: '013', descripcion: 'Beneficiario 1 / Código', valor: '000001' },
+    { campo: '014', descripcion: 'Beneficiario 1 / Descripción', valor: 'TESORO PÚBLICO' },
+    { campo: '015', descripcion: 'Beneficiario 1 / Cuenta de registro', valor: '11223344556677889901' },
+    { campo: '016', descripcion: 'Beneficiario 1 / Monto total', valor: '3,838.59' },
+    { campo: '017', descripcion: 'Beneficiario 1 / Tipo de tributo 1 / Código', valor: '11.22.33.44' },
+    { campo: '018', descripcion: 'Beneficiario 1 / Tipo de tributo 1 / Monto', valor: '800.00' },
+    { campo: '019', descripcion: 'Beneficiario 1 / Clasificador de ingreso 1 / Código', valor: '11.22.33.44' },
+    { campo: '020', descripcion: 'Beneficiario 1 / Clasificador de ingreso 1 / Nombre', valor: 'Impuesto a la Renta – 1era Categoría' },
+    { campo: '021', descripcion: 'Beneficiario 1 / Clasificador de ingreso 1 / Monto', valor: '800.00' },
+    { campo: '022', descripcion: 'Beneficiario 1 / Tipo de tributo 2 / Código', valor: '11.22.33.33' },
+    { campo: '023', descripcion: 'Beneficiario 1 / Tipo de tributo 2 / Monto', valor: '1500.00' },
+    { campo: '024', descripcion: 'Beneficiario 1 / Clasificador de ingreso 2 / Código', valor: '11.22.33.33' },
+    { campo: '025', descripcion: 'Beneficiario 1 / Clasificador de ingreso 2 / Nombre', valor: 'Impuesto a la Renta – 5ta Categoría' },
+    { campo: '026', descripcion: 'Beneficiario 1 / Clasificador de ingreso 2 / Monto', valor: '1500.00' },
+    { campo: '027', descripcion: 'Beneficiario 1 / Tipo de tributo 3 / Código', valor: '11.22.33.66' },
+    { campo: '028', descripcion: 'Beneficiario 1 / Tipo de tributo 3 / Monto', valor: '1500.00' },
+    { campo: '029', descripcion: 'Beneficiario 1 / Clasificador de ingreso 3 / Código', valor: '11.22.33.66' },
+    { campo: '030', descripcion: 'Beneficiario 1 / Clasificador de ingreso 3 / Nombre', valor: 'Impuesto General a las Ventas' },
+    { campo: '031', descripcion: 'Beneficiario 1 / Clasificador de ingreso 3 / Monto', valor: '1500.00' },
+    { campo: '032', descripcion: 'Beneficiario 1 / Tipo de tributo 4 / Código', valor: '11.22.33.22' },
+    { campo: '033', descripcion: 'Beneficiario 1 / Tipo de tributo 4 / Monto', valor: '38.59' },
+    { campo: '034', descripcion: 'Beneficiario 1 / Clasificador de ingreso 4 / Código', valor: '11.22.33.22' },
+    { campo: '035', descripcion: 'Beneficiario 1 / Clasificador de ingreso 4 / Nombre', valor: 'Impuesto a las Embarcaciones' },
+    { campo: '036', descripcion: 'Beneficiario 1 / Clasificador de ingreso 4 / Monto', valor: '38.59' },
+    { campo: '037', descripcion: 'Beneficiario 2 / Código ente', valor: '0002' },
+    { campo: '038', descripcion: 'Beneficiario 2 / Código', valor: '000002' },
+    { campo: '039', descripcion: 'Beneficiario 2 / Descripción', valor: 'TRIBUNAL FISCAL' },
+    { campo: '040', descripcion: 'Beneficiario 2 / Cuenta de registro', valor: '11223344556677889902' },
+    { campo: '041', descripcion: 'Beneficiario 2 / Monto total', valor: '1.44' },
+    { campo: '042', descripcion: 'Beneficiario 2 / Tipo de tributo 1 / Código', valor: '11.22.33.44' },
+    { campo: '043', descripcion: 'Beneficiario 2 / Tipo de tributo 1 / Monto', valor: '0.40' },
+    { campo: '044', descripcion: 'Beneficiario 2 / Clasificador de ingreso 1 / Código', valor: '11.22.33.44' },
+    { campo: '045', descripcion: 'Beneficiario 2 / Clasificador de ingreso 1 / Nombre', valor: 'Impuesto a la Renta – 1era Categoría' },
+    { campo: '046', descripcion: 'Beneficiario 2 / Clasificador de ingreso 1 / Monto', valor: '0.40' },
+    { campo: '047', descripcion: 'Beneficiario 2 / Tipo de tributo 2 / Código', valor: '11.22.33.33' },
+    { campo: '048', descripcion: 'Beneficiario 2 / Tipo de tributo 2 / Monto', valor: '0.50' },
+    { campo: '049', descripcion: 'Beneficiario 2 / Clasificador de ingreso 2 / Código', valor: '11.22.33.33' },
+    { campo: '050', descripcion: 'Beneficiario 2 / Clasificador de ingreso 2 / Nombre', valor: 'Impuesto a la Renta – 5ta Categoría' },
+    { campo: '051', descripcion: 'Beneficiario 2 / Clasificador de ingreso 2 / Monto', valor: '0.50' },
+    { campo: '052', descripcion: 'Beneficiario 2 / Tipo de tributo 3 / Código', valor: '11.22.33.66' },
+    { campo: '053', descripcion: 'Beneficiario 2 / Tipo de tributo 3 / Monto', valor: '0.50' },
+    { campo: '054', descripcion: 'Beneficiario 2 / Clasificador de ingreso 3 / Código', valor: '11.22.33.66' },
+    { campo: '055', descripcion: 'Beneficiario 2 / Clasificador de ingreso 3 / Nombre', valor: 'Impuesto General a las Ventas' },
+    { campo: '056', descripcion: 'Beneficiario 2 / Clasificador de ingreso 3 / Monto', valor: '0.50' },
+    { campo: '057', descripcion: 'Beneficiario 2 / Tipo de tributo 4 / Código', valor: '11.22.33.22' },
+    { campo: '058', descripcion: 'Beneficiario 2 / Tipo de tributo 4 / Monto', valor: '0.04' },
+    { campo: '059', descripcion: 'Beneficiario 2 / Clasificador de ingreso 4 / Código', valor: '11.22.33.22' },
+    { campo: '060', descripcion: 'Beneficiario 2 / Clasificador de ingreso 4 / Nombre', valor: 'Impuesto a las Embarcaciones' },
+    { campo: '061', descripcion: 'Beneficiario 2 / Clasificador de ingreso 4 / Monto', valor: '0.04' },
+    { campo: '062', descripcion: 'Beneficiario 3 / Código ente', valor: '0003' },
+    { campo: '063', descripcion: 'Beneficiario 3 / Código', valor: '000003' },
+    { campo: '064', descripcion: 'Beneficiario 3 / Descripción', valor: 'SUNAT - INGRESOS PROPIOS' },
+    { campo: '065', descripcion: 'Beneficiario 3 / Cuenta de registro', valor: '11223344556677889903' },
+    { campo: '066', descripcion: 'Beneficiario 3 / Monto total', valor: '108.77' },
+    { campo: '067', descripcion: 'Beneficiario 3 / Tipo de tributo 1 / Código', valor: '11.22.33.55' },
+    { campo: '068', descripcion: 'Beneficiario 3 / Tipo de tributo 1 / Monto', valor: '108.77' },
+    { campo: '069', descripcion: 'Beneficiario 3 / Clasificador de ingreso 1 / Código', valor: '11.22.33.55' },
+    { campo: '070', descripcion: 'Beneficiario 3 / Clasificador de ingreso 1 / Nombre', valor: 'Servicios por recaudación de servicios internos' },
+    { campo: '071', descripcion: 'Beneficiario 3 / Clasificador de ingreso 1 / Monto', valor: '108.77' },
+    { campo: '072', descripcion: 'Beneficiario 4 / Código ente', valor: '0004' },
+    { campo: '073', descripcion: 'Beneficiario 4 / Código', valor: '000004' },
+    { campo: '074', descripcion: 'Beneficiario 4 / Descripción', valor: 'FONDO DE PROMOCIÓN MUNICIPAL' },
+    { campo: '075', descripcion: 'Beneficiario 4 / Cuenta de registro', valor: '11223344556677889904' },
+    { campo: '076', descripcion: 'Beneficiario 4 / Monto total', valor: '128.74' },
+    { campo: '077', descripcion: 'Beneficiario 4 / Tipo de tributo 1 / Código', valor: '11.22.99.11' },
+    { campo: '078', descripcion: 'Beneficiario 4 / Tipo de tributo 1 / Monto', valor: '50.00' },
+    { campo: '079', descripcion: 'Beneficiario 4 / Clasificador de ingreso 1 / Código', valor: '11.22.99.11' },
+    { campo: '080', descripcion: 'Beneficiario 4 / Clasificador de ingreso 1 / Nombre', valor: 'Impuesto de Promoción Municipal' },
+    { campo: '081', descripcion: 'Beneficiario 4 / Clasificador de ingreso 1 / Monto', valor: '50.00' },
+    { campo: '082', descripcion: 'Beneficiario 4 / Tipo de tributo 2 / Código', valor: '11.22.99.22' },
+    { campo: '083', descripcion: 'Beneficiario 4 / Tipo de tributo 2 / Monto', valor: '50.00' },
+    { campo: '084', descripcion: 'Beneficiario 4 / Clasificador de ingreso 2 / Código', valor: '11.22.99.22' },
+    { campo: '085', descripcion: 'Beneficiario 4 / Clasificador de ingreso 2 / Nombre', valor: 'Impuesto al Rodaje' },
+    { campo: '086', descripcion: 'Beneficiario 4 / Clasificador de ingreso 2 / Monto', valor: '50.00' },
+    { campo: '087', descripcion: 'Beneficiario 4 / Tipo de tributo 3 / Código', valor: '11.22.33.22' },
+    { campo: '088', descripcion: 'Beneficiario 4 / Tipo de tributo 3 / Monto', valor: '28.74' },
+    { campo: '089', descripcion: 'Beneficiario 4 / Clasificador de ingreso 3 / Código', valor: '11.22.33.22' },
+    { campo: '090', descripcion: 'Beneficiario 4 / Clasificador de ingreso 3 / Nombre', valor: 'Impuesto a las Embarcaciones' },
+    { campo: '091', descripcion: 'Beneficiario 4 / Clasificador de ingreso 3 / Monto', valor: '28.74' },
+  ],
+  registradoPor: 'SIAF RP',
+  fechaRegistrado: '09/11/2026     15:06:27',
+  procesadoPor: 'SIAF RP',
+  fechaProcesado: '09/11/2026     15:06:39',
+};
+
+/** Detalles disponibles por id de documento (`itb-1`, `itb-2`…). */
+export const DETALLES_DOCUMENTOS_INGRESOS_TRIBUTARIOS: Record<string, DetalleDocumentoIngresoTributario> = {
+  'itb-1': DETALLE_NOTA_DEBITO,
+  'itb-2': DETALLE_REPORTE_RECAUDACION,
+};
+
+// ─── Simulación en vivo: dos documentos nuevos que avanzan solos de estado ──
+//
+// Sobre los dos documentos de ejemplo de arriba (ya «Procesados», como si el taller llevara tiempo corriendo), se
+// suman un Reporte de recaudación y una Nota de débito que recién entran por la bandeja y van avanzando de estado
+// solos, sin que el usuario haga nada: Registrado → Pendiente → Procesado, cada paso a los 10 s. El estado se
+// calcula con la hora actual contra `demoIngresosTributariosInicio` (no hay timers ni estado guardado del lado del
+// backend simulado): el Reporte arranca junto con el taller; la Nota recién aparece cuando el Reporte pasa a
+// Pendiente (a los 10 s). Mientras un documento no está Procesado, su tabla de campos trae menos filas (sin los
+// nombres que resuelve el motor al terminar) y la trazabilidad, un único ítem. La bandeja (`IngresosTributariosSunat
+// DocumentsComponent`) además vuelve a pedir estos datos cada 10 s sola, para que el avance se vea sin que haga
+// falta entrar a ningún documento.
+
+const PASO_SIMULACION_MS = 10000;
+const REPORTE_VIVO_ID = 'itb-3';
+const NOTA_VIVO_ID = 'itb-4';
+const REPORTE_VIVO_NUMERO = '223456-2026';
+const NOTA_VIVO_NUMERO = '887654-2026';
+
+function formatoFechaDemo(fecha: Date): string {
+  const dd = String(fecha.getDate()).padStart(2, '0');
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+  const hh = String(fecha.getHours()).padStart(2, '0');
+  const mi = String(fecha.getMinutes()).padStart(2, '0');
+  const ss = String(fecha.getSeconds()).padStart(2, '0');
+  return `${dd}/${mm}/${fecha.getFullYear()} ${hh}:${mi}:${ss}`;
+}
+
+/** Estado de un documento vivo según cuánto pasó desde que apareció en la bandeja (`null`: todavía no aparece). */
+function estadoSimulado(apareceEn: Date, ahora: Date): EstadoIngresoTributario | null {
+  const transcurrido = ahora.getTime() - apareceEn.getTime();
+  if (transcurrido < 0) return null;
+  if (transcurrido < PASO_SIMULACION_MS) return 'Registrado';
+  if (transcurrido < PASO_SIMULACION_MS * 2) return 'Pendiente';
+  return 'Procesado';
+}
+
+/** Tabla reducida (sin nombres resueltos) del Reporte de recaudación: Registrado y Pendiente la usan por igual. */
+function camposReporteReducido(): CampoDetalleDocumento[] {
+  return [
+    { campo: '001', descripcion: 'Número del Reporte de recaudación', valor: '02698147' },
+    { campo: '002', descripcion: 'Fecha de emisión del Reporte de recaudación', valor: '09/11/2026 11:00:56' },
+    { campo: '003', descripcion: 'Código de la Entidad financiera', valor: '002' },
+    { campo: '004', descripcion: 'Monto total', valor: '4,077.54' },
+    { campo: '005', descripcion: 'Moneda', valor: 'PEN' },
+    { campo: '006', descripcion: 'Cuenta bancaria (CUT)', valor: '000392930212' },
+    { campo: '007', descripcion: 'RUC de la Entidad administradora del ingreso', valor: '20345678901' },
+    { campo: '008', descripcion: 'Beneficiario 1 / Código ente', valor: '0001' },
+    { campo: '009', descripcion: 'Beneficiario 1 / Cuenta de registro', valor: '11223344556677889901' },
+    { campo: '010', descripcion: 'Beneficiario 1 / Monto total', valor: '3,838.59' },
+    { campo: '011', descripcion: 'Beneficiario 1 / Tipo de tributo 1 / Código', valor: '11.22.33.44' },
+    { campo: '012', descripcion: 'Beneficiario 1 / Tipo de tributo 1 / Monto', valor: '800.00' },
+    { campo: '013', descripcion: 'Beneficiario 1 / Tipo de tributo 2 / Código', valor: '11.22.33.33' },
+    { campo: '014', descripcion: 'Beneficiario 1 / Tipo de tributo 2 / Monto', valor: '1500.00' },
+    { campo: '015', descripcion: 'Beneficiario 1 / Tipo de tributo 3 / Código', valor: '11.22.33.66' },
+    { campo: '016', descripcion: 'Beneficiario 1 / Tipo de tributo 3 / Monto', valor: '1500.00' },
+    { campo: '017', descripcion: 'Beneficiario 1 / Tipo de tributo 4 / Código', valor: '11.22.33.22' },
+    { campo: '018', descripcion: 'Beneficiario 1 / Tipo de tributo 4 / Monto', valor: '38.59' },
+    { campo: '019', descripcion: 'Beneficiario 2 / Código ente', valor: '0002' },
+    { campo: '020', descripcion: 'Beneficiario 2 / Cuenta de registro', valor: '11223344556677889902' },
+    { campo: '021', descripcion: 'Beneficiario 2 / Monto total', valor: '1.44' },
+    { campo: '022', descripcion: 'Beneficiario 2 / Tipo de tributo 1 / Código', valor: '11.22.33.44' },
+    { campo: '023', descripcion: 'Beneficiario 2 / Tipo de tributo 1 / Monto', valor: '0.40' },
+    { campo: '024', descripcion: 'Beneficiario 2 / Tipo de tributo 2 / Código', valor: '11.22.33.33' },
+    { campo: '025', descripcion: 'Beneficiario 2 / Tipo de tributo 2 / Monto', valor: '0.50' },
+    { campo: '026', descripcion: 'Beneficiario 2 / Tipo de tributo 3 / Código', valor: '11.22.33.66' },
+    { campo: '027', descripcion: 'Beneficiario 2 / Tipo de tributo 3 / Monto', valor: '0.50' },
+    { campo: '028', descripcion: 'Beneficiario 2 / Tipo de tributo 4 / Código', valor: '11.22.33.22' },
+    { campo: '029', descripcion: 'Beneficiario 2 / Tipo de tributo 4 / Monto', valor: '0.04' },
+    { campo: '030', descripcion: 'Beneficiario 3 / Código ente', valor: '0003' },
+    { campo: '031', descripcion: 'Beneficiario 3 / Cuenta de registro', valor: '11223344556677889903' },
+    { campo: '032', descripcion: 'Beneficiario 3 / Monto total', valor: '108.77' },
+    { campo: '033', descripcion: 'Beneficiario 3 / Tipo de tributo 1 / Código', valor: '11.22.33.55' },
+    { campo: '034', descripcion: 'Beneficiario 3 / Tipo de tributo 1 / Monto', valor: '108.77' },
+    { campo: '035', descripcion: 'Beneficiario 4 / Código ente', valor: '0004' },
+    { campo: '036', descripcion: 'Beneficiario 4 / Cuenta de registro', valor: '11223344556677889904' },
+    { campo: '037', descripcion: 'Beneficiario 4 / Monto total', valor: '128.74' },
+    { campo: '038', descripcion: 'Beneficiario 4 / Tipo de tributo 1 / Código', valor: '11.22.99.11' },
+    { campo: '039', descripcion: 'Beneficiario 4 / Tipo de tributo 1 / Monto', valor: '50.00' },
+    { campo: '040', descripcion: 'Beneficiario 4 / Tipo de tributo 2 / Código', valor: '11.22.99.22' },
+    { campo: '041', descripcion: 'Beneficiario 4 / Tipo de tributo 2 / Monto', valor: '50.00' },
+    { campo: '042', descripcion: 'Beneficiario 4 / Tipo de tributo 3 / Código', valor: '11.22.33.22' },
+    { campo: '043', descripcion: 'Beneficiario 4 / Tipo de tributo 3 / Monto', valor: '28.74' },
+  ];
+}
+
+/** Tabla reducida de la Nota de débito: solo en Registrado (en Pendiente y Procesado ya trae las 16 completas). */
+function camposNotaReducido(): CampoDetalleDocumento[] {
+  return [
+    { campo: '001', descripcion: 'Número de Reporte de Recaudación', valor: '02698147' },
+    { campo: '002', descripcion: 'Fecha de emisión de la Nota de Débito', valor: '09/11/2026 15:06:30' },
+    { campo: '003', descripcion: 'Código de la Entidad Financiera', valor: '02' },
+    { campo: '004', descripcion: 'Monto total', valor: '35.50' },
+    { campo: '005', descripcion: 'Moneda', valor: 'PEN' },
+    { campo: '006', descripcion: 'Cuenta bancaria', valor: '000698456321' },
+    { campo: '007', descripcion: 'Cargo / Propietario', valor: 'SUNAT' },
+    { campo: '008', descripcion: 'Cargo / Nro de cuenta bancaria', valor: '000698456321' },
+    { campo: '009', descripcion: 'Abono / Propietario', valor: 'BANCO DE CRÉDITO DEL PERÚ' },
+    { campo: '010', descripcion: 'Abono / Nro de cuenta bancaria', valor: '0033-429384-0-12' },
+    { campo: '011', descripcion: 'Concepto / Código', valor: '418' },
+    { campo: '012', descripcion: 'Concepto / Importe', valor: '35.50' },
+  ];
+}
+
+function detalleReporteVivo(estado: EstadoIngresoTributario, apareceEn: Date): DetalleDocumentoIngresoTributario {
+  const fechaAparicion = formatoFechaDemo(apareceEn);
+  const procesadoEn = formatoFechaDemo(new Date(apareceEn.getTime() + PASO_SIMULACION_MS * 2));
+  return {
+    documentoId: REPORTE_VIVO_ID,
+    documento: 'Solicitud automática de Reporte de recaudación',
+    numero: REPORTE_VIVO_NUMERO,
+    fecha: fechaAparicion,
+    enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
+    estado,
+    // Igual que la Nota de débito: la reducida es solo para Registrado; Pendiente ya trae la tabla completa.
+    campos: estado === 'Registrado' ? camposReporteReducido() : DETALLE_REPORTE_RECAUDACION.campos,
+    registradoPor: 'SIAF RP',
+    fechaRegistrado: fechaAparicion,
+    procesadoPor: estado === 'Procesado' ? 'SIAF RP' : undefined,
+    fechaProcesado: estado === 'Procesado' ? procesadoEn : undefined,
+  };
+}
+
+function detalleNotaVivo(estado: EstadoIngresoTributario, apareceEn: Date): DetalleDocumentoIngresoTributario {
+  const fechaAparicion = formatoFechaDemo(apareceEn);
+  const procesadoEn = formatoFechaDemo(new Date(apareceEn.getTime() + PASO_SIMULACION_MS * 2));
+  return {
+    documentoId: NOTA_VIVO_ID,
+    documento: 'Solicitud automática de Nota de débito',
+    numero: NOTA_VIVO_NUMERO,
+    fecha: fechaAparicion,
+    enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
+    estado,
+    // Acá la reducida es solo para Registrado: Pendiente ya muestra la tabla completa (16 campos).
+    campos: estado === 'Registrado' ? camposNotaReducido() : DETALLE_NOTA_DEBITO.campos,
+    accionLabel: estado === 'Registrado' ? 'Acción por' : undefined,
+    registradoPor: 'SIAF RP',
+    fechaRegistrado: fechaAparicion,
+    procesadoPor: estado === 'Procesado' ? 'SIAF RP' : undefined,
+    fechaProcesado: estado === 'Procesado' ? procesadoEn : undefined,
+  };
+}
+
+/** Filas de la tab Documentos para el Reporte y la Nota en vivo (vacío mientras ninguno apareció todavía). */
+export function documentosIngresosTributariosVivos(inicioIso: string, ahora: Date): IngresoTributarioRegistro[] {
+  const inicio = new Date(inicioIso);
+  const resultado: IngresoTributarioRegistro[] = [];
+  const entidad = '009 - Ministerio de Economia y Finanzas';
+
+  const estadoReporte = estadoSimulado(inicio, ahora);
+  if (estadoReporte) {
+    resultado.push({
+      id: REPORTE_VIVO_ID,
+      documento: 'Solicitud automática de Reporte de recaudación',
+      numero: REPORTE_VIVO_NUMERO,
+      tipoAccion: 'Creación',
+      estado: estadoReporte,
+      fecha: inicio.toISOString(),
+      entidad,
+    });
+  }
+
+  const apareceNota = new Date(inicio.getTime() + PASO_SIMULACION_MS);
+  const estadoNota = estadoSimulado(apareceNota, ahora);
+  if (estadoNota) {
+    resultado.push({
+      id: NOTA_VIVO_ID,
+      documento: 'Solicitud automática de Nota de débito',
+      numero: NOTA_VIVO_NUMERO,
+      tipoAccion: 'Creación',
+      estado: estadoNota,
+      fecha: apareceNota.toISOString(),
+      entidad,
+    });
+  }
+
+  return resultado;
+}
+
+/** Detalle del Reporte o la Nota en vivo, o `null` si el id no es uno de los dos o todavía no apareció. */
+export function detalleIngresoTributarioVivo(id: string, inicioIso: string, ahora: Date): DetalleDocumentoIngresoTributario | null {
+  const inicio = new Date(inicioIso);
+
+  if (id === REPORTE_VIVO_ID) {
+    const estado = estadoSimulado(inicio, ahora);
+    return estado ? detalleReporteVivo(estado, inicio) : null;
+  }
+
+  if (id === NOTA_VIVO_ID) {
+    const apareceNota = new Date(inicio.getTime() + PASO_SIMULACION_MS);
+    const estado = estadoSimulado(apareceNota, ahora);
+    return estado ? detalleNotaVivo(estado, apareceNota) : null;
+  }
+
+  return null;
+}
+
+/** Registros que suma el Reporte y la Nota en vivo al llegar a Procesado (antes de eso, ninguno). */
+export function registrosIngresosTributariosVivos(inicioIso: string, ahora: Date): RegistroIngresoTributario[] {
+  const inicio = new Date(inicioIso);
+  const resultado: RegistroIngresoTributario[] = [];
+
+  if (estadoSimulado(inicio, ahora) === 'Procesado') {
+    resultado.push({
+      id: 'rit-3',
+      tipo: 'reporte-recaudacion',
+      nro: 2,
+      numeroOrigen: '02698147',
+      entidadFinanciera: 'BANCO DE CRÉDITO DEL PERÚ',
+      moneda: 'PEN',
+      montoTotal: '4,077.54',
+      estado: 'Activo',
+      documentoNumero: REPORTE_VIVO_NUMERO,
+      documentoNombre: 'Solicitud de Reporte de Recaudación',
+    });
+  }
+
+  const apareceNota = new Date(inicio.getTime() + PASO_SIMULACION_MS);
+  if (estadoSimulado(apareceNota, ahora) === 'Procesado') {
+    resultado.push({
+      id: 'rit-4',
+      tipo: 'nota-debito',
+      nro: 2,
+      numeroOrigen: '02698147',
+      entidadFinanciera: 'BANCO DE CRÉDITO DEL PERÚ',
+      moneda: 'PEN',
+      montoTotal: '35.50',
+      estado: 'Activo',
+      documentoNumero: NOTA_VIVO_NUMERO,
+      documentoNombre: 'Solicitud de Nota de débito',
+    });
+  }
+
+  return resultado;
+}
+
+/**
+ * Semilla de la tab Registros de «Ingresos tributarios SUNAT»: un registro por tipo, enlazado al documento que lo
+ * originó por `documentoNumero`. `id` se completa en `crearDatosIniciales()`.
+ */
+const REGISTROS_INGRESOS_TRIBUTARIOS_SEMILLA: Omit<RegistroIngresoTributario, 'id'>[] = [
+  {
+    tipo: 'reporte-recaudacion',
+    nro: 1,
+    numeroOrigen: '02698147',
+    entidadFinanciera: 'BANCO DE CRÉDITO DEL PERÚ',
+    moneda: 'PEN',
+    montoTotal: '4,077.54',
+    estado: 'Activo',
+    documentoNumero: '123456-2026',
+    documentoNombre: 'Solicitud de Reporte de Recaudación',
+  },
+  {
+    tipo: 'nota-debito',
+    nro: 1,
+    numeroOrigen: '02698147',
+    entidadFinanciera: 'BANCO DE CRÉDITO DEL PERÚ',
+    moneda: 'PEN',
+    montoTotal: '35.50',
+    estado: 'Activo',
+    documentoNumero: '987654-2026',
+    documentoNombre: 'Solicitud de Nota de débito',
+  },
+];
+
 function crearDatosIniciales(): DatosTaller {
   const datos: DatosTaller = {
     version: VERSION,
     solicitudes: [],
     registros: [],
     registrosSaldos: [],
+    ingresosTributarios: INGRESOS_TRIBUTARIOS_SEMILLA.map((d, i) => ({ ...d, id: `itb-${i + 1}` })),
+    registrosIngresosTributarios: REGISTROS_INGRESOS_TRIBUTARIOS_SEMILLA.map((r, i) => ({ ...r, id: `rit-${i + 1}` })),
+    demoIngresosTributariosInicio: new Date().toISOString(),
     notificaciones: [],
     correlativoDocumento: 0,
     correlativoDocumentoSaldos: 0,

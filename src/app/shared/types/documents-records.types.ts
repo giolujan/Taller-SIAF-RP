@@ -37,6 +37,12 @@ export type DocumentsRecordsColumn = {
   widthClass?: string;
   align?: 'left' | 'right' | 'center';
   kind?: 'text' | 'document-link' | 'flow-status' | 'record-status';
+  /**
+   * Agrupa columnas consecutivas bajo un título común en una segunda fila de cabecera (ej. «Info del documento»
+   * sobre «Número» y «Nombre», en Registros de Ingresos tributarios SUNAT). No confundir con `group`
+   * (visible/more): es el rótulo del grupo visual de columnas, no la agrupación del panel de columnas.
+   */
+  headerGroup?: string;
 };
 
 export type DocumentsRecordsFilterOption = {

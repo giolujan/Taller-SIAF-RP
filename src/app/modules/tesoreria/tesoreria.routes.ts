@@ -58,4 +58,18 @@ export const TESORERIA_ROUTES: Routes = [
         (m) => m.SaldosInicialesConsultasComponent,
       ),
   },
+  {
+    path: 'procesos/ingresos-tributarios-sunat',
+    loadComponent: () =>
+      import('./ingresos-tributarios-sunat/pages/documents/ingresos-tributarios-sunat-documents.component').then(
+        (m) => m.IngresosTributariosSunatDocumentsComponent,
+      ),
+  },
+  {
+    path: 'procesos/ingresos-tributarios-sunat/documento/:id',
+    loadComponent: () =>
+      import('./ingresos-tributarios-sunat/pages/documento/ingreso-tributario-detalle.component').then(
+        (m) => m.IngresoTributarioDetalleComponent,
+      ),
+  },
 ];
