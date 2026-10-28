@@ -9,6 +9,7 @@ import type { EstadoDocumento } from '../core/models/documento.model';
 import type { CuentaBancariaDatos } from '../modules/tesoreria/cuentas-bancarias/models/cuenta-bancaria.model';
 import type { SaldoInicialDatos } from '../modules/tesoreria/saldos-iniciales/models/saldo-inicial.model';
 import {
+  CLASIFICADORES_ESTIMACION_INGRESOS,
   DatosTaller,
   DETALLES_DOCUMENTOS_INGRESOS_TRIBUTARIOS,
   detalleIngresoTributarioVivo,
@@ -478,6 +479,129 @@ const ingresosTributariosSunatReiniciarSimulacion: Manejador = ({ datos }) => {
   return ok({ message: 'Simulación reiniciada' });
 };
 
+// Proceso de solo consulta (Planeación financiera > Estimación de ingresos): sin bandeja por rol.
+const estimacionIngresos: Manejador = ({ datos }) => ok(datos.estimacionIngresos);
+
+// «Crear documento» (Creación o Modificación): a diferencia de un proceso con creador/aprobador, queda
+// «Elaborado» al instante — el número es el siguiente correlativo, sin distinguir tipo de acción.
+const estimacionIngresosCrear: Manejador = ({ req, datos, sesion }) => {
+  if (!sesion) return error(401, 'Sesión expirada.');
+  const dto = (req.body ?? {}) as { tipoAccion?: string };
+  const id = nuevoId(datos, 'esti');
+  const nuevo = {
+    id,
+    documento: 'Solicitud de estimación de ingresos',
+    numero: String(datos.estimacionIngresos.length + 1).padStart(4, '0'),
+    tipoAccion: dto.tipoAccion === 'Modificación' ? 'Modificación' : 'Creación',
+    estado: 'Elaborado' as const,
+    sistema: 'Tesorería',
+    fecha: new Date().toISOString(),
+    entidad: '009 Ministerio de Economía y Finanzas',
+  };
+  datos.estimacionIngresos.push(nuevo);
+  guardarDatos(datos);
+  return ok(nuevo, 201);
+};
+
+const estimacionIngresosDetalle: Manejador = ({ datos, params, sesion }) => {
+  const doc = datos.estimacionIngresos.find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  return ok({
+    documentoId: doc.id,
+    documento: doc.documento,
+    numero: doc.numero,
+    fecha: doc.fecha,
+    enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
+    entidad: doc.entidad,
+    unidadEjecutora: UNIDAD_CREADORA.nombre,
+    estado: doc.estado,
+    tipoAccion: doc.tipoAccion,
+    tipoModificacion: doc.tipoAccion === 'Modificación' ? (doc.tipoModificacionTexto ?? 'Montos') : undefined,
+    clasificadores: doc.clasificadoresPersonalizados ?? CLASIFICADORES_ESTIMACION_INGRESOS,
+    elaboradoPor: nombreCompleto(sesion?.usuario ?? USUARIOS_DEMO[0]),
+    fechaElaborado: doc.fecha,
+    verificadoPor: doc.verificadoPor,
+    fechaVerificado: doc.fechaVerificado,
+    aprobadoPor: doc.aprobadoPor,
+    fechaAprobado: doc.fechaAprobado,
+  });
+};
+
+// Verificar: Elaborado → Verificado.
+const estimacionIngresosVerificar: Manejador = ({ datos, params, sesion }) => {
+  const doc = datos.estimacionIngresos.find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (doc.estado !== 'Elaborado') return error(409, `No se puede verificar un documento en estado ${doc.estado}.`);
+  doc.estado = 'Verificado';
+  doc.verificadoPor = nombreCompleto(sesion?.usuario ?? USUARIOS_DEMO[0]);
+  doc.fechaVerificado = new Date().toISOString();
+  guardarDatos(datos);
+  return ok(doc);
+};
+
+// Aprobar: Verificado → Aprobado, estado final.
+const estimacionIngresosAprobar: Manejador = ({ datos, params, sesion }) => {
+  const doc = datos.estimacionIngresos.find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (doc.estado !== 'Verificado') return error(409, `No se puede aprobar un documento en estado ${doc.estado}.`);
+  doc.estado = 'Aprobado';
+  doc.aprobadoPor = nombreCompleto(sesion?.usuario ?? USUARIOS_DEMO[1] ?? USUARIOS_DEMO[0]);
+  doc.fechaAprobado = new Date().toISOString();
+  guardarDatos(datos);
+  return ok(doc);
+};
+
+// Grabar en edición: solo sobre «Elaborado» (showEdit de la matriz rol/estado solo habilita Editar ahí).
+const estimacionIngresosActualizar: Manejador = ({ req, datos, params }) => {
+  const doc = datos.estimacionIngresos.find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (doc.estado !== 'Elaborado') return error(409, `No se puede editar un documento en estado ${doc.estado}.`);
+  const dto = (req.body ?? {}) as { tipoModificacionTexto?: string; clasificadores?: typeof CLASIFICADORES_ESTIMACION_INGRESOS };
+  if (dto.tipoModificacionTexto !== undefined) doc.tipoModificacionTexto = dto.tipoModificacionTexto;
+  if (dto.clasificadores !== undefined) doc.clasificadoresPersonalizados = dto.clasificadores;
+  guardarDatos(datos);
+  return ok(doc);
+};
+
+// Grabar una fila de clasificadores (Figma node 4021:102921): el backend recalcula la variación (e, f) a partir
+// de `promedioAnual` y `anio2027`, igual que cada fila de la tabla.
+const estimacionIngresosActualizarClasificador: Manejador = ({ req, datos, params }) => {
+  const doc = datos.estimacionIngresos.find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (doc.estado !== 'Elaborado') return error(409, `No se puede editar un documento en estado ${doc.estado}.`);
+  const indice = Number(params[1]);
+  const filas = doc.clasificadoresPersonalizados ? [...doc.clasificadoresPersonalizados] : [...CLASIFICADORES_ESTIMACION_INGRESOS];
+  if (!Number.isInteger(indice) || indice < 0 || indice >= filas.length) return error(404, 'El clasificador no existe.');
+  const dto = (req.body ?? {}) as {
+    ff?: string; clasificador?: string; promedioAnual?: number; anio2027?: number; anio2028?: number; anio2029?: number; baseLegal?: 'SI' | 'NO';
+  };
+  const promedioAnual = dto.promedioAnual ?? filas[indice].promedioAnual;
+  const anio2027 = dto.anio2027 ?? filas[indice].anio2027;
+  const variacionMonto = anio2027 - promedioAnual;
+  filas[indice] = {
+    ff: dto.ff ?? filas[indice].ff,
+    clasificador: dto.clasificador ?? filas[indice].clasificador,
+    promedioAnual,
+    anio2027,
+    anio2028: dto.anio2028 ?? filas[indice].anio2028,
+    anio2029: dto.anio2029 ?? filas[indice].anio2029,
+    baseLegal: dto.baseLegal ?? filas[indice].baseLegal,
+    variacionMonto,
+    variacionPorcentaje: promedioAnual ? Number(((variacionMonto / promedioAnual) * 100).toFixed(1)) : 0,
+  };
+  doc.clasificadoresPersonalizados = filas;
+  guardarDatos(datos);
+  return ok(doc);
+};
+
+const estimacionIngresosEliminar: Manejador = ({ datos, params }) => {
+  const indice = datos.estimacionIngresos.findIndex((d) => d.id === params[0]);
+  if (indice === -1) return error(404, 'El documento no existe.');
+  datos.estimacionIngresos.splice(indice, 1);
+  guardarDatos(datos);
+  return ok(null, 204);
+};
+
 // ─── Enrutador ─────────────────────────────────────────────────────
 
 const RUTAS: [string, RegExp, Manejador][] = [
@@ -512,6 +636,14 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/ingresos-tributarios-sunat\/registros$/, ingresosTributariosSunatRegistros],
   ['GET', /^\/ingresos-tributarios-sunat\/([^/]+)\/detalle$/, ingresosTributariosSunatDetalle],
   ['POST', /^\/ingresos-tributarios-sunat\/reiniciar-simulacion$/, ingresosTributariosSunatReiniciarSimulacion],
+  ['GET', /^\/estimacion-ingresos$/, estimacionIngresos],
+  ['POST', /^\/estimacion-ingresos$/, estimacionIngresosCrear],
+  ['GET', /^\/estimacion-ingresos\/([^/]+)\/detalle$/, estimacionIngresosDetalle],
+  ['POST', /^\/estimacion-ingresos\/([^/]+)\/verificar$/, estimacionIngresosVerificar],
+  ['POST', /^\/estimacion-ingresos\/([^/]+)\/aprobar$/, estimacionIngresosAprobar],
+  ['DELETE', /^\/estimacion-ingresos\/([^/]+)$/, estimacionIngresosEliminar],
+  ['PATCH', /^\/estimacion-ingresos\/([^/]+)$/, estimacionIngresosActualizar],
+  ['PATCH', /^\/estimacion-ingresos\/([^/]+)\/clasificadores\/([^/]+)$/, estimacionIngresosActualizarClasificador],
 ];
 
 export const mockBackendInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEvent<unknown>> => {

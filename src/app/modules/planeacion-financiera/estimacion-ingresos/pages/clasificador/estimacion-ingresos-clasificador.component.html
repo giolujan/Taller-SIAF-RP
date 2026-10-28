@@ -1,0 +1,62 @@
+<div class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
+  <siaf-solicitude-page-layout
+    [breadcrumbs]="breadcrumbs"
+    role="creator"
+    state="edit"
+    [loading]="cargando()"
+    heading="Editar clasificador"
+    [secondaryText]="form().clasificador"
+    [showReturn]="true"
+    [showTag]="false"
+    [saveDisabled]="!hayCambios()"
+    (returned)="regresar()"
+    (canceled)="regresar()"
+    (saved)="grabar()"
+  >
+    @if (cargando()) {
+      <div class="rounded-siaf-md bg-surface p-siaf-xl">
+        <div class="grid grid-cols-3 gap-siaf-md">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="siaf-skeleton-pulse h-4 w-32 rounded bg-[var(--sys-color-bg-surfaces-surface-low)]"></div>
+          }
+        </div>
+      </div>
+    } @else {
+      <siaf-solicitude-form-card title="Datos del clasificador">
+        <div class="grid gap-x-siaf-xl gap-y-siaf-md md:grid-cols-2 xl:grid-cols-3">
+          <siaf-input label="FF" [value]="form().ff" (valueChange)="actualizar('ff', $any($event))" />
+          <siaf-input label="Clasificador de ingresos" [value]="form().clasificador" (valueChange)="actualizar('clasificador', $any($event))" />
+          <siaf-input
+            label="¿Base legal de uso específico?"
+            type="select"
+            [options]="opcionesBaseLegal"
+            [value]="form().baseLegal"
+            (valueChange)="actualizar('baseLegal', $any($event))"
+          />
+          <siaf-input label="Rec. histórica · Promedio anual (a)" [value]="form().promedioAnual" (valueChange)="actualizar('promedioAnual', $any($event))" />
+          <siaf-input label="Recaudación estimada · Año 2027 (b)" [value]="form().anio2027" (valueChange)="actualizar('anio2027', $any($event))" />
+          <siaf-input label="Recaudación estimada · Año 2028 (c)" [value]="form().anio2028" (valueChange)="actualizar('anio2028', $any($event))" />
+          <siaf-input label="Recaudación estimada · Año 2029 (d)" [value]="form().anio2029" (valueChange)="actualizar('anio2029', $any($event))" />
+        </div>
+      </siaf-solicitude-form-card>
+
+      <siaf-solicitude-form-card title="Variación">
+        <div class="grid gap-siaf-md md:grid-cols-3">
+          <div class="rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] p-siaf-md">
+            <p class="m-0 mb-siaf-xs text-xs font-medium text-[var(--sys-color-text-neutral-low)]">2027 (b) vs promedio anual (a)</p>
+            <p class="m-0 text-lg font-bold text-text">{{ variacionMonto() | number }}</p>
+            <p class="m-0 text-sm text-[var(--sys-color-text-neutral-medium)]">{{ variacionPorcentaje() }}%</p>
+          </div>
+          <div class="rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] p-siaf-md">
+            <p class="m-0 mb-siaf-xs text-xs font-medium text-[var(--sys-color-text-neutral-low)]">2028 (c) vs 2027 (b)</p>
+            <p class="m-0 text-lg font-bold text-text">{{ variacionCB() | number }}</p>
+          </div>
+          <div class="rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] p-siaf-md">
+            <p class="m-0 mb-siaf-xs text-xs font-medium text-[var(--sys-color-text-neutral-low)]">2029 (d) vs 2028 (c)</p>
+            <p class="m-0 text-lg font-bold text-text">{{ variacionDC() | number }}</p>
+          </div>
+        </div>
+      </siaf-solicitude-form-card>
+    }
+  </siaf-solicitude-page-layout>
+</div>

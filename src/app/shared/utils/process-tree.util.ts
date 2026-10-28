@@ -43,9 +43,55 @@ export interface ProcessMenuNode {
  */
 export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
   {
+    id: 'planeacion-financiera',
+    label: 'Planeación financiera',
+    expanded: true,
+    children: [
+      {
+        id: 'flujos-caja-proyectados',
+        label: 'Flujos de caja proyectados anuales y trimestrales',
+        expanded: true,
+        children: [
+          {
+            id: 'estimacion-ingresos',
+            label: 'Estimación de ingresos',
+            expanded: true,
+            children: [
+              {
+                id: 'estimacion-ingresos-registro',
+                label: 'Registro de la estimación de Ingresos',
+                selected: true,
+                moduleRoute: '/procesos/estimacion-ingresos',
+                createRoute: '/procesos/estimacion-ingresos/solicitud',
+                documentOptions: ['Solicitud de estimación de ingresos'],
+                documentCreateOptions: [
+                  {
+                    label: 'Solicitud de estimación de ingresos',
+                    route: '/procesos/estimacion-ingresos/solicitud',
+                    actionTypes: ['Creación', 'Modificación'],
+                  },
+                ],
+                actionTypeOptions: ['Creación', 'Modificación'],
+              },
+              { id: 'estimacion-ingresos-consolidado-pliego', label: 'Documentos de consolidado pliego de estimación de ingresos', comingSoon: true },
+              { id: 'estimacion-ingresos-consolidado-dgtp', label: 'Documentos de consolidado DGTP de estimación de ingresos', comingSoon: true },
+              { id: 'estimacion-ingresos-proyeccion-dgtp', label: 'Documentos de proyección DGTP de ingresos', comingSoon: true },
+            ],
+          },
+          {
+            id: 'estimacion-egresos',
+            label: 'Estimación de egresos',
+            comingSoon: true,
+            // Sin opciones cargadas todavía: una hoja placeholder solo para mostrar la flecha de desglose.
+            children: [{ id: 'estimacion-egresos-proximamente', label: 'Próximamente', comingSoon: true }],
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'gestion-tesoreria',
     label: 'Gestión de tesorería',
-    expanded: true,
     children: [
       {
         id: 'gestion-ingresos',

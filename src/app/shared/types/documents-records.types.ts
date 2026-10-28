@@ -22,6 +22,13 @@ export type DocumentsRecordsCreateProcessOption = {
   documents: string[];
   documentOptions?: DocumentsRecordsCreateDocumentOption[];
   actionTypes: string[];
+  /**
+   * Si viene, «Crear documento» suma un tercer campo de solo lectura (ej. «Número») con el siguiente correlativo
+   * (`documentRows.length + 1`, sin distinguir tipo de acción) — ver `createDocumentFields` en
+   * `documents-records-page.component.ts`. Lo usan procesos donde el documento queda «Elaborado» al instante
+   * (ej. Estimación de ingresos).
+   */
+  numberFieldLabel?: string;
 };
 
 export type DocumentsRecordsRow = {

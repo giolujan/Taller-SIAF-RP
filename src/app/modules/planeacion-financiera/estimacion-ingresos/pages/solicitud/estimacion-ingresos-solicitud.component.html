@@ -1,0 +1,186 @@
+<div class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
+  <siaf-solicitude-page-layout
+    [breadcrumbs]="breadcrumbs"
+    [role]="headerRole()"
+    [state]="headerState()"
+    [loading]="cargando()"
+    [heading]="detalle()?.documento ?? ''"
+    [secondaryText]="detalle()?.tipoAccion ?? ''"
+    [showReturn]="true"
+    [showTag]="false"
+    [saveDisabled]="!hayCambios()"
+    (returned)="regresar()"
+    (edited)="iniciarEdicion()"
+    (canceled)="cancelarEdicion()"
+    (saved)="modalGrabar.set(true)"
+    (verified)="modalVerificar.set(true)"
+    (deleted)="modalEliminar.set(true)"
+    (approved)="modalAprobar.set(true)"
+  >
+    @if (cargando()) {
+      <div class="rounded-siaf-md bg-surface p-siaf-xl">
+        <div class="grid grid-cols-3 gap-siaf-md">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="siaf-skeleton-pulse h-4 w-32 rounded bg-[var(--sys-color-bg-surfaces-surface-low)]"></div>
+          }
+        </div>
+      </div>
+    } @else if (!detalle()) {
+      <div class="rounded-siaf-md bg-surface p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-medium)]">
+        No se encontró el detalle de este documento.
+      </div>
+    } @else {
+      <siaf-alert
+        tone="info"
+        title="Solicitud elaborada"
+        description="El documento quedó registrado al instante."
+        [showClose]="true"
+        [class.hidden]="!avisoAbierto()"
+        (closed)="avisoAbierto.set(false)"
+      />
+
+      <section class="grid gap-siaf-md lg:grid-cols-[1fr_360px]">
+        <siaf-solicitude-info-card [fields]="campos()" />
+        <siaf-document-summary-card [documentNumber]="detalle()!.numero" [status]="detalle()!.estado" />
+      </section>
+
+      @if (detalle()!.tipoAccion === 'Modificación') {
+        <siaf-solicitude-form-card title="Tipo de modificación">
+          @if (editando()) {
+            <siaf-input
+              label="Tipo de modificación"
+              type="select"
+              [options]="tiposModificacion"
+              [value]="formTipoModificacion()"
+              (valueChange)="formTipoModificacion.set($any($event))"
+            />
+          } @else {
+            <readonly-field caption="Tipo de modificación" [value]="detalle()!.tipoModificacion ?? ''" />
+          }
+        </siaf-solicitude-form-card>
+      }
+
+      <siaf-solicitude-form-card title="Clasificadores de ingresos">
+        @if (editando()) {
+          <siaf-form-table-search
+            placeholder="Buscar clasificador"
+            [value]="busquedaClasificadores()"
+            (valueChange)="busquedaClasificadores.set($event)"
+          />
+          <siaf-table-controls
+            [showSelection]="true"
+            [checked]="seleccionados().size > 0 && seleccionados().size === clasificadoresVisibles().length"
+            [indeterminate]="seleccionados().size > 0 && seleccionados().size < clasificadoresVisibles().length"
+            [selectedCount]="seleccionados().size"
+            [showEditAction]="true"
+            [editDisabled]="seleccionados().size !== 1"
+            [showDeleteAction]="true"
+            [totalItems]="clasificadoresVisibles().length"
+            (selectionChange)="toggleSeleccionTodas($event)"
+            (edit)="editarSeleccionada()"
+            (delete)="eliminarSeleccionadas()"
+          />
+        }
+
+        <div class="siaf-table-shell">
+          <table class="siaf-table">
+            <thead>
+              <tr class="siaf-table-head-row">
+                @if (editando()) {
+                  <th class="siaf-table-th" rowspan="2"></th>
+                }
+                <th class="siaf-table-th" rowspan="2">FF</th>
+                <th class="siaf-table-th" rowspan="2">Clasificador de ingresos</th>
+                <th class="siaf-table-th" rowspan="2">Rec. histórica<br />Promedio anual (a)</th>
+                <th class="siaf-table-th" colspan="3">Recaudación Estimada</th>
+                <th class="siaf-table-th" rowspan="2">¿Base legal de uso específico?</th>
+                <th class="siaf-table-th" colspan="2">Variación (b) vs (a)</th>
+              </tr>
+              <tr class="siaf-table-head-row">
+                <th class="siaf-table-th">Año 2027 (b)</th>
+                <th class="siaf-table-th">Año 2028 (c)</th>
+                <th class="siaf-table-th">Año 2029 (d)</th>
+                <th class="siaf-table-th">Monto (e)</th>
+                <th class="siaf-table-th">(%) (f)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (fila of clasificadoresVisibles(); track fila.clasificador; let i = $index) {
+                <tr class="siaf-table-row">
+                  @if (editando()) {
+                    <td class="siaf-table-td">
+                      <input
+                        type="checkbox"
+                        class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                        [attr.aria-label]="'Seleccionar ' + fila.clasificador"
+                        [checked]="seleccionados().has(i)"
+                        (change)="toggleSeleccionFila(i, $any($event.target).checked)"
+                      />
+                    </td>
+                  }
+                  <td class="siaf-table-td">{{ fila.ff }}</td>
+                  <td class="siaf-table-td">{{ fila.clasificador }}</td>
+                  <td class="siaf-table-td">{{ fila.promedioAnual | number }}</td>
+                  <td class="siaf-table-td">{{ fila.anio2027 | number }}</td>
+                  <td class="siaf-table-td">{{ fila.anio2028 | number }}</td>
+                  <td class="siaf-table-td">{{ fila.anio2029 | number }}</td>
+                  <td class="siaf-table-td">{{ fila.baseLegal }}</td>
+                  <td class="siaf-table-td">{{ fila.variacionMonto | number }}</td>
+                  <td class="siaf-table-td">{{ fila.variacionPorcentaje }}</td>
+                </tr>
+              }
+              <tr class="siaf-table-row font-bold">
+                @if (editando()) {
+                  <td class="siaf-table-td"></td>
+                }
+                <td class="siaf-table-td"></td>
+                <td class="siaf-table-td">TOTAL</td>
+                <td class="siaf-table-td">S/ {{ totalColumna('promedioAnual') | number }}</td>
+                <td class="siaf-table-td">S/ {{ totalColumna('anio2027') | number }}</td>
+                <td class="siaf-table-td">S/ {{ totalColumna('anio2028') | number }}</td>
+                <td class="siaf-table-td">S/ {{ totalColumna('anio2029') | number }}</td>
+                <td class="siaf-table-td"></td>
+                <td class="siaf-table-td">S/ {{ totalColumna('variacionMonto') | number }}</td>
+                <td class="siaf-table-td">{{ totalPorcentaje() }}%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex flex-wrap items-start justify-between gap-siaf-md text-xs text-[var(--sys-color-text-neutral-low)]">
+          <p class="m-0">
+            <strong>Leyenda:</strong>
+            (a) Recaudación histórica promedio anual · (b) Año 2027 · (c) Año 2028 · (d) Año 2029 · (e) Monto · (f) (%)
+          </p>
+          <p class="m-0">
+            <strong>Fórmula:</strong>
+            e = b − a &nbsp; f = (e / a) x 100
+          </p>
+        </div>
+      </siaf-solicitude-form-card>
+
+      <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
+    }
+  </siaf-solicitude-page-layout>
+
+  <siaf-request-approval-modals
+    [saveOpen]="modalGrabar()"
+    [verifyOpen]="modalVerificar()"
+    [deleteOpen]="modalEliminar()"
+    [approveOpen]="modalAprobar()"
+    [saving]="saving()"
+    [snackbarVariant]="snackbarVariante()"
+    [snackbarOpen]="snackbarAbierto()"
+    [requestType]="detalle()?.tipoAccion ?? ''"
+    [requestNumber]="detalle()?.numero ?? ''"
+    (saveConfirmed)="onConfirmarGrabar()"
+    (verifyConfirmed)="onConfirmarVerificar()"
+    (deleteConfirmed)="onConfirmarEliminar()"
+    (approveConfirmed)="onConfirmarAprobar()"
+    (saveClosed)="modalGrabar.set(false)"
+    (verifyClosed)="modalVerificar.set(false)"
+    (deleteClosed)="modalEliminar.set(false)"
+    (approvalClosed)="modalAprobar.set(false)"
+    (snackbarClosed)="snackbarAbierto.set(false)"
+  />
+</div>

@@ -429,12 +429,13 @@ export class DocumentsRecordsPageComponent implements OnChanges {
 
   // Config efectivo con reglas de rol aplicadas automáticamente
   get effectiveConfig(): DocumentsRecordsConfig {
-    // Proceso de solo consulta: sin crear ni verificar/aprobar, y sin
-    // filtrado de filas por rol (los estados los define el proceso).
+    // Proceso de solo consulta: sin verificar/aprobar ni filtrado de filas por rol (los estados los define el
+    // proceso). «Crear documento» no se fuerza a vacío: algunos procesos de solo consulta sí lo tienen (ej.
+    // Estimación de ingresos, donde el documento queda «Elaborado» al instante) — lo decide `createDocumentOptions`
+    // en la config del proceso, no `modoConsulta`.
     if (this.config.modoConsulta) {
       return {
         ...this.config,
-        createDocumentOptions: [],
         accionPrincipal: undefined,
       };
     }
@@ -712,7 +713,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   }
 
   get createDocumentFields(): CreateDocumentField[] {
-    return [
+    const campos: CreateDocumentField[] = [
       {
         placeholder: 'Documento',
         type: 'select',
@@ -729,6 +730,18 @@ export class DocumentsRecordsPageComponent implements OnChanges {
         disabled: !this.createDocumentDocument
       }
     ];
+
+    const etiquetaNumero = this.effectiveConfig.createDocumentOptions[0]?.numberFieldLabel;
+    if (etiquetaNumero) {
+      campos.push({ placeholder: etiquetaNumero, value: this.nextDocumentNumber, disabled: true });
+    }
+
+    return campos;
+  }
+
+  /** Siguiente correlativo de la bandeja (para el campo «Número» de «Crear documento»), sin distinguir tipo de acción. */
+  get nextDocumentNumber(): string {
+    return String(this.documentRows.length + 1).padStart(4, '0');
   }
 
   get createDocumentActionTypeOptions(): string[] {
@@ -982,9 +995,11 @@ export class DocumentsRecordsPageComponent implements OnChanges {
     const route = localDocOption?.route || selection?.route || this.config.defaultRequestRoute;
     const actionType = selection?.actionType?.toLowerCase()
       .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    // Solo los procesos con `numberFieldLabel` (Número autocompletado) lo necesitan en la ruta destino.
+    const numero = this.effectiveConfig.createDocumentOptions[0]?.numberFieldLabel ? this.nextDocumentNumber : undefined;
 
     void this.router.navigate([route], {
-      queryParams: actionType ? { actionType } : undefined,
+      queryParams: { ...(actionType ? { actionType } : {}), ...(numero ? { numero } : {}) },
     });
   }
 

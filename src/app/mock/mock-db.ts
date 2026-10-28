@@ -20,6 +20,7 @@ import {
   IngresoTributarioRegistro,
   RegistroIngresoTributario,
 } from '../modules/tesoreria/ingresos-tributarios-sunat/models/ingreso-tributario.model';
+import { ClasificadorEstimacionIngresos, EstimacionIngresosRegistro } from '../modules/planeacion-financiera/estimacion-ingresos/models/estimacion-ingresos.model';
 import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
 
 /**
@@ -28,7 +29,7 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 5;
+const VERSION = 6;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol. */
@@ -45,6 +46,7 @@ export interface DatosTaller {
   registrosIngresosTributarios: RegistroIngresoTributario[];
   /** Instante (ISO) en que arrancó la simulación en vivo de Ingresos tributarios SUNAT — ver más abajo. */
   demoIngresosTributariosInicio: string;
+  estimacionIngresos: EstimacionIngresosRegistro[];
   notificaciones: NotificacionMock[];
   correlativoDocumento: number;
   correlativoDocumentoSaldos: number;
@@ -216,6 +218,29 @@ const INGRESOS_TRIBUTARIOS_SEMILLA: Omit<IngresoTributarioRegistro, 'id'>[] = [
     fecha: '2026-11-09T15:06:27',
     entidad: '009 - Ministerio de Economia y Finanzas',
   },
+];
+
+/**
+ * Semilla de «Estimación de ingresos» (Planeación financiera), calcada del Figma CEL-005.01.01.01.01
+ * (node 2851:214434). `id` se completa en `crearDatosIniciales()`.
+ */
+const ESTIMACION_INGRESOS_SEMILLA: Omit<EstimacionIngresosRegistro, 'id'>[] = [
+  { documento: 'Solicitud de estimación de ingresos', numero: '0005', tipoAccion: 'Creación', estado: 'Elaborado', sistema: 'Tesorería', fecha: '2026-01-02T09:00:00', entidad: '009 Ministerio de Economía y Finanzas' },
+  { documento: 'Solicitud de estimación de ingresos', numero: '0004', tipoAccion: 'Creación', estado: 'Elaborado', sistema: 'Tesorería', fecha: '2026-01-02T09:00:00', entidad: '009 Ministerio de Economía y Finanzas' },
+  { documento: 'Solicitud de estimación de ingresos', numero: '0003', tipoAccion: 'Creación', estado: 'Verificado', sistema: 'Tesorería', fecha: '2026-01-02T09:00:00', entidad: '009 Ministerio de Economía y Finanzas' },
+  { documento: 'Solicitud de estimación de ingresos', numero: '0002', tipoAccion: 'Creación', estado: 'Verificado', sistema: 'Tesorería', fecha: '2026-01-02T09:00:00', entidad: '009 Ministerio de Economía y Finanzas' },
+  { documento: 'Solicitud de estimación de ingresos', numero: '0001', tipoAccion: 'Creación', estado: 'Elaborado', sistema: 'Tesorería', fecha: '2026-01-02T09:00:00', entidad: '009 Ministerio de Economía y Finanzas' },
+];
+
+/**
+ * Tabla de clasificadores de ingresos (Figma node 4021:103273, «Table Estimacion_Ingresos»): la misma para
+ * cualquier «Solicitud de estimación de ingresos» que se crea desde «Crear documento» (es un taller de demo).
+ */
+export const CLASIFICADORES_ESTIMACION_INGRESOS: ClasificadorEstimacionIngresos[] = [
+  { ff: '2.09', clasificador: '3.1.5.1 Venta de Publicaciones', promedioAnual: 66249, anio2027: 66582, anio2028: 66917, anio2029: 67253, baseLegal: 'SI', variacionMonto: 333, variacionPorcentaje: 0.5 },
+  { ff: '2.09', clasificador: '3.2.1.1 Tasas Registrales', promedioAnual: 9999, anio2027: 11549, anio2028: 10309, anio2029: 10618, baseLegal: 'NO', variacionMonto: 1550, variacionPorcentaje: 15.5 },
+  { ff: '2.09', clasificador: '3.2.5.2 Licencia de Construcción', promedioAnual: 212500, anio2027: 223468, anio2028: 230172, anio2029: 237077, baseLegal: 'NO', variacionMonto: 10968, variacionPorcentaje: 5.2 },
+  { ff: '4.13', clasificador: '9.1.1.1 Saldos de balance', promedioAnual: 48350, anio2027: 49317, anio2028: 50303, anio2029: 51309, baseLegal: 'NO', variacionMonto: 967, variacionPorcentaje: 2.0 },
 ];
 
 /**
@@ -644,6 +669,7 @@ function crearDatosIniciales(): DatosTaller {
     ingresosTributarios: INGRESOS_TRIBUTARIOS_SEMILLA.map((d, i) => ({ ...d, id: `itb-${i + 1}` })),
     registrosIngresosTributarios: REGISTROS_INGRESOS_TRIBUTARIOS_SEMILLA.map((r, i) => ({ ...r, id: `rit-${i + 1}` })),
     demoIngresosTributariosInicio: new Date().toISOString(),
+    estimacionIngresos: ESTIMACION_INGRESOS_SEMILLA.map((d, i) => ({ ...d, id: `esti-${i + 1}` })),
     notificaciones: [],
     correlativoDocumento: 0,
     correlativoDocumentoSaldos: 0,

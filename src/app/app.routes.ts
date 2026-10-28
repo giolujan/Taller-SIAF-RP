@@ -46,6 +46,15 @@ export const routes: Routes = [
           import('./modules/tesoreria/tesoreria.routes').then((m) => m.TESORERIA_ROUTES),
         data: { permissions: ['document.read'] }
       },
+      // ── Planeación financiera: Estimación de ingresos ──
+      {
+        path: '',
+        loadChildren: () =>
+          import('./modules/planeacion-financiera/planeacion-financiera.routes').then(
+            (m) => m.PLANEACION_FINANCIERA_ROUTES,
+          ),
+        data: { permissions: ['document.read'] }
+      },
     ]
   },
   // Sin sesión, el guard del armazón lleva al login.
