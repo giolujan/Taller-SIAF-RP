@@ -9,7 +9,8 @@ import { PaginationComponent } from '../pagination/pagination.component';
  *
  * Las acciones (editar, eliminar, exportar, más opciones y las que la página proyecta con el atributo `tableAction`)
  * solo aparecen con `selectedCount` mayor que 0, cada una encendida con `showEditAction`, `showDeleteAction`,
- * `showExportAction` o `showMenuAction`. Con `[showSelection]="false"` queda solo la paginación.
+ * `showExportAction` o `showMenuAction`. Con `[showSelection]="false"` queda solo la paginación; con
+ * `[showPagination]="false"`, sin ella (tablas cortas que no paginan, como la de Estimación de ingresos).
  *
  * @usar
  * - Arriba de toda grilla, siempre: bandeja, pestañas Documentos / Registros, panel lateral de selección y tablas de
@@ -108,9 +109,11 @@ import { PaginationComponent } from '../pagination/pagination.component';
         <ng-content select="[tableAction]" />
       }
 
-      <div class="ml-auto min-w-[220px]" [class.hidden]="hideTopPaginationOnMobile" [class.md:block]="hideTopPaginationOnMobile">
-        <siaf-pagination navigation="Activate" position="Top" [page]="page" [pageSize]="pageSize" [totalItems]="totalItems" [totalPages]="totalPages" (previous)="previous.emit()" (next)="next.emit()" />
-      </div>
+      @if (showPagination) {
+        <div class="ml-auto min-w-[220px]" [class.hidden]="hideTopPaginationOnMobile" [class.md:block]="hideTopPaginationOnMobile">
+          <siaf-pagination navigation="Activate" position="Top" [page]="page" [pageSize]="pageSize" [totalItems]="totalItems" [totalPages]="totalPages" (previous)="previous.emit()" (next)="next.emit()" />
+        </div>
+      }
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -129,6 +132,7 @@ export class TableControlsComponent {
   @Input() showExportAction = false;
   @Input() showMenuAction = false;
   @Input() showSelection = true;
+  @Input() showPagination = true;
   @Input() editDisabled = false;
   @Input() hideTopPaginationOnMobile = false;
   @Input() selectAllLabel = 'Seleccionar filas';

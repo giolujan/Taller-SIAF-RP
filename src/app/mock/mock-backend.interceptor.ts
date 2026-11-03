@@ -482,11 +482,24 @@ const ingresosTributariosSunatReiniciarSimulacion: Manejador = ({ datos }) => {
 // Proceso de solo consulta (Planeación financiera > Estimación de ingresos): sin bandeja por rol.
 const estimacionIngresos: Manejador = ({ datos }) => ok(datos.estimacionIngresos);
 
-// «Crear documento» (Creación o Modificación): a diferencia de un proceso con creador/aprobador, queda
-// «Elaborado» al instante — el número es el siguiente correlativo, sin distinguir tipo de acción.
+// Precarga de una solicitud «Nuevo» (aún sin número ni estado): cabecera y clasificadores con los que se abre la
+// pantalla al pulsar Aceptar en «Crear documento». No graba nada: el documento recién existe al Grabar.
+const estimacionIngresosPrecarga: Manejador = ({ sesion }) => {
+  if (!sesion) return error(401, 'Sesión expirada.');
+  return ok({
+    fecha: new Date().toISOString(),
+    enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
+    entidad: '009 Ministerio de Economía y Finanzas',
+    unidadEjecutora: UNIDAD_CREADORA.nombre,
+    clasificadores: CLASIFICADORES_ESTIMACION_INGRESOS,
+  });
+};
+
+// Grabar una solicitud «Nuevo» (Creación o Modificación): queda «Elaborado» con el siguiente correlativo, sin
+// distinguir tipo de acción, y con los clasificadores que llegaron del formulario.
 const estimacionIngresosCrear: Manejador = ({ req, datos, sesion }) => {
   if (!sesion) return error(401, 'Sesión expirada.');
-  const dto = (req.body ?? {}) as { tipoAccion?: string };
+  const dto = (req.body ?? {}) as { tipoAccion?: string; tipoModificacionTexto?: string; clasificadores?: typeof CLASIFICADORES_ESTIMACION_INGRESOS };
   const id = nuevoId(datos, 'esti');
   const nuevo = {
     id,
@@ -497,6 +510,8 @@ const estimacionIngresosCrear: Manejador = ({ req, datos, sesion }) => {
     sistema: 'Tesorería',
     fecha: new Date().toISOString(),
     entidad: '009 Ministerio de Economía y Finanzas',
+    ...(dto.tipoModificacionTexto ? { tipoModificacionTexto: dto.tipoModificacionTexto } : {}),
+    ...(dto.clasificadores ? { clasificadoresPersonalizados: dto.clasificadores } : {}),
   };
   datos.estimacionIngresos.push(nuevo);
   guardarDatos(datos);
@@ -637,6 +652,7 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/ingresos-tributarios-sunat\/([^/]+)\/detalle$/, ingresosTributariosSunatDetalle],
   ['POST', /^\/ingresos-tributarios-sunat\/reiniciar-simulacion$/, ingresosTributariosSunatReiniciarSimulacion],
   ['GET', /^\/estimacion-ingresos$/, estimacionIngresos],
+  ['GET', /^\/estimacion-ingresos\/precarga$/, estimacionIngresosPrecarga],
   ['POST', /^\/estimacion-ingresos$/, estimacionIngresosCrear],
   ['GET', /^\/estimacion-ingresos\/([^/]+)\/detalle$/, estimacionIngresosDetalle],
   ['POST', /^\/estimacion-ingresos\/([^/]+)\/verificar$/, estimacionIngresosVerificar],

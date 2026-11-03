@@ -9,6 +9,7 @@ import {
   CrearEstimacionIngresosPayload,
   DetalleEstimacionIngresos,
   EstimacionIngresosRegistro,
+  PrecargaEstimacionIngresos,
 } from '../models/estimacion-ingresos.model';
 
 /**
@@ -25,7 +26,12 @@ export class EstimacionIngresosApiService {
     return this.http.get<EstimacionIngresosRegistro[]>(`${this.base}/estimacion-ingresos`);
   }
 
-  /** Crea una «Solicitud de estimación de ingresos» (Creación o Modificación): queda «Elaborado» al instante. */
+  /** Cabecera y clasificadores con los que se abre una solicitud «Nuevo», antes de Grabar. */
+  obtenerPrecarga(): Observable<PrecargaEstimacionIngresos> {
+    return this.http.get<PrecargaEstimacionIngresos>(`${this.base}/estimacion-ingresos/precarga`);
+  }
+
+  /** Graba una solicitud «Nuevo» (Creación o Modificación): queda «Elaborado» con su número. */
   crear(payload: CrearEstimacionIngresosPayload): Observable<EstimacionIngresosRegistro> {
     return this.http.post<EstimacionIngresosRegistro>(`${this.base}/estimacion-ingresos`, payload);
   }

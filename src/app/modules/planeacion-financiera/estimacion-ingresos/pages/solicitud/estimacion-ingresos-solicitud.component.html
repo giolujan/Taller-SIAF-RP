@@ -4,14 +4,15 @@
     [role]="headerRole()"
     [state]="headerState()"
     [loading]="cargando()"
-    [heading]="detalle()?.documento ?? ''"
-    [secondaryText]="detalle()?.tipoAccion ?? ''"
+    heading="Solicitud de estimación de ingresos"
+    [secondaryText]="tipoAccion()"
     [showReturn]="true"
-    [showTag]="false"
-    [saveDisabled]="!hayCambios()"
+    [showTag]="editable()"
+    [saveDisabled]="grabarDeshabilitado()"
+    [verifyDisabled]="esNuevo()"
     (returned)="regresar()"
     (edited)="iniciarEdicion()"
-    (canceled)="cancelarEdicion()"
+    (canceled)="cancelar()"
     (saved)="modalGrabar.set(true)"
     (verified)="modalVerificar.set(true)"
     (deleted)="modalEliminar.set(true)"
@@ -25,28 +26,24 @@
           }
         </div>
       </div>
-    } @else if (!detalle()) {
+    } @else if (!detalle() && !esNuevo()) {
       <div class="rounded-siaf-md bg-surface p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-medium)]">
         No se encontró el detalle de este documento.
       </div>
     } @else {
-      <siaf-alert
-        tone="info"
-        title="Solicitud elaborada"
-        description="El documento quedó registrado al instante."
-        [showClose]="true"
-        [class.hidden]="!avisoAbierto()"
-        (closed)="avisoAbierto.set(false)"
-      />
-
-      <section class="grid gap-siaf-md lg:grid-cols-[1fr_360px]">
+      <!-- «Nuevo» aún no tiene número ni estado: la ficha ocupa todo el ancho (Figma node 2448:271963). -->
+      @if (detalle(); as d) {
+        <section class="grid gap-siaf-md lg:grid-cols-[1fr_360px]">
+          <siaf-solicitude-info-card [fields]="campos()" />
+          <siaf-document-summary-card [documentNumber]="d.numero" [status]="d.estado" />
+        </section>
+      } @else {
         <siaf-solicitude-info-card [fields]="campos()" />
-        <siaf-document-summary-card [documentNumber]="detalle()!.numero" [status]="detalle()!.estado" />
-      </section>
+      }
 
-      @if (detalle()!.tipoAccion === 'Modificación') {
+      @if (tipoAccion() === 'Modificación') {
         <siaf-solicitude-form-card title="Tipo de modificación">
-          @if (editando()) {
+          @if (editable()) {
             <siaf-input
               label="Tipo de modificación"
               type="select"
@@ -55,111 +52,127 @@
               (valueChange)="formTipoModificacion.set($any($event))"
             />
           } @else {
-            <readonly-field caption="Tipo de modificación" [value]="detalle()!.tipoModificacion ?? ''" />
+            <readonly-field caption="Tipo de modificación" [value]="detalle()?.tipoModificacion ?? ''" />
           }
         </siaf-solicitude-form-card>
       }
 
-      <siaf-solicitude-form-card title="Clasificadores de ingresos">
-        @if (editando()) {
-          <siaf-form-table-search
-            placeholder="Buscar clasificador"
-            [value]="busquedaClasificadores()"
-            (valueChange)="busquedaClasificadores.set($event)"
-          />
+      <siaf-solicitude-form-card title="Estimación de ingresos">
+        <siaf-form-table-search
+          [showVariations]="true"
+          [value]="busquedaClasificadores()"
+          (valueChange)="busquedaClasificadores.set($event)"
+        />
+
+        @if (editable()) {
           <siaf-table-controls
             [showSelection]="true"
+            [showPagination]="false"
             [checked]="seleccionados().size > 0 && seleccionados().size === clasificadoresVisibles().length"
             [indeterminate]="seleccionados().size > 0 && seleccionados().size < clasificadoresVisibles().length"
             [selectedCount]="seleccionados().size"
-            [showEditAction]="true"
+            [showEditAction]="editando()"
             [editDisabled]="seleccionados().size !== 1"
             [showDeleteAction]="true"
-            [totalItems]="clasificadoresVisibles().length"
             (selectionChange)="toggleSeleccionTodas($event)"
             (edit)="editarSeleccionada()"
             (delete)="eliminarSeleccionadas()"
           />
         }
 
+        <!-- Tabla «Table Estimacion_Ingresos» (Figma node 2448:143962): montos a la derecha y (f) con ícono de
+             tendencia cuando la variación pasa el umbral. -->
         <div class="siaf-table-shell">
           <table class="siaf-table">
             <thead>
               <tr class="siaf-table-head-row">
-                @if (editando()) {
-                  <th class="siaf-table-th" rowspan="2"></th>
+                @if (editable()) {
+                  <th class="siaf-table-th w-10" rowspan="2"><span class="sr-only">Seleccionar</span></th>
                 }
                 <th class="siaf-table-th" rowspan="2">FF</th>
                 <th class="siaf-table-th" rowspan="2">Clasificador de ingresos</th>
-                <th class="siaf-table-th" rowspan="2">Rec. histórica<br />Promedio anual (a)</th>
-                <th class="siaf-table-th" colspan="3">Recaudación Estimada</th>
-                <th class="siaf-table-th" rowspan="2">¿Base legal de uso específico?</th>
-                <th class="siaf-table-th" colspan="2">Variación (b) vs (a)</th>
+                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center">Rec. histórica</th>
+                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="3">Recaudación estimada</th>
+                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="2">
+                  Variación <span class="font-normal normal-case text-[var(--sys-color-text-neutral-low)]">(b) vs (a)</span>
+                </th>
               </tr>
               <tr class="siaf-table-head-row">
-                <th class="siaf-table-th">Año 2027 (b)</th>
-                <th class="siaf-table-th">Año 2028 (c)</th>
-                <th class="siaf-table-th">Año 2029 (d)</th>
-                <th class="siaf-table-th">Monto (e)</th>
-                <th class="siaf-table-th">(%) (f)</th>
+                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Promedio anual <sup class="normal-case">(a)</sup></th>
+                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Año 2027 <sup class="normal-case">(b)</sup></th>
+                <th class="siaf-table-th text-right">Año 2028 <sup class="normal-case">(c)</sup></th>
+                <th class="siaf-table-th text-right">Año 2029 <sup class="normal-case">(d)</sup></th>
+                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Monto <sup class="normal-case">(e)</sup></th>
+                <th class="siaf-table-th text-right">(%) <sup class="normal-case">(f)</sup></th>
               </tr>
             </thead>
             <tbody>
               @for (fila of clasificadoresVisibles(); track fila.clasificador; let i = $index) {
                 <tr class="siaf-table-row">
-                  @if (editando()) {
+                  @if (editable()) {
                     <td class="siaf-table-td">
-                      <input
-                        type="checkbox"
-                        class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
-                        [attr.aria-label]="'Seleccionar ' + fila.clasificador"
-                        [checked]="seleccionados().has(i)"
-                        (change)="toggleSeleccionFila(i, $any($event.target).checked)"
-                      />
+                      <label class="inline-flex h-10 w-10 items-center">
+                        <input
+                          type="checkbox"
+                          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                          [attr.aria-label]="'Seleccionar ' + fila.clasificador"
+                          [checked]="seleccionados().has(i)"
+                          (change)="toggleSeleccionFila(i, $any($event.target).checked)"
+                        />
+                      </label>
                     </td>
                   }
                   <td class="siaf-table-td">{{ fila.ff }}</td>
                   <td class="siaf-table-td">{{ fila.clasificador }}</td>
-                  <td class="siaf-table-td">{{ fila.promedioAnual | number }}</td>
-                  <td class="siaf-table-td">{{ fila.anio2027 | number }}</td>
-                  <td class="siaf-table-td">{{ fila.anio2028 | number }}</td>
-                  <td class="siaf-table-td">{{ fila.anio2029 | number }}</td>
-                  <td class="siaf-table-td">{{ fila.baseLegal }}</td>
-                  <td class="siaf-table-td">{{ fila.variacionMonto | number }}</td>
-                  <td class="siaf-table-td">{{ fila.variacionPorcentaje }}</td>
+                  <td class="siaf-table-td text-right">{{ fila.promedioAnual | number }}</td>
+                  <td class="siaf-table-td text-right">{{ fila.anio2027 | number }}</td>
+                  <td class="siaf-table-td text-right">{{ fila.anio2028 | number }}</td>
+                  <td class="siaf-table-td text-right">{{ fila.anio2029 | number }}</td>
+                  <td class="siaf-table-td text-right">{{ fila.variacionMonto | number }}</td>
+                  <td class="siaf-table-td text-right">
+                    <span class="inline-flex items-center justify-end gap-siaf-xs">
+                      @if (fila.variacionPorcentaje > umbralVariacion) {
+                        <siaf-icon name="trending_up" [size]="20" label="Variación fuera del umbral" [decorative]="false" />
+                      }
+                      {{ fila.variacionPorcentaje | number: '1.1-1' }}
+                    </span>
+                  </td>
                 </tr>
               }
-              <tr class="siaf-table-row font-bold">
-                @if (editando()) {
+              <tr class="siaf-table-row bg-[var(--sys-color-bg-surfaces-surface-high)] font-bold">
+                @if (editable()) {
                   <td class="siaf-table-td"></td>
                 }
                 <td class="siaf-table-td"></td>
                 <td class="siaf-table-td">TOTAL</td>
-                <td class="siaf-table-td">S/ {{ totalColumna('promedioAnual') | number }}</td>
-                <td class="siaf-table-td">S/ {{ totalColumna('anio2027') | number }}</td>
-                <td class="siaf-table-td">S/ {{ totalColumna('anio2028') | number }}</td>
-                <td class="siaf-table-td">S/ {{ totalColumna('anio2029') | number }}</td>
-                <td class="siaf-table-td"></td>
-                <td class="siaf-table-td">S/ {{ totalColumna('variacionMonto') | number }}</td>
-                <td class="siaf-table-td">{{ totalPorcentaje() }}%</td>
+                <td class="siaf-table-td text-right">S/ {{ totalColumna('promedioAnual') | number }}</td>
+                <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2027') | number }}</td>
+                <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2028') | number }}</td>
+                <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2029') | number }}</td>
+                <td class="siaf-table-td text-right">S/ {{ totalColumna('variacionMonto') | number }}</td>
+                <td class="siaf-table-td text-right">{{ totalPorcentaje() }}%</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div class="flex flex-wrap items-start justify-between gap-siaf-md text-xs text-[var(--sys-color-text-neutral-low)]">
-          <p class="m-0">
-            <strong>Leyenda:</strong>
-            (a) Recaudación histórica promedio anual · (b) Año 2027 · (c) Año 2028 · (d) Año 2029 · (e) Monto · (f) (%)
+        <div class="flex flex-wrap items-start justify-between gap-siaf-md text-xs text-[var(--sys-color-text-neutral-high)]">
+          <p class="m-0 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] px-siaf-md py-siaf-xs">
+            <span class="mr-siaf-xs text-[11px] uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">Leyenda:</span>
+            <strong>(a)</strong> Recaudación histórica promedio anual &nbsp; <strong>(b)</strong> Año 2027 &nbsp;
+            <strong>(c)</strong> Año 2028 &nbsp; <strong>(d)</strong> Año 2029 &nbsp; <strong>(e)</strong> Monto &nbsp;
+            <strong>(f)</strong> (%)
           </p>
-          <p class="m-0">
-            <strong>Fórmula:</strong>
-            e = b − a &nbsp; f = (e / a) x 100
+          <p class="m-0 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] px-siaf-md py-siaf-xs">
+            <span class="mr-siaf-xs text-[11px] uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">Fórmula:</span>
+            e = b − a &nbsp;&nbsp; f = (e / a) x 100
           </p>
         </div>
       </siaf-solicitude-form-card>
 
-      <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
+      @if (detalle()) {
+        <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
+      }
     }
   </siaf-solicitude-page-layout>
 
@@ -171,7 +184,7 @@
     [saving]="saving()"
     [snackbarVariant]="snackbarVariante()"
     [snackbarOpen]="snackbarAbierto()"
-    [requestType]="detalle()?.tipoAccion ?? ''"
+    [requestType]="tipoAccion()"
     [requestNumber]="detalle()?.numero ?? ''"
     (saveConfirmed)="onConfirmarGrabar()"
     (verifyConfirmed)="onConfirmarVerificar()"

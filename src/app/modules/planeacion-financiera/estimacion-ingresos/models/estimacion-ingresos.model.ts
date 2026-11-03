@@ -74,10 +74,21 @@ export interface DetalleEstimacionIngresos {
   fechaAprobado?: string;
 }
 
-/** Payload para crear una «Solicitud de estimación de ingresos» desde «Crear documento». */
+/**
+ * Precarga de una solicitud «Nuevo» (Figma node 2448:143931, «Registrar solicitud»): lo que muestra la pantalla
+ * antes de Grabar, sin número ni estado.
+ */
+export type PrecargaEstimacionIngresos = Pick<DetalleEstimacionIngresos, 'fecha' | 'enteRector' | 'entidad' | 'unidadEjecutora' | 'clasificadores'>;
+
+/** Payload de Grabar una solicitud «Nuevo»: crea el documento en «Elaborado». */
 export interface CrearEstimacionIngresosPayload {
   tipoAccion: string;
+  tipoModificacionTexto?: string;
+  clasificadores?: ClasificadorEstimacionIngresos[];
 }
+
+/** Variación (f) por encima de este porcentaje se marca con el ícono de tendencia en la tabla de clasificadores. */
+export const UMBRAL_VARIACION_ESTIMACION_INGRESOS = 15;
 
 /** Payload de Grabar en edición: solo documentos «Elaborado» aceptan este endpoint. */
 export interface ActualizarEstimacionIngresosPayload {

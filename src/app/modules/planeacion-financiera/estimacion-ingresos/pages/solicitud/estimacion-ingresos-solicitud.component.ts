@@ -2,8 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { switchMap } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 
 import { PermissionService } from '../../../../../core/auth/permission.service';
 import { TextFieldOption } from '../../../../../shared/ui/text-field/text-field.component';
@@ -16,8 +15,8 @@ import { SolicitudePageLayoutComponent } from '../../../../../shared/components/
 import { SolicitudeFormCardComponent } from '../../../../../shared/components/solicitude-form-card/solicitude-form-card.component';
 import { TableControlsComponent } from '../../../../../shared/components/table-controls/table-controls.component';
 import { ActionTrackerComponent, ActionTrackerSummary } from '../../../../../shared/ui/action-tracker/action-tracker.component';
-import { AlertComponent } from '../../../../../shared/ui/alert/alert.component';
 import { DocumentSummaryCardComponent } from '../../../../../shared/ui/document-summary-card/document-summary-card.component';
+import { IconComponent } from '../../../../../shared/ui/icon/icon.component';
 import { ReadonlyFieldComponent } from '../../../../../shared/ui/readonly-field/readonly-field.component';
 import { SnackbarVariant } from '../../../../../shared/ui/snackbar/snackbar.component';
 import { TextFieldComponent } from '../../../../../shared/ui/text-field/text-field.component';
@@ -25,7 +24,13 @@ import { buildProcessBreadcrumbs } from '../../../../../shared/utils/breadcrumbs
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../../shared/utils/form-snapshot.util';
 import { EstimacionIngresosApiService } from '../../api/estimacion-ingresos-api.service';
 import { clasificadorRoute, PROCESS_ID, PROCESS_ROUTE, solicitudRoute } from '../../config/estimacion-ingresos.rutas';
-import { ClasificadorEstimacionIngresos, DetalleEstimacionIngresos, TIPOS_MODIFICACION_ESTIMACION_INGRESOS } from '../../models/estimacion-ingresos.model';
+import {
+  ClasificadorEstimacionIngresos,
+  DetalleEstimacionIngresos,
+  PrecargaEstimacionIngresos,
+  TIPOS_MODIFICACION_ESTIMACION_INGRESOS,
+  UMBRAL_VARIACION_ESTIMACION_INGRESOS,
+} from '../../models/estimacion-ingresos.model';
 
 /** ISO → "dd/mm/aaaa hh:mm:ss", como lo muestra el Figma. */
 function aFechaHoraPe(iso: string): string {
@@ -38,24 +43,25 @@ function aFechaHoraPe(iso: string): string {
 }
 
 /**
- * «Solicitud de estimación de ingresos»: el documento queda «Elaborado» al crearse (sin paso de Grabar inicial),
- * pero sigue el flujo estándar creador/aprobador — Eliminar/Editar/Verificar para el creador en «Elaborado», Aprobar
- * para el aprobador en «Verificado» — hasta «Aprobado», estado final. Editar (Figma node 4021:103143) usa el estado
- * `edit` estándar del header (Cancelar/Grabar) y, en el cuerpo, vuelve editable «Tipo de modificación» y suma
- * buscador y selección a la tabla de clasificadores para poder quitar filas.
+ * «Solicitud de estimación de ingresos» con el flujo estándar creador/aprobador.
  *
- * Dos rutas llevan acá: `solicitud` (sin `:id`) la crea al entrar —viene de «Crear documento», con `tipoAccion` en
- * query params— y redirige a `solicitud/:id`; esta última solo carga y muestra el detalle ya creado.
+ * Dos rutas llevan acá:
+ * - `solicitud` (sin `:id`), desde Aceptar en «Crear documento» con `actionType` en query params: la solicitud
+ *   «Nuevo» (Figma node 2448:143931), sin número ni estado — Cancelar, Grabar y Verificar deshabilitado. Grabar la
+ *   crea en «Elaborado» y abre `solicitud/:id` con el aviso de grabado.
+ * - `solicitud/:id`: el documento ya grabado. Eliminar/Editar/Verificar para el creador en «Elaborado», Aprobar para
+ *   el aprobador en «Verificado», hasta «Aprobado», estado final. Editar (Figma node 4021:103143) usa el estado `edit`
+ *   estándar del header (Cancelar/Grabar, Grabar solo con cambios).
  */
 @Component({
   selector: 'siaf-estimacion-ingresos-solicitud',
   standalone: true,
   imports: [
     ActionTrackerComponent,
-    AlertComponent,
     DecimalPipe,
     DocumentSummaryCardComponent,
     FormTableSearchComponent,
+    IconComponent,
     ReadonlyFieldComponent,
     RequestApprovalModalsComponent,
     SolicitudeFormCardComponent,
@@ -75,16 +81,24 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   private readonly permissions = inject(PermissionService);
 
   readonly breadcrumbs: BreadcrumbItem[] = buildProcessBreadcrumbs(PROCESS_ID, PROCESS_ROUTE, 'Solicitud de estimación de ingresos');
+  readonly umbralVariacion = UMBRAL_VARIACION_ESTIMACION_INGRESOS;
   readonly cargando = signal(true);
-  readonly avisoAbierto = signal(true);
-  readonly detalle = signal<DetalleEstimacionIngresos | null>(null);
   readonly saving = signal(false);
+
+  /** Documento ya grabado (`solicitud/:id`). */
+  readonly detalle = signal<DetalleEstimacionIngresos | null>(null);
+  /** Solicitud «Nuevo» (`solicitud` sin `:id`): lo precargado, aún sin grabar. */
+  readonly precarga = signal<PrecargaEstimacionIngresos | null>(null);
+  readonly esNuevo = computed(() => this.precarga() !== null);
+  /** Creación o Modificación: del documento grabado o, en «Nuevo», del `actionType` de «Crear documento». */
+  readonly tipoAccion = signal('');
 
   readonly headerRole = computed<SolicitudeHeaderRole>(() => (this.permissions.currentRole() === 'approver' ? 'approver' : 'creator'));
 
-  /** «Elaborado»: Eliminar/Editar/Verificar para el creador (o Cancelar/Grabar si está editando). «Verificado»:
-   *  Aprobar para el aprobador. «Aprobado»: estado final, sin botones. */
+  /** «Nuevo»: Cancelar/Grabar/Verificar deshabilitado. «Elaborado»: Eliminar/Editar/Verificar para el creador (o
+   *  Cancelar/Grabar si está editando). «Verificado»: Aprobar para el aprobador. «Aprobado»: sin botones. */
   readonly headerState = computed<SolicitudeHeaderState>(() => {
+    if (this.esNuevo()) return 'new';
     if (this.editando()) return 'edit';
     const estado = this.detalle()?.estado;
     if (estado === 'Aprobado') return 'approved';
@@ -97,10 +111,9 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   readonly modalEliminar = signal(false);
   readonly modalAprobar = signal(false);
   readonly snackbarAbierto = signal(false);
-  readonly snackbarVariante = signal<SnackbarVariant>('creation-verified');
+  readonly snackbarVariante = signal<SnackbarVariant>('creation-elaborated');
 
-  // ── Edición (Figma node 4021:103143): «Tipo de modificación» pasa a editable y la tabla de clasificadores suma
-  // buscador y selección para quitar filas — Grabar solo con cambios, como el resto de solicitudes del taller.
+  // ── Formulario: en «Nuevo» y en edición la tabla suma selección y «Tipo de modificación» pasa a editable.
   readonly editando = signal(false);
   readonly formTipoModificacion = signal('');
   readonly formClasificadores = signal<ClasificadorEstimacionIngresos[]>([]);
@@ -109,12 +122,14 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   readonly tiposModificacion: TextFieldOption[] = TIPOS_MODIFICACION_ESTIMACION_INGRESOS.map((v) => ({ label: v, value: v }));
   private fotoEdicion: string | null = null;
 
-  /** Filas visibles: en edición, las del formulario filtradas por la búsqueda; en lectura, las del detalle. */
+  readonly editable = computed(() => this.esNuevo() || this.editando());
+
+  /** Filas visibles: las del formulario (en «Nuevo» y en edición) o las del documento grabado, filtradas por la
+   *  búsqueda en ambos casos. */
   readonly clasificadoresVisibles = computed<ClasificadorEstimacionIngresos[]>(() => {
-    if (!this.editando()) return this.detalle()?.clasificadores ?? [];
+    const filas = this.editable() ? this.formClasificadores() : (this.detalle()?.clasificadores ?? []);
     const texto = this.busquedaClasificadores().trim().toLowerCase();
-    const filas = this.formClasificadores();
-    return texto ? filas.filter((f) => f.clasificador.toLowerCase().includes(texto)) : filas;
+    return texto ? filas.filter((f) => `${f.ff} ${f.clasificador}`.toLowerCase().includes(texto)) : filas;
   });
 
   readonly hayCambios = computed(() => {
@@ -123,30 +138,37 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     return hayCambiosRespectoAlSnapshot(this.fotoEdicion, actual);
   });
 
+  /** «Nuevo» se graba con lo precargado; en edición, solo con cambios. */
+  readonly grabarDeshabilitado = computed(() => (this.esNuevo() ? this.formClasificadores().length === 0 : !this.hayCambios()));
+
   ngOnInit(): void {
+    // Al llegar desde Grabar de «Nuevo»: aviso de solicitud elaborada, como en el resto de solicitudes.
+    const estadoNavegacion = history.state as { fromSave?: boolean } | null;
+    if (estadoNavegacion?.fromSave) this.mostrarAviso('creation-elaborated');
+
     this.route.paramMap.pipe(
       takeUntilDestroyed(this.destroyRef),
       switchMap((params) => {
         const id = params.get('id');
         this.cargando.set(true);
         this.detalle.set(null);
-        this.avisoAbierto.set(true);
-
-        if (id) {
-          return this.estimacionApi.obtenerDetalle(id);
-        }
-
-        // Entrada sin `id` (desde «Crear documento»): crea el documento y reemplaza la URL por `solicitud/:id`.
-        const tipoAccion = this.route.snapshot.queryParamMap.get('actionType') === 'modificacion' ? 'Modificación' : 'Creación';
-        return this.estimacionApi.crear({ tipoAccion }).pipe(
-          switchMap((creado) => {
-            void this.router.navigate([solicitudRoute(creado.id)], { replaceUrl: true });
-            return of(null);
-          }),
-        );
+        this.precarga.set(null);
+        if (id) return this.estimacionApi.obtenerDetalle(id).pipe(map((detalle) => ({ detalle, precarga: null })));
+        return this.estimacionApi.obtenerPrecarga().pipe(map((precarga) => ({ detalle: null, precarga })));
       }),
     ).subscribe({
-      next: (detalle) => { if (detalle) { this.detalle.set(detalle); this.cargando.set(false); } },
+      next: ({ detalle, precarga }) => {
+        if (precarga) {
+          this.tipoAccion.set(this.route.snapshot.queryParamMap.get('actionType') === 'modificacion' ? 'Modificación' : 'Creación');
+          this.formTipoModificacion.set(this.tipoAccion() === 'Modificación' ? TIPOS_MODIFICACION_ESTIMACION_INGRESOS[0] : '');
+          this.formClasificadores.set(precarga.clasificadores);
+          this.precarga.set(precarga);
+        } else if (detalle) {
+          this.tipoAccion.set(detalle.tipoAccion);
+          this.detalle.set(detalle);
+        }
+        this.cargando.set(false);
+      },
       error: () => this.cargando.set(false),
     });
   }
@@ -155,13 +177,23 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     void this.router.navigate([PROCESS_ROUTE]);
   }
 
+  /** Cancelar: en «Nuevo» vuelve a la bandeja sin grabar; en edición restaura lo grabado. */
+  cancelar(): void {
+    if (this.esNuevo()) {
+      this.regresar();
+      return;
+    }
+    this.editando.set(false);
+    this.seleccionados.set(new Set());
+  }
+
   onConfirmarVerificar(): void {
     const id = this.detalle()?.documentoId;
     if (!id) return;
     this.modalVerificar.set(false);
     this.saving.set(true);
     this.estimacionApi.verificar(id).subscribe({
-      next: () => { this.snackbarVariante.set('creation-verified'); this.snackbarAbierto.set(true); this.cargar(id); },
+      next: () => { this.mostrarAviso('creation-verified'); this.cargar(id); },
       error: () => this.saving.set(false),
     });
   }
@@ -172,7 +204,7 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     this.modalAprobar.set(false);
     this.saving.set(true);
     this.estimacionApi.aprobar(id).subscribe({
-      next: () => { this.snackbarVariante.set('creation-approved'); this.snackbarAbierto.set(true); this.cargar(id); },
+      next: () => { this.mostrarAviso('creation-approved'); this.cargar(id); },
       error: () => this.saving.set(false),
     });
   }
@@ -200,10 +232,6 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     this.editando.set(true);
   }
 
-  cancelarEdicion(): void {
-    this.editando.set(false);
-  }
-
   toggleSeleccionTodas(marcar: boolean): void {
     this.seleccionados.set(marcar ? new Set(this.clasificadoresVisibles().map((_, i) => i)) : new Set());
   }
@@ -223,8 +251,8 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     this.seleccionados.set(new Set());
   }
 
-  /** Lápiz de `siaf-table-controls`: solo con exactamente una fila elegida. Edita contra lo ya grabado (no lo
-   *  pendiente de esta sesión de edición), así que al volver recarga el detalle completo desde el backend. */
+  /** Lápiz de `siaf-table-controls` (solo en edición, con exactamente una fila elegida). Edita contra lo ya grabado
+   *  (no lo pendiente de esta sesión de edición), así que al volver recarga el detalle completo desde el backend. */
   editarSeleccionada(): void {
     const d = this.detalle();
     const visibles = this.clasificadoresVisibles();
@@ -237,6 +265,10 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   }
 
   onConfirmarGrabar(): void {
+    if (this.esNuevo()) {
+      this.grabarNuevo();
+      return;
+    }
     const id = this.detalle()?.documentoId;
     if (!id || !this.hayCambios()) return;
     this.modalGrabar.set(false);
@@ -247,12 +279,33 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     }).subscribe({
       next: () => {
         this.editando.set(false);
-        this.snackbarVariante.set('changes-saved');
-        this.snackbarAbierto.set(true);
+        this.mostrarAviso('changes-saved');
         this.cargar(id);
       },
       error: () => this.saving.set(false),
     });
+  }
+
+  /** Grabar de «Nuevo»: crea el documento en «Elaborado» y abre `solicitud/:id` con el aviso de grabado. */
+  private grabarNuevo(): void {
+    this.modalGrabar.set(false);
+    this.saving.set(true);
+    this.estimacionApi.crear({
+      tipoAccion: this.tipoAccion(),
+      tipoModificacionTexto: this.formTipoModificacion() || undefined,
+      clasificadores: this.formClasificadores(),
+    }).subscribe({
+      next: (creado) => {
+        this.saving.set(false);
+        void this.router.navigate([solicitudRoute(creado.id)], { replaceUrl: true, state: { fromSave: true } });
+      },
+      error: () => this.saving.set(false),
+    });
+  }
+
+  private mostrarAviso(variante: SnackbarVariant): void {
+    this.snackbarVariante.set(variante);
+    this.snackbarAbierto.set(true);
   }
 
   private cargar(id: string): void {
@@ -263,7 +316,7 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   }
 
   campos(): SolicitudeInfoField[] {
-    const d = this.detalle();
+    const d = this.detalle() ?? this.precarga();
     if (!d) return [];
     return [
       { label: 'Fecha', value: aFechaHoraPe(d.fecha) },

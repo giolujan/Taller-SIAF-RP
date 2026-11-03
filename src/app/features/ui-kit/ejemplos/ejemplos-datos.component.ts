@@ -89,6 +89,10 @@ import { COLUMNAS_REPORTE_DE_MUESTRA, FILAS_REPORTE_DE_MUESTRA } from './reporte
             <p class="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">variant="reports" · Consultas y reportes: Filtrar y Columnas</p>
             <siaf-form-table-search variant="reports" placeholder="Buscar" (filter)="accionBuscador.set('filter')" (columns)="accionBuscador.set('columns')" />
           </div>
+          <div class="min-w-0">
+            <p class="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">showVariations · Estimación de ingresos: Variaciones, Filtrar y Más opciones</p>
+            <siaf-form-table-search [showVariations]="true" placeholder="Buscar" (variations)="accionBuscador.set('variations')" (filter)="accionBuscador.set('filter')" (more)="accionBuscador.set('more')" />
+          </div>
           <p class="text-xs text-text-muted" aria-live="polite">Último evento: {{ accionBuscador() ?? 'ninguno' }}</p>
         </div>
       }
@@ -207,7 +211,7 @@ export class EjemplosDatosComponent {
   readonly menuMasOpciones: IconDropdownMenuItem[] = [{ label: 'Ocultar o mostrar columnas', value: 'open-columns' }];
   readonly busquedaRegistros = signal('');
   /** Evento que emitió el último botón de `siaf-form-table-search` en el ejemplo. */
-  readonly accionBuscador = signal<'filter' | 'more' | 'columns' | null>(null);
+  readonly accionBuscador = signal<'variations' | 'filter' | 'more' | 'columns' | null>(null);
 
   readonly campos: TextFieldOption[] = [
     { label: 'Estado', value: 'estado' },

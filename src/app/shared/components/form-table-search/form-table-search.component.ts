@@ -10,6 +10,9 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
  * Con `variant="reports"` es el buscador de Consultas y reportes (Figma «Guía de Estructura de Pantallas», nodo
  * 22402:16457 «Search for table»): el segundo botón pasa a ser Columnas (`view_column`), que emite `columns`.
  *
+ * Con `showVariations` suma, delante de los otros, el botón Variaciones (`query_stats`), que emite `variations`: el de
+ * las tablas de Estimación de ingresos (Figma CEL-005, nodo 7741:141361).
+ *
  * Escribir solo registra el texto: la búsqueda sale por `valueChange` al pulsar Enter o la lupa, y lo tecleado se
  * descarta si el padre reescribe `value`.
  *
@@ -72,6 +75,18 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
       />
 
       <div class="flex shrink-0 items-start gap-siaf-xs">
+        @if (showVariations) {
+          <button
+            class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+            type="button"
+            data-accion="variations"
+            [attr.aria-label]="variationsLabel"
+            [disabled]="disabled"
+            (click)="variations.emit()"
+          >
+            <siaf-icon name="query_stats" [size]="24" />
+          </button>
+        }
         <button
           class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
           type="button"
@@ -117,12 +132,17 @@ export class FormTableSearchComponent implements OnChanges {
   /** Nombre accesible del botón Columnas de la variante `reports`. */
   @Input() columnsLabel = 'Ocultar o mostrar columnas';
   @Input() disabled = false;
+  /** Suma el botón Variaciones (`query_stats`) delante de Filtrar. */
+  @Input() showVariations = false;
+  @Input() variationsLabel = 'Variaciones';
 
   @Output() valueChange = new EventEmitter<string>();
   @Output() filter = new EventEmitter<void>();
   @Output() more = new EventEmitter<void>();
   /** Botón Columnas de la variante `reports`. */
   @Output() columns = new EventEmitter<void>();
+  /** Botón Variaciones, con `showVariations`. */
+  @Output() variations = new EventEmitter<void>();
 
   /** Último texto tecleado; se emite recién al confirmar (Enter o lupa). */
   private lastTyped: string | null = null;

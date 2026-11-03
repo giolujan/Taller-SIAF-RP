@@ -5644,7 +5644,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "components",
     "importacion": "@siaf/shared/components/form-table-search/form-table-search.component",
     "archivo": "src/app/shared/components/form-table-search/form-table-search.component.ts",
-    "descripcion": "Buscador de tabla: un `siaf-input` con lupa a todo el ancho y, a la derecha, dos botones de ícono: Filtrar y Más\nopciones, que emiten `filter` y `more`.\n\nCon `variant=\"reports\"` es el buscador de Consultas y reportes (Figma «Guía de Estructura de Pantallas», nodo\n22402:16457 «Search for table»): el segundo botón pasa a ser Columnas (`view_column`), que emite `columns`.\n\nEscribir solo registra el texto: la búsqueda sale por `valueChange` al pulsar Enter o la lupa, y lo tecleado se\ndescarta si el padre reescribe `value`.\n\nTiene además otra variante, como componente aparte, para Documentos y registros y la Bandeja de Documentos:\n`siaf-records-search-toolbar`, el mismo campo con las acciones de la derecha proyectadas (los menús Campos, Favorito\ny Más opciones) en vez de estos dos botones fijos.",
+    "descripcion": "Buscador de tabla: un `siaf-input` con lupa a todo el ancho y, a la derecha, dos botones de ícono: Filtrar y Más\nopciones, que emiten `filter` y `more`.\n\nCon `variant=\"reports\"` es el buscador de Consultas y reportes (Figma «Guía de Estructura de Pantallas», nodo\n22402:16457 «Search for table»): el segundo botón pasa a ser Columnas (`view_column`), que emite `columns`.\n\nCon `showVariations` suma, delante de los otros, el botón Variaciones (`query_stats`), que emite `variations`: el de\nlas tablas de Estimación de ingresos (Figma CEL-005, nodo 7741:141361).\n\nEscribir solo registra el texto: la búsqueda sale por `valueChange` al pulsar Enter o la lupa, y lo tecleado se\ndescarta si el padre reescribe `value`.\n\nTiene además otra variante, como componente aparte, para Documentos y registros y la Bandeja de Documentos:\n`siaf-records-search-toolbar`, el mismo campo con las acciones de la derecha proyectadas (los menús Campos, Favorito\ny Más opciones) en vez de estos dos botones fijos.",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
@@ -5691,6 +5691,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "showVariations",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Suma el botón Variaciones (`query_stats`) delante de Filtrar."
+      },
+      {
         "nombre": "value",
         "tipo": "string",
         "porDefecto": "''",
@@ -5703,6 +5710,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "'default'",
         "requerida": false,
         "descripcion": "`default`: Filtrar y Más opciones. `reports`: el de Consultas y reportes, con Filtrar y Columnas."
+      },
+      {
+        "nombre": "variationsLabel",
+        "tipo": "string",
+        "porDefecto": "'Variaciones'",
+        "requerida": false,
+        "descripcion": null
       }
     ],
     "eventos": [
@@ -5725,6 +5739,11 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "nombre": "valueChange",
         "tipo": "string",
         "descripcion": null
+      },
+      {
+        "nombre": "variations",
+        "tipo": "void",
+        "descripcion": "Botón Variaciones, con `showVariations`."
       }
     ],
     "usar": "- Sobre las tablas de las solicitudes (cuentas contables, tipos de asiento, clases de ajuste, asiento de ajuste,\n  eventos contables) y en el panel lateral de selección (`siaf-selection-side-nav`).\n- Con `variant=\"reports\"` en Consultas y reportes: Plan de cuentas, Asiento de ajuste, Tipos de asiento, Pedidos de\n  contabilización y Libros contables.\n- En el detalle de Contabilización y en los listados de Admin (usuarios, entidades, unidades y correlativos).\n- En Apertura contable: cuentas contables del detalle anual, aperturas mensuales de la configuración e historial de\n  la configuración.\n- Cuando la búsqueda debe confirmarse con Enter o la lupa y no a cada tecla (búsqueda en servidor o muchas filas).",
@@ -5734,6 +5753,10 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "figma": [
       {
         "nodo": "22402:16457",
+        "nombre": null
+      },
+      {
+        "nodo": "7741:141361",
         "nombre": null
       }
     ],
@@ -13223,7 +13246,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "components",
     "importacion": "@siaf/shared/components/table-controls/table-controls.component",
     "archivo": "src/app/shared/components/table-controls/table-controls.component.ts",
-    "descripcion": "Barra superior estándar de las grillas: checkbox de seleccionar todo (con estado indeterminado), acciones sobre las\nfilas elegidas y, a la derecha, `siaf-pagination` en posición `Top`.\n\nLas acciones (editar, eliminar, exportar, más opciones y las que la página proyecta con el atributo `tableAction`)\nsolo aparecen con `selectedCount` mayor que 0, cada una encendida con `showEditAction`, `showDeleteAction`,\n`showExportAction` o `showMenuAction`. Con `[showSelection]=\"false\"` queda solo la paginación.",
+    "descripcion": "Barra superior estándar de las grillas: checkbox de seleccionar todo (con estado indeterminado), acciones sobre las\nfilas elegidas y, a la derecha, `siaf-pagination` en posición `Top`.\n\nLas acciones (editar, eliminar, exportar, más opciones y las que la página proyecta con el atributo `tableAction`)\nsolo aparecen con `selectedCount` mayor que 0, cada una encendida con `showEditAction`, `showDeleteAction`,\n`showExportAction` o `showMenuAction`. Con `[showSelection]=\"false\"` queda solo la paginación; con\n`[showPagination]=\"false\"`, sin ella (tablas cortas que no paginan, como la de Estimación de ingresos).",
     "usaSesion": false,
     "proyectaContenido": true,
     "entradas": [
@@ -13343,6 +13366,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "nombre": "showMenuAction",
         "tipo": "boolean",
         "porDefecto": "false",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "showPagination",
+        "tipo": "boolean",
+        "porDefecto": "true",
         "requerida": false,
         "descripcion": null
       },
