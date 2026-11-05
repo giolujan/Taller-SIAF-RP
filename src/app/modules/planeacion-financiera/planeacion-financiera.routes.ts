@@ -23,11 +23,4 @@ export const PLANEACION_FINANCIERA_ROUTES: Routes = [
         (m) => m.EstimacionIngresosSolicitudComponent,
       ),
   },
-  {
-    path: 'procesos/estimacion-ingresos/solicitud/:id/clasificador/:indice',
-    loadComponent: () =>
-      import('./estimacion-ingresos/pages/clasificador/estimacion-ingresos-clasificador.component').then(
-        (m) => m.EstimacionIngresosClasificadorComponent,
-      ),
-  },
 ];

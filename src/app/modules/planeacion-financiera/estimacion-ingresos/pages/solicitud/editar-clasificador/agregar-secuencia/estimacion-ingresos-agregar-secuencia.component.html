@@ -1,0 +1,71 @@
+<siaf-side-panel
+  [title]="editando() ? 'Editar secuencia' : 'Agregar secuencia'"
+  [open]="abierto()"
+  [confirmDisabled]="!puedeAceptar()"
+  (closed)="closed.emit()"
+  (canceled)="closed.emit()"
+  (confirmed)="aceptar()"
+>
+  <div class="flex flex-col gap-siaf-lg px-siaf-md py-siaf-md">
+    <siaf-expansion-panel title="MONTO CON ASIGNACIÓN ESPECÍFICA" [expanded]="montosAbiertos()" (expandedChange)="montosAbiertos.set($event)">
+      <div class="grid gap-siaf-lg py-siaf-xs md:grid-cols-3">
+        @for (anio of anios; track anio; let i = $index) {
+          <siaf-input [label]="'Año ' + anio" [value]="(asignacionS()[i] | number) ?? ''" [disabled]="true" />
+        }
+        @for (anio of anios; track anio; let i = $index) {
+          <readonly-field [caption]="'Saldo Año ' + anio" variant="highlight" [value]="(saldosS()[i] | number) ?? '0'" />
+        }
+      </div>
+    </siaf-expansion-panel>
+
+    <div class="grid gap-siaf-lg md:grid-cols-3">
+      <siaf-input label="Secuencia" [value]="secuencia?.secuencia ?? numero" [disabled]="true" />
+    </div>
+
+    <div class="grid gap-siaf-lg md:grid-cols-3" data-montos-base-legal>
+      @for (anio of anios; track anio; let i = $index) {
+        <siaf-input
+          (dblclick)="i === 0 && completarDemo($event)"
+          [label]="'Monto según base legal ' + anio"
+          type="decimal"
+          [decimals]="0"
+          [thousandsSeparator]="true"
+          [autoSuccess]="false"
+          [value]="form().montos[i]"
+          [error]="erroresMonto()[i]"
+          (valueChange)="actualizarMonto(i, $any($event))"
+        />
+      }
+    </div>
+
+    <div class="grid gap-siaf-lg md:grid-cols-3">
+      <siaf-input
+        label="Tipo documento marco legal"
+        type="select"
+        [options]="tiposDocumento"
+        [autoSuccess]="false"
+        [value]="form().tipoDocumento"
+        (valueChange)="actualizar('tipoDocumento', $any($event))"
+      />
+      <div class="md:col-span-2">
+        <siaf-input label="Marco legal" [autoSuccess]="false" [value]="form().marcoLegal" (valueChange)="actualizar('marcoLegal', $any($event))" />
+      </div>
+    </div>
+
+    <text-area-control
+      placeholder="Descripción"
+      [maxlength]="200"
+      [value]="form().descripcion"
+      (valueChange)="actualizar('descripcion', $event)"
+    />
+
+    <siaf-radio-group
+      label="¿Se debe presupuestar?"
+      name="secuencia-se-presupuesta"
+      [inline]="true"
+      [options]="opcionesSiNo"
+      [value]="form().sePresupuesta"
+      (valueChange)="actualizar('sePresupuesta', $any($event))"
+    />
+  </div>
+</siaf-side-panel>

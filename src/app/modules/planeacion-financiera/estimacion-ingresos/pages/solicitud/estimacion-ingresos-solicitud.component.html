@@ -9,7 +9,8 @@
     [showReturn]="true"
     [showTag]="editable()"
     [saveDisabled]="grabarDeshabilitado()"
-    [verifyDisabled]="esNuevo()"
+    [cancelDisabled]="filaEnEdicion() !== null"
+    [verifyDisabled]="esNuevo() || filaEnEdicion() !== null"
     (returned)="regresar()"
     (edited)="iniciarEdicion()"
     (canceled)="cancelar()"
@@ -41,6 +42,12 @@
         <siaf-solicitude-info-card [fields]="campos()" />
       }
 
+      <!-- Lápiz con una fila elegida: «Editar estimación de ingresos» (Figma node 4145:309441) ocupa el lugar de la
+           tabla hasta Aceptar o Cancelar. -->
+      @if (filaEditada(); as fila) {
+        <siaf-estimacion-ingresos-editar-clasificador [fila]="fila" (canceled)="cerrarEdicionFila()" (accepted)="onFilaAceptada($event)" />
+      } @else {
+
       @if (tipoAccion() === 'Modificación') {
         <siaf-solicitude-form-card title="Tipo de modificación">
           @if (editable()) {
@@ -58,6 +65,28 @@
       }
 
       <siaf-solicitude-form-card title="Estimación de ingresos">
+        <!-- Solo lectura (Elaborado, Verificado, Aprobado): Estimación | Distribución mensual | Total por FF
+             (Figma node 10813:71699). En «Nuevo» y en edición solo está la tabla editable de estimación. -->
+        @if (!editable()) {
+          <siaf-buttons-group
+            card-actions
+            ariaLabel="Vista de la estimación de ingresos"
+            [items]="opcionesVista"
+            [value]="vista()"
+            (valueChange)="vistaElegida.set($any($event))"
+          />
+        }
+
+        @if (vista() === 'ff') {
+          <siaf-tabs
+            ariaLabel="Total por fuente de financiamiento"
+            idBase="total-ff"
+            [tabs]="pestanasFF"
+            [activeId]="pestanaFF()"
+            (activeIdChange)="pestanaFF.set($any($event))"
+          />
+        }
+
         <siaf-form-table-search
           [showVariations]="true"
           [value]="busquedaClasificadores()"
@@ -71,7 +100,7 @@
             [checked]="seleccionados().size > 0 && seleccionados().size === clasificadoresVisibles().length"
             [indeterminate]="seleccionados().size > 0 && seleccionados().size < clasificadoresVisibles().length"
             [selectedCount]="seleccionados().size"
-            [showEditAction]="editando()"
+            [showEditAction]="true"
             [editDisabled]="seleccionados().size !== 1"
             [showDeleteAction]="true"
             (selectionChange)="toggleSeleccionTodas($event)"
@@ -80,98 +109,223 @@
           />
         }
 
-        <!-- Tabla «Table Estimacion_Ingresos» (Figma node 2448:143962): montos a la derecha y (f) con ícono de
-             tendencia cuando la variación pasa el umbral. -->
-        <div class="siaf-table-shell">
-          <table class="siaf-table">
-            <thead>
-              <tr class="siaf-table-head-row">
-                @if (editable()) {
-                  <th class="siaf-table-th w-10" rowspan="2"><span class="sr-only">Seleccionar</span></th>
-                }
-                <th class="siaf-table-th" rowspan="2">FF</th>
-                <th class="siaf-table-th" rowspan="2">Clasificador de ingresos</th>
-                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center">Rec. histórica</th>
-                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="3">Recaudación estimada</th>
-                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="2">
-                  Variación <span class="font-normal normal-case text-[var(--sys-color-text-neutral-low)]">(b) vs (a)</span>
-                </th>
-              </tr>
-              <tr class="siaf-table-head-row">
-                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Promedio anual <sup class="normal-case">(a)</sup></th>
-                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Año 2027 <sup class="normal-case">(b)</sup></th>
-                <th class="siaf-table-th text-right">Año 2028 <sup class="normal-case">(c)</sup></th>
-                <th class="siaf-table-th text-right">Año 2029 <sup class="normal-case">(d)</sup></th>
-                <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Monto <sup class="normal-case">(e)</sup></th>
-                <th class="siaf-table-th text-right">(%) <sup class="normal-case">(f)</sup></th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (fila of clasificadoresVisibles(); track fila.clasificador; let i = $index) {
-                <tr class="siaf-table-row">
-                  @if (editable()) {
-                    <td class="siaf-table-td">
-                      <label class="inline-flex h-10 w-10 items-center">
-                        <input
-                          type="checkbox"
-                          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
-                          [attr.aria-label]="'Seleccionar ' + fila.clasificador"
-                          [checked]="seleccionados().has(i)"
-                          (change)="toggleSeleccionFila(i, $any($event.target).checked)"
-                        />
-                      </label>
-                    </td>
-                  }
-                  <td class="siaf-table-td">{{ fila.ff }}</td>
-                  <td class="siaf-table-td">{{ fila.clasificador }}</td>
-                  <td class="siaf-table-td text-right">{{ fila.promedioAnual | number }}</td>
-                  <td class="siaf-table-td text-right">{{ fila.anio2027 | number }}</td>
-                  <td class="siaf-table-td text-right">{{ fila.anio2028 | number }}</td>
-                  <td class="siaf-table-td text-right">{{ fila.anio2029 | number }}</td>
-                  <td class="siaf-table-td text-right">{{ fila.variacionMonto | number }}</td>
-                  <td class="siaf-table-td text-right">
-                    <span class="inline-flex items-center justify-end gap-siaf-xs">
-                      @if (fila.variacionPorcentaje > umbralVariacion) {
-                        <siaf-icon name="trending_up" [size]="20" label="Variación fuera del umbral" [decorative]="false" />
+        @switch (vista()) {
+          @case ('estimacion') {
+            <!-- Tabla «Table Estimacion_Ingresos» (Figma node 2448:143962): montos a la derecha y (f) con ícono de
+                 tendencia cuando la variación pasa el umbral. -->
+            <div class="siaf-table-shell">
+              <table class="siaf-table">
+                <thead>
+                  <tr class="siaf-table-head-row">
+                    @if (editable()) {
+                      <th class="siaf-table-th w-10" rowspan="2"><span class="sr-only">Seleccionar</span></th>
+                    }
+                    <th class="siaf-table-th" rowspan="2">FF</th>
+                    <th class="siaf-table-th" rowspan="2">Clasificador de ingresos</th>
+                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center">Rec. histórica</th>
+                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="3">Recaudación estimada</th>
+                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="2">
+                      Variación <span class="font-normal normal-case text-[var(--sys-color-text-neutral-low)]">(b) vs (a)</span>
+                    </th>
+                  </tr>
+                  <tr class="siaf-table-head-row">
+                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Promedio anual <sup class="normal-case">(a)</sup></th>
+                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Año 2027 <sup class="normal-case">(b)</sup></th>
+                    <th class="siaf-table-th text-right">Año 2028 <sup class="normal-case">(c)</sup></th>
+                    <th class="siaf-table-th text-right">Año 2029 <sup class="normal-case">(d)</sup></th>
+                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Monto <sup class="normal-case">(e)</sup></th>
+                    <th class="siaf-table-th text-right">(%) <sup class="normal-case">(f)</sup></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (fila of clasificadoresVisibles(); track fila.clasificador; let i = $index) {
+                    <tr class="siaf-table-row">
+                      @if (editable()) {
+                        <td class="siaf-table-td">
+                          <label class="inline-flex h-10 w-10 items-center">
+                            <input
+                              type="checkbox"
+                              class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                              [attr.aria-label]="'Seleccionar ' + fila.clasificador"
+                              [checked]="seleccionados().has(i)"
+                              (change)="toggleSeleccionFila(i, $any($event.target).checked)"
+                            />
+                          </label>
+                        </td>
                       }
-                      {{ fila.variacionPorcentaje | number: '1.1-1' }}
-                    </span>
-                  </td>
-                </tr>
-              }
-              <tr class="siaf-table-row bg-[var(--sys-color-bg-surfaces-surface-high)] font-bold">
-                @if (editable()) {
-                  <td class="siaf-table-td"></td>
-                }
-                <td class="siaf-table-td"></td>
-                <td class="siaf-table-td">TOTAL</td>
-                <td class="siaf-table-td text-right">S/ {{ totalColumna('promedioAnual') | number }}</td>
-                <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2027') | number }}</td>
-                <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2028') | number }}</td>
-                <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2029') | number }}</td>
-                <td class="siaf-table-td text-right">S/ {{ totalColumna('variacionMonto') | number }}</td>
-                <td class="siaf-table-td text-right">{{ totalPorcentaje() }}%</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                      <td class="siaf-table-td">{{ fila.ff }}</td>
+                      <td class="siaf-table-td">{{ fila.clasificador }}</td>
+                      <td class="siaf-table-td text-right">{{ fila.promedioAnual | number }}</td>
+                      <td class="siaf-table-td text-right">{{ fila.anio2027 | number }}</td>
+                      <td class="siaf-table-td text-right">{{ fila.anio2028 | number }}</td>
+                      <td class="siaf-table-td text-right">{{ fila.anio2029 | number }}</td>
+                      <td class="siaf-table-td text-right">{{ fila.variacionMonto | number }}</td>
+                      <td class="siaf-table-td text-right">
+                        <span class="inline-flex items-center justify-end gap-siaf-xs">
+                          @if (fila.variacionPorcentaje > umbralVariacion) {
+                            <siaf-icon name="trending_up" [size]="20" label="Variación fuera del umbral" [decorative]="false" />
+                          }
+                          {{ fila.variacionPorcentaje | number: '1.1-1' }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                  <tr class="siaf-table-row bg-[var(--sys-color-bg-surfaces-surface-high)] font-bold">
+                    @if (editable()) {
+                      <td class="siaf-table-td"></td>
+                    }
+                    <td class="siaf-table-td"></td>
+                    <td class="siaf-table-td">TOTAL</td>
+                    <td class="siaf-table-td text-right">S/ {{ totalColumna('promedioAnual') | number }}</td>
+                    <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2027') | number }}</td>
+                    <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2028') | number }}</td>
+                    <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2029') | number }}</td>
+                    <td class="siaf-table-td text-right">S/ {{ totalColumna('variacionMonto') | number }}</td>
+                    <td class="siaf-table-td text-right">{{ totalPorcentaje() }}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-        <div class="flex flex-wrap items-start justify-between gap-siaf-md text-xs text-[var(--sys-color-text-neutral-high)]">
-          <p class="m-0 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] px-siaf-md py-siaf-xs">
-            <span class="mr-siaf-xs text-[11px] uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">Leyenda:</span>
-            <strong>(a)</strong> Recaudación histórica promedio anual &nbsp; <strong>(b)</strong> Año 2027 &nbsp;
-            <strong>(c)</strong> Año 2028 &nbsp; <strong>(d)</strong> Año 2029 &nbsp; <strong>(e)</strong> Monto &nbsp;
-            <strong>(f)</strong> (%)
-          </p>
-          <p class="m-0 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] px-siaf-md py-siaf-xs">
-            <span class="mr-siaf-xs text-[11px] uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">Fórmula:</span>
-            e = b − a &nbsp;&nbsp; f = (e / a) x 100
-          </p>
-        </div>
+            <div class="flex flex-wrap items-start justify-between gap-siaf-md text-xs text-[var(--sys-color-text-neutral-high)]">
+              <p class="m-0 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] px-siaf-md py-siaf-xs">
+                <span class="mr-siaf-xs text-[11px] uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">Leyenda:</span>
+                <strong>(a)</strong> Recaudación histórica promedio anual &nbsp; <strong>(b)</strong> Año 2027 &nbsp;
+                <strong>(c)</strong> Año 2028 &nbsp; <strong>(d)</strong> Año 2029 &nbsp; <strong>(e)</strong> Monto &nbsp;
+                <strong>(f)</strong> (%)
+              </p>
+              <p class="m-0 rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] px-siaf-md py-siaf-xs">
+                <span class="mr-siaf-xs text-[11px] uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">Fórmula:</span>
+                e = b − a &nbsp;&nbsp; f = (e / a) x 100
+              </p>
+            </div>
+          }
+
+          @case ('mensual') {
+            <!-- «Distribución mensual» (Figma node 8083:261486): FF y clasificador fijos a la izquierda, Total 2027
+                 fijo a la derecha y los doce meses con scroll horizontal. -->
+            <div class="siaf-table-shell">
+              <table class="siaf-table">
+                <thead>
+                  <tr class="siaf-table-head-row">
+                    <th class="siaf-table-th sticky left-0 z-[2] min-w-[64px] bg-[var(--sys-color-bg-surfaces-surface-high)]">FF</th>
+                    <th class="siaf-table-th sticky left-[64px] z-[2] min-w-[200px] border-r border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)]">Clasificador de ingresos</th>
+                    @for (mes of meses; track mes) {
+                      <th class="siaf-table-th min-w-[120px] text-right">{{ mes }}</th>
+                    }
+                    <th class="siaf-table-th sticky right-0 z-[2] min-w-[130px] border-l border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)] text-right">Total 2027</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (fila of clasificadoresVisibles(); track fila.clasificador) {
+                    <tr class="siaf-table-row">
+                      <td class="siaf-table-td sticky left-0 z-[1] bg-surface">{{ fila.ff }}</td>
+                      <td class="siaf-table-td sticky left-[64px] z-[1] border-r border-[var(--sys-color-divider-strong)] bg-surface">{{ fila.clasificador }}</td>
+                      @for (monto of mesesDe(fila); track $index) {
+                        <td class="siaf-table-td text-right">{{ monto | number }}</td>
+                      }
+                      <td class="siaf-table-td sticky right-0 z-[1] border-l border-[var(--sys-color-divider-strong)] bg-surface text-right">{{ fila.anio2027 | number }}</td>
+                    </tr>
+                  }
+                  <tr class="siaf-table-row font-bold">
+                    <td class="siaf-table-td sticky left-0 z-[1] bg-[var(--sys-color-bg-surfaces-surface-high)]"></td>
+                    <td class="siaf-table-td sticky left-[64px] z-[1] border-r border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)]">TOTAL</td>
+                    @for (total of totalesMensuales(); track $index) {
+                      <td class="siaf-table-td bg-[var(--sys-color-bg-surfaces-surface-high)] text-right">S/ {{ total | number }}</td>
+                    }
+                    <td class="siaf-table-td sticky right-0 z-[1] border-l border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)] text-right">S/ {{ totalColumna('anio2027') | number }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          }
+
+          @case ('ff') {
+            <div role="tabpanel" [attr.aria-labelledby]="'total-ff-' + pestanaFF()">
+              @if (pestanaFF() === 'mensualizado') {
+                <!-- «Total por FF · Mensualizado» (Figma node 8308:460985). -->
+                <div class="siaf-table-shell">
+                  <table class="siaf-table">
+                    <thead>
+                      <tr class="siaf-table-head-row">
+                        <th class="siaf-table-th sticky left-0 z-[2] min-w-[260px] border-r border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)]">Fuente de financiamiento</th>
+                        @for (mes of meses; track mes) {
+                          <th class="siaf-table-th min-w-[120px] text-right">{{ mes }}</th>
+                        }
+                        <th class="siaf-table-th sticky right-0 z-[2] min-w-[130px] border-l border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)] text-right">Total 2027</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (g of filasPorFF(); track g.ff) {
+                        <tr class="siaf-table-row">
+                          <td class="siaf-table-td sticky left-0 z-[1] border-r border-[var(--sys-color-divider-strong)] bg-surface">{{ g.nombre }}</td>
+                          @for (monto of g.meses; track $index) {
+                            <td class="siaf-table-td text-right">{{ monto | number }}</td>
+                          }
+                          <td class="siaf-table-td sticky right-0 z-[1] border-l border-[var(--sys-color-divider-strong)] bg-surface text-right">{{ g.anio2027 | number }}</td>
+                        </tr>
+                      }
+                      <tr class="siaf-table-row font-bold">
+                        <td class="siaf-table-td sticky left-0 z-[1] border-r border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)]">TOTAL</td>
+                        @for (total of totalFF().meses; track $index) {
+                          <td class="siaf-table-td bg-[var(--sys-color-bg-surfaces-surface-high)] text-right">S/ {{ total | number }}</td>
+                        }
+                        <td class="siaf-table-td sticky right-0 z-[1] border-l border-[var(--sys-color-divider-strong)] bg-[var(--sys-color-bg-surfaces-surface-high)] text-right">S/ {{ totalFF().anio2027 | number }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <!-- «Total por FF · Proyección multianual» (Figma node 8547:415903). -->
+                <div class="siaf-table-shell">
+                  <table class="siaf-table">
+                    <thead>
+                      <tr class="siaf-table-head-row">
+                        <th class="siaf-table-th min-w-[260px] border-r border-[var(--sys-color-divider-strong)]" rowspan="2">Fuente de financiamiento</th>
+                        <th class="siaf-table-th text-center" colspan="3">Recaudación estimada</th>
+                        <th class="siaf-table-th border-l border-[var(--sys-color-divider-strong)] text-center" colspan="2">
+                          Variación <span class="font-normal normal-case text-[var(--sys-color-text-neutral-low)]">(b) vs (a)</span>
+                        </th>
+                      </tr>
+                      <tr class="siaf-table-head-row">
+                        <th class="siaf-table-th text-right">Año 2027 <sup class="normal-case">(b)</sup></th>
+                        <th class="siaf-table-th text-right">Año 2028 <sup class="normal-case">(c)</sup></th>
+                        <th class="siaf-table-th text-right">Año 2029 <sup class="normal-case">(d)</sup></th>
+                        <th class="siaf-table-th border-l border-[var(--sys-color-divider-strong)] text-right">Monto <sup class="normal-case">(e)</sup></th>
+                        <th class="siaf-table-th text-right">(%) <sup class="normal-case">(f)</sup></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (g of filasPorFF(); track g.ff) {
+                        <tr class="siaf-table-row">
+                          <td class="siaf-table-td border-r border-[var(--sys-color-divider-strong)]">{{ g.nombre }}</td>
+                          <td class="siaf-table-td text-right">{{ g.anio2027 | number }}</td>
+                          <td class="siaf-table-td text-right">{{ g.anio2028 | number }}</td>
+                          <td class="siaf-table-td text-right">{{ g.anio2029 | number }}</td>
+                          <td class="siaf-table-td border-l border-[var(--sys-color-divider-strong)] text-right">{{ g.variacionMonto | number }}</td>
+                          <td class="siaf-table-td text-right">{{ g.variacionPorcentaje | number: '1.1-1' }}</td>
+                        </tr>
+                      }
+                      <tr class="siaf-table-row bg-[var(--sys-color-bg-surfaces-surface-high)] font-bold">
+                        <td class="siaf-table-td border-r border-[var(--sys-color-divider-strong)]">TOTAL</td>
+                        <td class="siaf-table-td text-right">S/ {{ totalFF().anio2027 | number }}</td>
+                        <td class="siaf-table-td text-right">S/ {{ totalFF().anio2028 | number }}</td>
+                        <td class="siaf-table-td text-right">S/ {{ totalFF().anio2029 | number }}</td>
+                        <td class="siaf-table-td border-l border-[var(--sys-color-divider-strong)] text-right">S/ {{ totalFF().variacionMonto | number }}</td>
+                        <td class="siaf-table-td text-right">{{ totalFF().variacionPorcentaje | number: '1.1-1' }}%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          }
+        }
       </siaf-solicitude-form-card>
 
       @if (detalle()) {
         <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
+      }
       }
     }
   </siaf-solicitude-page-layout>

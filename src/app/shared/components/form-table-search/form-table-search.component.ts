@@ -29,6 +29,8 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
  * - En Apertura contable: cuentas contables del detalle anual, aperturas mensuales de la configuración e historial de
  *   la configuración.
  * - Cuando la búsqueda debe confirmarse con Enter o la lupa y no a cada tecla (búsqueda en servidor o muchas filas).
+ * - Con `[showFilter]="false"` cuando el diseño trae solo Más opciones a la derecha: la tabla de genéricas de gasto del
+ *   panel «Agregar genérica de gasto» (Estimación de ingresos).
  * @evitar
  * - En las pestañas Documentos / Registros y en la Bandeja de Documentos, con menús a la derecha:
  *   `siaf-records-search-toolbar`, que los proyecta.
@@ -87,15 +89,17 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
             <siaf-icon name="query_stats" [size]="24" />
           </button>
         }
-        <button
-          class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
-          type="button"
-          [attr.aria-label]="filterLabel"
-          [disabled]="disabled"
-          (click)="filter.emit()"
-        >
-          <siaf-icon name="filter_list" [size]="24" />
-        </button>
+        @if (showFilter) {
+          <button
+            class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+            type="button"
+            [attr.aria-label]="filterLabel"
+            [disabled]="disabled"
+            (click)="filter.emit()"
+          >
+            <siaf-icon name="filter_list" [size]="24" />
+          </button>
+        }
         <!-- Segundo botón según la variante: Más opciones o, en Consultas y reportes, Columnas. -->
         <button
           class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
@@ -135,6 +139,9 @@ export class FormTableSearchComponent implements OnChanges {
   /** Suma el botón Variaciones (`query_stats`) delante de Filtrar. */
   @Input() showVariations = false;
   @Input() variationsLabel = 'Variaciones';
+  /** En false quita el botón Filtrar y deja solo Más opciones (o Columnas): la tabla de genéricas de gasto de
+   *  «Agregar genérica de gasto» (Figma CEL-005, nodo 7202:123276). */
+  @Input() showFilter = true;
 
   @Output() valueChange = new EventEmitter<string>();
   @Output() filter = new EventEmitter<void>();

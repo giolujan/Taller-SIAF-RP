@@ -65,6 +65,7 @@ import { SolicitudeHeaderComponent, SolicitudeHeaderRole, SolicitudeHeaderState 
           [customActions]="customActions"
           [showButtonGroup]="showButtonGroup"
           [saveDisabled]="saveDisabled"
+          [cancelDisabled]="cancelDisabled"
           [verifyDisabled]="verifyDisabled"
           [loading]="loading"
           (returned)="returned.emit()"
@@ -101,6 +102,8 @@ export class SolicitudePageLayoutComponent {
   /** Apaga el grupo de botones estándar del header (para páginas con botones a nivel de card). */
   @Input() showButtonGroup = true;
   @Input() saveDisabled = false;
+  /** Pasa a `siaf-solicitude-header`: apaga «Cancelar» mientras hay una edición abierta dentro de la página. */
+  @Input() cancelDisabled = false;
   @Input() verifyDisabled = false;
   @Input() trayMenuOpen = false;
   @Input() floatingPanelOpen = false;

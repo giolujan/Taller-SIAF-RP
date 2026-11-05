@@ -32,6 +32,8 @@ import { UploaderComponent } from '../../../shared/ui/uploader/uploader.componen
               <siaf-input label="Correo (type correo o email)" type="correo" autocomplete="email" />
               <siaf-input label="Número entero (number)" type="number" hint="Solo enteros: con decimales el campo se vacía" />
               <siaf-input label="Importe (decimal)" type="decimal" [decimals]="2" hint="Para importes: acepta 1250.50" />
+              <siaf-input label="Monto con miles" type="decimal" [decimals]="0" [thousandsSeparator]="true" value="65500" hint="Fuera del foco se ve 65,500" />
+              <siaf-input ariaLabel="Monto de la celda (sin etiqueta visible)" type="decimal" [decimals]="0" [thousandsSeparator]="true" value="66582" />
               <siaf-input label="Contraseña" type="password" autocomplete="current-password" />
               <siaf-input label="Tipo de documento (select)" type="select" [options]="opciones" />
               <div class="sm:col-span-2">
@@ -143,6 +145,7 @@ import { UploaderComponent } from '../../../shared/ui/uploader/uploader.componen
         <div class="grid gap-4 sm:grid-cols-2">
           <readonly-field caption="Número de documento" value="PCC-SCC-00001-2026-MEF-DGCP" />
           <readonly-field caption="Unidad ejecutora" [required]="true" value="" />
+          <readonly-field caption="Saldo por distribuir" variant="highlight" value="S/ 0" />
         </div>
       }
       @case ('siaf-readonly') {

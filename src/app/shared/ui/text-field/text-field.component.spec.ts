@@ -151,6 +151,42 @@ describe('TextFieldComponent — type="decimal"', () => {
 
     expect(component.internalValue).toBe(250.75);
   });
+
+  describe('con thousandsSeparator', () => {
+    beforeEach(() => {
+      fixture.componentRef.setInput('decimals', 0);
+      fixture.componentRef.setInput('thousandsSeparator', true);
+      fixture.componentRef.setInput('value', '65500');
+      fixture.detectChanges();
+    });
+
+    it('muestra la coma de miles fuera del foco y el número limpio al enfocar', () => {
+      expect(input().value).toBe('65,500');
+
+      input().dispatchEvent(new Event('focus'));
+      fixture.detectChanges();
+      expect(input().value).toBe('65500');
+    });
+
+    it('al enfocar con todo seleccionado, la selección se mantiene sobre el número sin comas', () => {
+      input().setSelectionRange(0, input().value.length);
+      input().dispatchEvent(new Event('focus'));
+      fixture.detectChanges();
+
+      expect(input().value).toBe('65500');
+      expect([input().selectionStart, input().selectionEnd]).toEqual([0, 5]);
+    });
+
+    it('descarta la coma tecleada y emite el número sin formato', () => {
+      input().dispatchEvent(new Event('focus'));
+      teclear('66,917');
+      input().dispatchEvent(new Event('blur'));
+      fixture.detectChanges();
+
+      expect(emitido[emitido.length - 1]).toBe('66917');
+      expect(input().value).toBe('66,917');
+    });
+  });
 });
 
 describe('TextFieldComponent — otros tipos', () => {
@@ -172,6 +208,15 @@ describe('TextFieldComponent — otros tipos', () => {
 
     expect(el.value).toBe('abc.5,');
     expect(el.getAttribute('inputmode')).toBeNull();
+  });
+
+  it('ariaLabel nombra el input cuando el campo va sin etiqueta visible', () => {
+    fixture.componentRef.setInput('ariaLabel', 'Monto según base legal 2027 de la secuencia 1');
+    fixture.componentRef.setInput('value', '66582');
+    fixture.detectChanges();
+
+    const el = fixture.debugElement.query(By.css('input')).nativeElement as HTMLInputElement;
+    expect(el.getAttribute('aria-label')).toBe('Monto según base legal 2027 de la secuencia 1');
   });
 
   it('number sigue siendo el input nativo (campos enteros)', () => {

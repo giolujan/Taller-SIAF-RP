@@ -16,21 +16,43 @@ import { SolicitudeFormCardComponent } from '../../../../../shared/components/so
 import { TableControlsComponent } from '../../../../../shared/components/table-controls/table-controls.component';
 import { ActionTrackerComponent, ActionTrackerSummary } from '../../../../../shared/ui/action-tracker/action-tracker.component';
 import { DocumentSummaryCardComponent } from '../../../../../shared/ui/document-summary-card/document-summary-card.component';
+import { ButtonGroupItem, ButtonsGroupComponent } from '../../../../../shared/ui/buttons-group/buttons-group.component';
 import { IconComponent } from '../../../../../shared/ui/icon/icon.component';
+import { TabItem, TabsComponent } from '../../../../../shared/ui/tabs/tabs.component';
 import { ReadonlyFieldComponent } from '../../../../../shared/ui/readonly-field/readonly-field.component';
 import { SnackbarVariant } from '../../../../../shared/ui/snackbar/snackbar.component';
 import { TextFieldComponent } from '../../../../../shared/ui/text-field/text-field.component';
 import { buildProcessBreadcrumbs } from '../../../../../shared/utils/breadcrumbs.util';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../../shared/utils/form-snapshot.util';
 import { EstimacionIngresosApiService } from '../../api/estimacion-ingresos-api.service';
-import { clasificadorRoute, PROCESS_ID, PROCESS_ROUTE, solicitudRoute } from '../../config/estimacion-ingresos.rutas';
+import { PROCESS_ID, PROCESS_ROUTE, solicitudRoute } from '../../config/estimacion-ingresos.rutas';
+import { EstimacionIngresosEditarClasificadorComponent } from './editar-clasificador/estimacion-ingresos-editar-clasificador.component';
 import {
   ClasificadorEstimacionIngresos,
   DetalleEstimacionIngresos,
+  MESES_ESTIMACION_INGRESOS,
+  NOMBRES_FUENTE_FINANCIAMIENTO,
+  calcularVariacionEstimacion,
   PrecargaEstimacionIngresos,
   TIPOS_MODIFICACION_ESTIMACION_INGRESOS,
   UMBRAL_VARIACION_ESTIMACION_INGRESOS,
 } from '../../models/estimacion-ingresos.model';
+
+type VistaTabla = 'estimacion' | 'mensual' | 'ff';
+type PestanaFF = 'mensualizado' | 'multianual';
+
+/** Una fila de «Total por FF»: lo de sus clasificadores sumado. */
+interface TotalFuenteFinanciamiento {
+  ff: string;
+  nombre: string;
+  meses: number[];
+  promedioAnual: number;
+  anio2027: number;
+  anio2028: number;
+  anio2029: number;
+  variacionMonto: number;
+  variacionPorcentaje: number;
+}
 
 /** ISO → "dd/mm/aaaa hh:mm:ss", como lo muestra el Figma. */
 function aFechaHoraPe(iso: string): string {
@@ -58,8 +80,10 @@ function aFechaHoraPe(iso: string): string {
   standalone: true,
   imports: [
     ActionTrackerComponent,
+    ButtonsGroupComponent,
     DecimalPipe,
     DocumentSummaryCardComponent,
+    EstimacionIngresosEditarClasificadorComponent,
     FormTableSearchComponent,
     IconComponent,
     ReadonlyFieldComponent,
@@ -68,6 +92,7 @@ function aFechaHoraPe(iso: string): string {
     SolicitudeInfoCardComponent,
     SolicitudePageLayoutComponent,
     TableControlsComponent,
+    TabsComponent,
     TextFieldComponent,
   ],
   templateUrl: './estimacion-ingresos-solicitud.component.html',
@@ -119,6 +144,12 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   readonly formClasificadores = signal<ClasificadorEstimacionIngresos[]>([]);
   readonly busquedaClasificadores = signal('');
   readonly seleccionados = signal<Set<number>>(new Set());
+  /** Índice en `formClasificadores` de la fila abierta en «Editar estimación de ingresos» (Figma node 4145:309441). */
+  readonly filaEnEdicion = signal<number | null>(null);
+  readonly filaEditada = computed(() => {
+    const indice = this.filaEnEdicion();
+    return indice === null ? null : (this.formClasificadores()[indice] ?? null);
+  });
   readonly tiposModificacion: TextFieldOption[] = TIPOS_MODIFICACION_ESTIMACION_INGRESOS.map((v) => ({ label: v, value: v }));
   private fotoEdicion: string | null = null;
 
@@ -138,8 +169,12 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     return hayCambiosRespectoAlSnapshot(this.fotoEdicion, actual);
   });
 
-  /** «Nuevo» se graba con lo precargado; en edición, solo con cambios. */
-  readonly grabarDeshabilitado = computed(() => (this.esNuevo() ? this.formClasificadores().length === 0 : !this.hayCambios()));
+  /** «Nuevo» se graba con lo precargado; en edición, solo con cambios. Mientras una fila está abierta, primero se
+   *  acepta o cancela esa fila (como en el Figma, con Grabar y Verificar apagados). */
+  readonly grabarDeshabilitado = computed(() => {
+    if (this.filaEnEdicion() !== null) return true;
+    return this.esNuevo() ? this.formClasificadores().length === 0 : !this.hayCambios();
+  });
 
   ngOnInit(): void {
     // Al llegar desde Grabar de «Nuevo»: aviso de solicitud elaborada, como en el resto de solicitudes.
@@ -184,7 +219,7 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
       return;
     }
     this.editando.set(false);
-    this.seleccionados.set(new Set());
+    this.cerrarEdicionFila();
   }
 
   onConfirmarVerificar(): void {
@@ -251,17 +286,27 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     this.seleccionados.set(new Set());
   }
 
-  /** Lápiz de `siaf-table-controls` (solo en edición, con exactamente una fila elegida). Edita contra lo ya grabado
-   *  (no lo pendiente de esta sesión de edición), así que al volver recarga el detalle completo desde el backend. */
+  /** Lápiz de `siaf-table-controls` (en «Nuevo» y en edición, con exactamente una fila elegida): abre «Editar
+   *  estimación de ingresos» en lugar de la tabla, sobre la fila del formulario. */
   editarSeleccionada(): void {
-    const d = this.detalle();
-    const visibles = this.clasificadoresVisibles();
     const [indiceVisible] = this.seleccionados();
-    if (!d || indiceVisible === undefined) return;
-    const fila = visibles[indiceVisible];
-    const indiceReal = d.clasificadores.findIndex((c) => c.clasificador === fila.clasificador);
-    if (indiceReal === -1) return;
-    void this.router.navigate([clasificadorRoute(d.documentoId, indiceReal)]);
+    const fila = indiceVisible === undefined ? undefined : this.clasificadoresVisibles()[indiceVisible];
+    if (!fila) return;
+    const indiceReal = this.formClasificadores().findIndex((c) => c.clasificador === fila.clasificador);
+    if (indiceReal !== -1) this.filaEnEdicion.set(indiceReal);
+  }
+
+  /** Aceptar de «Editar estimación de ingresos»: la fila cambia en el formulario; se graba con «Grabar». */
+  onFilaAceptada(fila: ClasificadorEstimacionIngresos): void {
+    const indice = this.filaEnEdicion();
+    if (indice === null) return;
+    this.formClasificadores.update((filas) => filas.map((f, i) => (i === indice ? fila : f)));
+    this.cerrarEdicionFila();
+  }
+
+  cerrarEdicionFila(): void {
+    this.filaEnEdicion.set(null);
+    this.seleccionados.set(new Set());
   }
 
   onConfirmarGrabar(): void {
@@ -341,6 +386,71 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   }
 
   /** (f) del TOTAL: (e / a) x 100, igual que cada fila. */
+  // ── Vistas de solo lectura (Figma node 10813:71699): Estimación | Distribución mensual | Total por FF ─────────
+  readonly meses = MESES_ESTIMACION_INGRESOS;
+  readonly opcionesVista: ButtonGroupItem[] = [
+    { label: 'Estimación', value: 'estimacion' },
+    { label: 'Distribución mensual', value: 'mensual' },
+    { label: 'Total por FF', value: 'ff' },
+  ];
+  readonly pestanasFF: TabItem[] = [
+    { id: 'mensualizado', label: 'Mensualizado' },
+    { id: 'multianual', label: 'Proyección multianual' },
+  ];
+  readonly vistaElegida = signal<VistaTabla>('estimacion');
+  readonly pestanaFF = signal<PestanaFF>('mensualizado');
+  /** En «Nuevo» y en edición solo existe la tabla editable de estimación. */
+  readonly vista = computed<VistaTabla>(() => (this.editable() ? 'estimacion' : this.vistaElegida()));
+
+  /** Distribución mensual de una fila (vacía si la fila no la trae). */
+  mesesDe(fila: ClasificadorEstimacionIngresos): number[] {
+    return MESES_ESTIMACION_INGRESOS.map((_, i) => fila.distribucionMensual?.[i] ?? 0);
+  }
+
+  /** Fila TOTAL de «Distribución mensual»: suma de cada mes de las filas visibles. */
+  readonly totalesMensuales = computed(() =>
+    MESES_ESTIMACION_INGRESOS.map((_, i) => this.clasificadoresVisibles().reduce((suma, f) => suma + (f.distribucionMensual?.[i] ?? 0), 0)),
+  );
+
+  /** «Total por FF»: los clasificadores sumados por fuente de financiamiento (Figma nodes 8308:460985 y 8547:415903). */
+  readonly filasPorFF = computed<TotalFuenteFinanciamiento[]>(() => {
+    const filas = this.detalle()?.clasificadores ?? [];
+    const grupos = new Map<string, TotalFuenteFinanciamiento>();
+    for (const f of filas) {
+      const grupo = grupos.get(f.ff) ?? {
+        ff: f.ff,
+        nombre: `${f.ff} ${NOMBRES_FUENTE_FINANCIAMIENTO[f.ff] ?? f.ffDescripcion ?? ''}`.trim(),
+        meses: MESES_ESTIMACION_INGRESOS.map(() => 0),
+        promedioAnual: 0, anio2027: 0, anio2028: 0, anio2029: 0, variacionMonto: 0, variacionPorcentaje: 0,
+      };
+      grupo.meses = grupo.meses.map((m, i) => m + (f.distribucionMensual?.[i] ?? 0));
+      grupo.promedioAnual += f.promedioAnual;
+      grupo.anio2027 += f.anio2027;
+      grupo.anio2028 += f.anio2028;
+      grupo.anio2029 += f.anio2029;
+      grupos.set(f.ff, grupo);
+    }
+    const texto = this.busquedaClasificadores().trim().toLowerCase();
+    return [...grupos.values()]
+      .map((g) => ({ ...g, ...calcularVariacionEstimacion(g.promedioAnual, g.anio2027) }))
+      .filter((g) => !texto || g.nombre.toLowerCase().includes(texto));
+  });
+
+  /** Fila TOTAL de «Total por FF» (mensualizado y multianual). */
+  readonly totalFF = computed(() => {
+    const filas = this.filasPorFF();
+    const suma = (clave: 'promedioAnual' | 'anio2027' | 'anio2028' | 'anio2029') => filas.reduce((t, g) => t + g[clave], 0);
+    const promedioAnual = suma('promedioAnual');
+    const anio2027 = suma('anio2027');
+    return {
+      meses: MESES_ESTIMACION_INGRESOS.map((_, i) => filas.reduce((t, g) => t + g.meses[i], 0)),
+      anio2027,
+      anio2028: suma('anio2028'),
+      anio2029: suma('anio2029'),
+      ...calcularVariacionEstimacion(promedioAnual, anio2027),
+    };
+  });
+
   totalPorcentaje(): string {
     const a = this.totalColumna('promedioAnual');
     const e = this.totalColumna('variacionMonto');

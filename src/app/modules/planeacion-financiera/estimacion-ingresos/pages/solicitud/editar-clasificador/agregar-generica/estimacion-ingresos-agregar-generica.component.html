@@ -1,0 +1,87 @@
+<siaf-side-panel
+  title="Agregar genérica de gasto"
+  [open]="abierto()"
+  [confirmDisabled]="!puedeAceptar()"
+  (closed)="closed.emit()"
+  (canceled)="closed.emit()"
+  (confirmed)="aceptar()"
+>
+  <div class="flex flex-col gap-siaf-lg px-siaf-md py-siaf-md">
+    <siaf-expansion-panel title="MONTO SEGÚN BASE LEGAL" [expanded]="montosAbiertos()" (expandedChange)="montosAbiertos.set($event)">
+      <div class="flex flex-col gap-siaf-lg py-siaf-xs">
+        <div class="grid gap-siaf-lg md:grid-cols-3">
+          <siaf-input label="Secuencia" [value]="secuenciaS()?.secuencia ?? ''" [disabled]="true" />
+        </div>
+        <div class="grid gap-siaf-lg md:grid-cols-3">
+          @for (anio of anios; track anio; let i = $index) {
+            <siaf-input [label]="'Año ' + anio" [value]="(secuenciaS()?.montos?.[i] ?? 0 | number) ?? ''" [disabled]="true" />
+          }
+        </div>
+      </div>
+    </siaf-expansion-panel>
+
+    <siaf-form-table-search [showFilter]="false" [value]="busqueda()" (valueChange)="busqueda.set($event)" />
+
+    <!-- Tabla «Genérica de gasto» (Figma node 7202:123296). -->
+    <div class="siaf-table-shell">
+      <table class="siaf-table">
+        <thead>
+          <tr class="siaf-table-head-row">
+            <th class="siaf-table-th w-16" rowspan="2">Gen.</th>
+            <th class="siaf-table-th" rowspan="2">Genérica</th>
+            <th class="siaf-table-th border-l border-[var(--sys-color-divider-strong)] text-center" [attr.colspan]="anios.length">
+              Monto con asignación específica
+            </th>
+          </tr>
+          <tr class="siaf-table-head-row">
+            @for (anio of anios; track anio; let i = $index) {
+              <th class="siaf-table-th min-w-[150px] text-right" [class]="i === 0 ? 'border-l border-[var(--sys-color-divider-strong)]' : ''">Año {{ anio }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (g of genericasVisibles(); track g.codigo) {
+            <tr class="siaf-table-row">
+              <td class="siaf-table-td">{{ g.codigo }}</td>
+              <td class="siaf-table-td">{{ g.nombre }}</td>
+              @for (anio of anios; track anio; let i = $index) {
+                <td class="siaf-table-td">
+                  <siaf-input
+                    (dblclick)="i === 0 && g.codigo === genericaDemo && completarConSaldo(g.codigo, $event)"
+                    [ariaLabel]="'Monto ' + anio + ' de ' + g.nombre"
+                    type="decimal"
+                    [decimals]="0"
+                    [thousandsSeparator]="true"
+                    [autoSuccess]="false"
+                    [value]="montos()[g.codigo]?.[i] ?? '0'"
+                    (valueChange)="actualizarMonto(g.codigo, i, $any($event))"
+                  />
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr class="siaf-table-row">
+              <td class="siaf-table-td text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="2 + anios.length">
+                No hay genéricas que coincidan con la búsqueda.
+              </td>
+            </tr>
+          }
+          <tr class="siaf-table-row bg-[var(--sys-color-bg-surfaces-surface-low)] font-bold">
+            <td class="siaf-table-td text-right" colspan="2">TOTAL</td>
+            @for (total of totales(); track $index; let i = $index) {
+              <td class="siaf-table-td text-right" [class]="excedidos()[i] ? 'text-[var(--sys-color-text-feedback-danger)]' : ''">
+                {{ total | number }}
+              </td>
+            }
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    @if (excedidos().includes(true)) {
+      <p class="m-0 text-xs text-[var(--sys-color-text-feedback-danger)]" role="status">
+        El total de un año supera el monto según base legal de la secuencia.
+      </p>
+    }
+  </div>
+</siaf-side-panel>

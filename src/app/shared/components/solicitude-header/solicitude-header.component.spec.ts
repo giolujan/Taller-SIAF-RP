@@ -36,6 +36,15 @@ describe('SolicitudeHeaderComponent', () => {
     ]);
   });
 
+  it('cancelDisabled apaga Cancelar en la barra móvil y en la de escritorio', () => {
+    configurar({ role: 'creator', state: 'new', cancelDisabled: true });
+    expect(acciones()[0]).toEqual({ texto: 'Cancelar', icono: '', variante: 'secondary', deshabilitado: true });
+
+    // La botonera de escritorio es el grupo `hidden lg:flex`; Cancelar va primero.
+    const escritorio = fixture.debugElement.query(By.css('div.hidden.lg\\:flex')).query(By.directive(ButtonComponent));
+    expect((escritorio.componentInstance as ButtonComponent).disabled).toBeTrue();
+  });
+
   it('en cada estado la última acción es la principal: solo ella lleva ícono', () => {
     const casos: Array<[string, string, string[], string]> = [
       ['creator', 'edit', ['Cancelar', 'Grabar'], 'save'],

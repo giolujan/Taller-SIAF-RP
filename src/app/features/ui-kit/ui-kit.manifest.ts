@@ -301,19 +301,32 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "''",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "variant",
+        "tipo": "'default' | 'highlight'",
+        "porDefecto": "'default'",
+        "requerida": false,
+        "descripcion": "`highlight`: fondo azul tenue y valor en negrita (Figma «Readonly Forms», node 11596:647453), para un resultado calculado dentro de un formulario editable."
       }
     ],
     "eventos": [],
-    "usar": "- En el modo lectura de una solicitud, en lugar del campo editable y con el mismo caption: cuenta contable, carga\n  masiva del plan de cuentas, clase de ajuste, tipo de asiento y asiento de ajuste.\n- Para los criterios de búsqueda sobre los resultados de las consultas (plan de cuentas, asiento de ajuste, tipos de\n  asiento, contabilización) y la cabecera de un detalle o reporte (pedido de contabilización, apertura contable,\n  libros contables).\n- Para leer un dato con contraste completo: un campo `[disabled]` pinta el texto tenue (exento de contraste) y aquí\n  el valor va en `text-neutral-high`.\n- `[required]` solo para repetir el asterisco del campo editable, así la lectura se ve igual que la edición.",
+    "usar": "- En el modo lectura de una solicitud, en lugar del campo editable y con el mismo caption: cuenta contable, carga\n  masiva del plan de cuentas, clase de ajuste, tipo de asiento y asiento de ajuste.\n- Para los criterios de búsqueda sobre los resultados de las consultas (plan de cuentas, asiento de ajuste, tipos de\n  asiento, contabilización) y la cabecera de un detalle o reporte (pedido de contabilización, apertura contable,\n  libros contables).\n- Para leer un dato con contraste completo: un campo `[disabled]` pinta el texto tenue (exento de contraste) y aquí\n  el valor va en `text-neutral-high`.\n- `[required]` solo para repetir el asterisco del campo editable, así la lectura se ve igual que la edición.\n- `variant=\"highlight\"` para un total calculado dentro de un formulario que se está editando: «Total» y «Saldo por\n  distribuir» de la distribución mensual en «Editar estimación de ingresos».",
     "evitar": "- Para un dato que el usuario puede cambiar: usar `siaf-input`, `text-area-control` o `siaf-date-time-picker`.\n- Para el ítem elegido desde un panel lateral: usar `siaf-summary-card`; para un aviso breve, `message-box`.\n- Confundirlo con `siaf-readonly`, el recuadro gris con etiqueta en mayúsculas que ninguna pantalla usa.",
     "teclado": "- No recibe foco: no es interactivo.",
-    "accesibilidad": "- **1.3.1 Información y relaciones (A)**: es texto estático, no un campo: el caption va antes del valor en el DOM,\n  así que se leen juntos y en orden; no usa `dt`/`dd` ni `aria-labelledby`.\n- **1.4.3 Contraste mínimo (AA)**: caption `text-neutral-low` 5.01:1 (8.86:1 oscuro), valor `text-neutral-high`\n  16.29:1 y asterisco `text-feedback-danger` 9.84:1 sobre `bg-surfaces-surface`.\n- **1.4.1 Uso del color (A)**: el obligatorio se marca con un asterisco, no solo con el color.",
+    "accesibilidad": "- **1.3.1 Información y relaciones (A)**: es texto estático, no un campo: el caption va antes del valor en el DOM,\n  así que se leen juntos y en orden; no usa `dt`/`dd` ni `aria-labelledby`.\n- **1.4.3 Contraste mínimo (AA)**: caption `text-neutral-low` 5.01:1 (8.86:1 oscuro), valor `text-neutral-high`\n  16.29:1 y asterisco `text-feedback-danger` 9.84:1 sobre `bg-surfaces-surface`. En `highlight` el valor va en\n  negrita `text-neutral-medium` sobre `bg-surfaces-highlight` (azul al 8 % sobre la superficie: contraste casi igual\n  al de la superficie sola); el caption sigue sobre su recuadro `bg-surface`.\n- **1.4.1 Uso del color (A)**: el obligatorio se marca con un asterisco, no solo con el color.",
     "figma": [],
     "aria": {
       "roles": [],
       "atributos": []
     },
     "tokens": [
+      {
+        "token": "--sys-color-bg-surfaces-highlight",
+        "via": [
+          "var()"
+        ]
+      },
       {
         "token": "--sys-color-bg-surfaces-surface",
         "via": [
@@ -336,6 +349,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-color-text-neutral-low",
         "via": [
           "text-text-muted"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-medium",
+        "via": [
+          "var()"
         ]
       },
       {
@@ -5529,7 +5548,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-icon",
       "siaf-icon-dropdown-menu"
     ],
-    "sinUso": true
+    "sinUso": false
   },
   {
     "selector": "siaf-filter-pill",
@@ -5691,6 +5710,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "showFilter",
+        "tipo": "boolean",
+        "porDefecto": "true",
+        "requerida": false,
+        "descripcion": "En false quita el botón Filtrar y deja solo Más opciones (o Columnas): la tabla de genéricas de gasto de «Agregar genérica de gasto» (Figma CEL-005, nodo 7202:123276)."
+      },
+      {
         "nombre": "showVariations",
         "tipo": "boolean",
         "porDefecto": "false",
@@ -5746,7 +5772,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Botón Variaciones, con `showVariations`."
       }
     ],
-    "usar": "- Sobre las tablas de las solicitudes (cuentas contables, tipos de asiento, clases de ajuste, asiento de ajuste,\n  eventos contables) y en el panel lateral de selección (`siaf-selection-side-nav`).\n- Con `variant=\"reports\"` en Consultas y reportes: Plan de cuentas, Asiento de ajuste, Tipos de asiento, Pedidos de\n  contabilización y Libros contables.\n- En el detalle de Contabilización y en los listados de Admin (usuarios, entidades, unidades y correlativos).\n- En Apertura contable: cuentas contables del detalle anual, aperturas mensuales de la configuración e historial de\n  la configuración.\n- Cuando la búsqueda debe confirmarse con Enter o la lupa y no a cada tecla (búsqueda en servidor o muchas filas).",
+    "usar": "- Sobre las tablas de las solicitudes (cuentas contables, tipos de asiento, clases de ajuste, asiento de ajuste,\n  eventos contables) y en el panel lateral de selección (`siaf-selection-side-nav`).\n- Con `variant=\"reports\"` en Consultas y reportes: Plan de cuentas, Asiento de ajuste, Tipos de asiento, Pedidos de\n  contabilización y Libros contables.\n- En el detalle de Contabilización y en los listados de Admin (usuarios, entidades, unidades y correlativos).\n- En Apertura contable: cuentas contables del detalle anual, aperturas mensuales de la configuración e historial de\n  la configuración.\n- Cuando la búsqueda debe confirmarse con Enter o la lupa y no a cada tecla (búsqueda en servidor o muchas filas).\n- Con `[showFilter]=\"false\"` cuando el diseño trae solo Más opciones a la derecha: la tabla de genéricas de gasto del\n  panel «Agregar genérica de gasto» (Estimación de ingresos).",
     "evitar": "- En las pestañas Documentos / Registros y en la Bandeja de Documentos, con menús a la derecha:\n  `siaf-records-search-toolbar`, que los proyecta.\n- Esperar que los botones hagan algo por sí solos: emiten `filter`, `more` y `columns`, y si la pantalla no los escucha\n  se pintan y no hacen nada (hoy ninguna consulta escucha Filtrar ni Columnas).\n- Para filtrar por opciones cerradas o por condiciones: `siaf-filter-pill` o `siaf-custom-filter` junto al buscador.",
     "teclado": "- **Tab**: recorre el campo, la lupa, Filtrar y Más opciones (o Columnas); con `disabled` quedan todos fuera.\n- **Enter**: en el campo, confirma la búsqueda y emite `valueChange` con lo escrito; escribir no busca.\n- **Enter / Espacio**: en la lupa confirman igual; en Filtrar, Más opciones y Columnas emiten `filter`, `more` y\n  `columns`.",
     "accesibilidad": "- **Pendiente · 4.1.2 Nombre, función y valor (A)**: el input `ariaLabel` no se usa en la plantilla; el nombre del\n  campo sale de `placeholder` («Buscar» por defecto), así que «Buscar cuentas contables» o «Buscar en pedidos» no\n  llegan al lector. Los botones sí llevan `filterLabel` («Filtrar»), `moreLabel` («Mas opciones», sin tilde) y\n  `columnsLabel` («Ocultar o mostrar columnas»).\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: ni el buscador ni la grilla anuncian el resultado; la pantalla debe\n  anunciar el total (p. ej. con `role=\"status\"`).\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: el borde del campo sin foco es `border-states-enabled` (2.44:1 /\n  2.59:1). El anillo de foco de la lupa y de los botones ya es el azul del kit (`border-states-focus`, 5.35:1 /\n  10.15:1) y los íconos cumplen (`text-neutral-high`; la lupa, `text-neutral-medium`).\n- **2.4.7 Foco visible (AA)**: el campo pasa a un borde de 2 px `border-states-focus` (5.35:1 / 10.15:1); la lupa y\n  los botones muestran un anillo de 2 px separado 2 px.\n- **2.5.8 Tamaño del objetivo (AA)**: Filtrar, Más opciones y Columnas miden 40 px; la lupa, 24 px.",
@@ -6071,6 +6097,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "proyectaContenido": false,
     "entradas": [
       {
+        "nombre": "ariaLabel",
+        "tipo": "string",
+        "porDefecto": "''",
+        "requerida": false,
+        "descripcion": "Nombre accesible del `<input>` cuando el campo va sin `label` visible: un monto editable dentro de una celda de tabla, donde el encabezado de la columna ya dice qué es."
+      },
+      {
         "nombre": "autocomplete",
         "tipo": "string",
         "porDefecto": "''",
@@ -6169,6 +6202,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "thousandsSeparator",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "En `type=\"decimal\"`: muestra el monto con coma de miles fuera del foco («65,500») y la coma que se teclea se toma como separador de miles (se descarta), no como decimal. Al enfocar vuelve al número sin formato para editarlo; el valor emitido nunca lleva comas."
+      },
+      {
         "nombre": "trailingButtonLabel",
         "tipo": "string",
         "porDefecto": "''",
@@ -6209,9 +6249,9 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Para los campos de una línea de las solicitudes y de Admin: nombre de clase de ajuste, número de documento o\n  correo institucional del usuario.\n- `type=\"select\"` o `select-multiple` para listas cortas y cerradas: tipo de plan contable, tipo de libro y mes,\n  ámbitos institucionales o estados en los paneles de búsqueda.\n- `type=\"decimal\"` para importes, como el importe de cada cuenta del asiento de ajuste; `number` solo para enteros.\n- `select-multiple` con `selectAllLabel=\"Seleccionar todo\"` en los paneles de parámetros de las consultas: casillas,\n  la fila para marcar todas y el valor en una línea.\n- Con `trailingIcon` y `trailingButtonLabel` para una acción dentro del campo: «Buscar» en la bandeja de documentos\n  y en `siaf-records-search-toolbar`, «Mostrar contraseña» en el login.",
+    "usar": "- Para los campos de una línea de las solicitudes y de Admin: nombre de clase de ajuste, número de documento o\n  correo institucional del usuario.\n- `type=\"select\"` o `select-multiple` para listas cortas y cerradas: tipo de plan contable, tipo de libro y mes,\n  ámbitos institucionales o estados en los paneles de búsqueda.\n- `type=\"decimal\"` para importes, como el importe de cada cuenta del asiento de ajuste; `number` solo para enteros.\n- `type=\"decimal\"` con `[thousandsSeparator]=\"true\"` cuando el diseño muestra el monto con coma de miles (65,500):\n  los montos de «Editar estimación de ingresos».\n- Sin `label` y con `ariaLabel` para un monto editable dentro de una celda de tabla (montos de la tabla de\n  secuencias de la base legal): el encabezado de la columna hace de etiqueta visible.\n- `select-multiple` con `selectAllLabel=\"Seleccionar todo\"` en los paneles de parámetros de las consultas: casillas,\n  la fila para marcar todas y el valor en una línea.\n- Con `trailingIcon` y `trailingButtonLabel` para una acción dentro del campo: «Buscar» en la bandeja de documentos\n  y en `siaf-records-search-toolbar`, «Mostrar contraseña» en el login.",
     "evitar": "- Para fechas: usar `siaf-date-time-picker`, no `trailingIcon=\"calendar_today\"` (como la vigencia del formulario de\n  cuenta contable).\n- Para textos largos (justificación, glosa, descripción): usar `text-area-control`.\n- Para elegir de un catálogo largo que hay que buscar (los atributos del evento, por ejemplo): usar `empty-section`\n  con `siaf-selection-side-nav`; para un Sí/No, `siaf-radio-group` con `[inline]`.\n- `type=\"number\"` para importes: el campo se vacía al teclear el separador; usar `decimal`.",
-    "teclado": "- **Tab**: enfoca el campo o el botón del select; el botón de `trailingIcon` es otra parada.\n- **Texto, número, decimal, correo y contraseña**: el teclado nativo del `<input>`; en `decimal` se descarta lo que\n  no sea dígito o separador (la coma se guarda como punto) y al salir se completan los decimales.\n- **Enter / Espacio** (select): abren o cierran la lista; al abrir, el foco entra en la opción elegida (o en la\n  primera), que siguen `siaf-select-options` (flechas, Inicio y Fin).\n- **Escape** (select): cierra la lista y el foco vuelve al botón del campo; salir de la lista con Tab también la\n  cierra. Con la lista abierta, Escape no cierra el panel que contiene al campo.",
+    "teclado": "- **Tab**: enfoca el campo o el botón del select; el botón de `trailingIcon` es otra parada.\n- **Texto, número, decimal, correo y contraseña**: el teclado nativo del `<input>`; en `decimal` se descarta lo que\n  no sea dígito o separador (la coma se guarda como punto) y al salir se completan los decimales. Con\n  `thousandsSeparator` la coma se descarta (es de miles) y el monto se ve formateado al salir.\n- **Enter / Espacio** (select): abren o cierran la lista; al abrir, el foco entra en la opción elegida (o en la\n  primera), que siguen `siaf-select-options` (flechas, Inicio y Fin).\n- **Escape** (select): cierra la lista y el foco vuelve al botón del campo; salir de la lista con Tab también la\n  cierra. Con la lista abierta, Escape no cierra el panel que contiene al campo.",
     "accesibilidad": "- **Pendiente · 1.3.1 Información y relaciones (A)**: en los tipos de texto el `<label>` envuelve el `<input>`, pero\n  la etiqueta flotante solo existe con foco o valor, y la ayuda y el error, dentro del mismo `<label>`, se suman al\n  nombre en vez de ir por `aria-describedby`. Con `hint` y el campo vacío, la ayuda desplaza al `placeholder` como\n  nombre.\n- **Pendiente · 3.3.1 Identificación de errores (A)**: el error se ve (borde rojo de 2 px, ícono y texto), pero el\n  `<input>` no publica `aria-invalid` y el texto no se anuncia al aparecer; con `state=\"error\"` y sin `error`, el\n  aviso es solo el color del borde.\n- **Pendiente · 3.3.2 Etiquetas o instrucciones (A)**: el `<input>` de texto publica `aria-required`, pero en `select`\n  y `select-multiple` el obligatorio es solo el asterisco: el botón no lo publica.\n- **4.1.2 Nombre, función y valor (A)**: el select es un `<button>` con `aria-haspopup=\"listbox\"`, `aria-expanded` y\n  `aria-label` con la etiqueta. El botón de `trailingIcon` se nombra con `trailingButtonLabel`: el padre debe darlo\n  o queda sin nombre.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: el `aria-label` del select tapa el valor elegido, que no se\n  anuncia; «Limpiar» y la X de cada chip son `span` con `role=\"button\"` anidados dentro del botón, cuyos hijos son\n  presentacionales.\n- **Pendiente · 2.1.1 Teclado (A)**: «Limpiar» (`clearable`) y «Quitar» de cada chip tienen `tabindex=\"-1\"`: solo\n  funcionan con el mouse (en `select-multiple` se puede desmarcar desde la lista).\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir el select el foco entra en la opción elegida y al elegir en\n  `select`, cerrar con Escape o salir con Tab vuelve al botón del campo.\n- **2.4.7 Foco visible (AA)**: el foco pinta el borde de 2 px `border-states-focus` (5.35:1 claro / 10.15:1 oscuro),\n  también en éxito (el select con valor) y al llegar con Tab al botón del select. Con error, el borde sigue rojo y el\n  foco se ve en un contorno azul de 2 px por fuera.\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: el borde del campo vacío es `border-states-enabled` (2.44:1\n  claro, 2.59:1 oscuro).\n- **1.4.3 Contraste mínimo (AA)**: texto `text-neutral-medium` 14.53:1, valor del select `text-neutral-high` 16.29:1,\n  etiqueta y `placeholder` `text-neutral-low` 5.01:1 y error `text-feedback-danger` 9.84:1.",
     "figma": [],
     "aria": {
@@ -11280,7 +11320,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-icon",
       "siaf-side-nav"
     ],
-    "sinUso": true
+    "sinUso": false
   },
   {
     "selector": "siaf-sidebar",
@@ -11796,6 +11836,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "cancelDisabled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Apaga «Cancelar» (estado `new`/`edit`) mientras hay una edición abierta dentro de la página que se cierra con sus propios botones: p. ej. una fila en «Editar estimación de ingresos»."
+      },
+      {
         "nombre": "customActions",
         "tipo": "boolean",
         "porDefecto": "false",
@@ -12011,7 +12058,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Dentro de `siaf-solicitude-page-layout`, que lo pinta con `role` y `state`: así lo usan las request-pages de\n  Contabilidad y los formularios de Admin.\n- Con `customActions` y botones en `[actions]` cuando el proceso tiene acciones fuera de la matriz, como «Reprocesar»\n  en el detalle de contabilización.\n- Con `saveDisabled` para dejar Grabar deshabilitado mientras no hay cambios (patrón «Grabar solo con cambios»).",
+    "usar": "- Dentro de `siaf-solicitude-page-layout`, que lo pinta con `role` y `state`: así lo usan las request-pages de\n  Contabilidad y los formularios de Admin.\n- Con `customActions` y botones en `[actions]` cuando el proceso tiene acciones fuera de la matriz, como «Reprocesar»\n  en el detalle de contabilización.\n- Con `saveDisabled` para dejar Grabar deshabilitado mientras no hay cambios (patrón «Grabar solo con cambios»).\n- Con `cancelDisabled` (y Grabar y Verificar apagados) mientras una sección de la página tiene su propia edición\n  abierta con Cancelar/Aceptar, como «Editar estimación de ingresos».",
     "evitar": "- Suelto con su propio breadcrumb y contenedor: usar `siaf-solicitude-page-layout`, que lo fija bajo el navbar y\n  reenvía los eventos (hoy solo la ruta `formulario` de asiento de ajuste lo arma a mano).\n- Para pantallas sin ciclo de documento (consultas, listados): usar `siaf-page-header`.\n- Para acciones de una tarjeta o sección: ponerlas en la tarjeta y apagar la botonera con `showButtonGroup` en false,\n  como el Gestor de Usuarios.\n- Para mostrar el estado del documento en el flujo: usar `siaf-flow-status-tag`; esta etiqueta solo marca «Nuevo» o\n  «Edición».",
     "teclado": "- **Tab**: recorre Regresar (si `showReturn`) y los botones visibles en su orden; en móvil, la barra fija inferior va\n  en el DOM justo después del encabezado. Los deshabilitados no reciben foco.\n- **Enter / Espacio**: activan cada botón y emiten su evento (`returned`, `canceled`, `saved`, `verified`, `edited`,\n  `deleted`, `approved`, `observed` o `rejected`). Los botones siguen `siaf-button`.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: `heading` es el `h1` de la página; la etiqueta y el texto secundario van\n  como texto junto a él.\n- **4.1.2 Nombre, función y valor (A)**: Regresar lleva `aria-label=\"Regresar\"`; en la barra móvil cada botón se\n  nombra con su texto visible (el ícono de la principal es decorativo), y los deshabilitados (Grabar sin cambios,\n  Eliminar en observado) exponen `disabled`.\n- **2.5.8 Tamaño del objetivo (AA)**: los botones de la barra móvil miden 48 px de alto; en escritorio, 40.\n- **2.4.3 Orden del foco (A)**: en escritorio los botones siguen al título; en móvil la barra fija inferior va en el\n  DOM después del encabezado, así que Tab llega a las acciones antes que al formulario.\n- **Pendiente · 2.4.11 Foco no oculto (AA)**: en móvil la barra de acciones es `fixed` abajo y no hay\n  `scroll-padding`: al avanzar con Tab, un campo puede quedar tapado por ella.\n- **1.4.11 Contraste no textual (AA)**: el anillo de foco de Regresar (2 px) es el azul del kit\n  (`border-states-focus`, 5.35:1 claro / 10.15:1 oscuro sobre `bg-surface`). Los demás botones siguen `siaf-button`.\n- **1.4.3 Contraste mínimo (AA)**: `h1` `text-text` (16.29:1 / 16.53:1), texto secundario `text-text-muted` (5.01:1 /\n  8.86:1) y la etiqueta en blanco sobre `bg-brand-accent` (4.89:1 / 5.65:1) o `bg-brand-primary` (8.79:1 / 6.67:1).\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: con `loading` el título y los botones se cambian por un esqueleto\n  sin `aria-busy` ni `role=\"status\"`: la carga no se anuncia.\n- **Pendiente · 2.1.1 Teclado (A)**: desde `sm` el `h1` se corta y el texto completo sale con `siafTooltip`, que se\n  abre con el mouse o con el foco; como el `h1` no es enfocable, con teclado no se puede ver.",
@@ -12232,6 +12279,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "[]",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "cancelDisabled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Pasa a `siaf-solicitude-header`: apaga «Cancelar» mientras hay una edición abierta dentro de la página."
       },
       {
         "nombre": "customActions",

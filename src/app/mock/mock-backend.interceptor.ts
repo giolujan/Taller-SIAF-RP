@@ -578,37 +578,6 @@ const estimacionIngresosActualizar: Manejador = ({ req, datos, params }) => {
   return ok(doc);
 };
 
-// Grabar una fila de clasificadores (Figma node 4021:102921): el backend recalcula la variación (e, f) a partir
-// de `promedioAnual` y `anio2027`, igual que cada fila de la tabla.
-const estimacionIngresosActualizarClasificador: Manejador = ({ req, datos, params }) => {
-  const doc = datos.estimacionIngresos.find((d) => d.id === params[0]);
-  if (!doc) return error(404, 'El documento no existe.');
-  if (doc.estado !== 'Elaborado') return error(409, `No se puede editar un documento en estado ${doc.estado}.`);
-  const indice = Number(params[1]);
-  const filas = doc.clasificadoresPersonalizados ? [...doc.clasificadoresPersonalizados] : [...CLASIFICADORES_ESTIMACION_INGRESOS];
-  if (!Number.isInteger(indice) || indice < 0 || indice >= filas.length) return error(404, 'El clasificador no existe.');
-  const dto = (req.body ?? {}) as {
-    ff?: string; clasificador?: string; promedioAnual?: number; anio2027?: number; anio2028?: number; anio2029?: number; baseLegal?: 'SI' | 'NO';
-  };
-  const promedioAnual = dto.promedioAnual ?? filas[indice].promedioAnual;
-  const anio2027 = dto.anio2027 ?? filas[indice].anio2027;
-  const variacionMonto = anio2027 - promedioAnual;
-  filas[indice] = {
-    ff: dto.ff ?? filas[indice].ff,
-    clasificador: dto.clasificador ?? filas[indice].clasificador,
-    promedioAnual,
-    anio2027,
-    anio2028: dto.anio2028 ?? filas[indice].anio2028,
-    anio2029: dto.anio2029 ?? filas[indice].anio2029,
-    baseLegal: dto.baseLegal ?? filas[indice].baseLegal,
-    variacionMonto,
-    variacionPorcentaje: promedioAnual ? Number(((variacionMonto / promedioAnual) * 100).toFixed(1)) : 0,
-  };
-  doc.clasificadoresPersonalizados = filas;
-  guardarDatos(datos);
-  return ok(doc);
-};
-
 const estimacionIngresosEliminar: Manejador = ({ datos, params }) => {
   const indice = datos.estimacionIngresos.findIndex((d) => d.id === params[0]);
   if (indice === -1) return error(404, 'El documento no existe.');
@@ -659,7 +628,6 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['POST', /^\/estimacion-ingresos\/([^/]+)\/aprobar$/, estimacionIngresosAprobar],
   ['DELETE', /^\/estimacion-ingresos\/([^/]+)$/, estimacionIngresosEliminar],
   ['PATCH', /^\/estimacion-ingresos\/([^/]+)$/, estimacionIngresosActualizar],
-  ['PATCH', /^\/estimacion-ingresos\/([^/]+)\/clasificadores\/([^/]+)$/, estimacionIngresosActualizarClasificador],
 ];
 
 export const mockBackendInterceptor: HttpInterceptorFn = (req, next): Observable<HttpEvent<unknown>> => {

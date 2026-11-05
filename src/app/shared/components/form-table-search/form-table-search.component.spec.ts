@@ -84,6 +84,17 @@ describe('FormTableSearchComponent', () => {
     expect(mas).toBeTrue();
   });
 
+  it('showFilter en false quita Filtrar y deja solo Más opciones', () => {
+    fixture.componentRef.setInput('showFilter', false);
+    fixture.detectChanges();
+
+    const etiquetas = Array.from(fixture.nativeElement.querySelectorAll('button[aria-label]') as NodeListOf<HTMLButtonElement>).map((b) =>
+      b.getAttribute('aria-label'),
+    );
+    expect(etiquetas).not.toContain('Filtrar');
+    expect(etiquetas).toContain('Mas opciones');
+  });
+
   it('variant="reports" (Consultas y reportes): Filtrar y Columnas, que emite columns y no more', () => {
     let columnas = false;
     let mas = false;

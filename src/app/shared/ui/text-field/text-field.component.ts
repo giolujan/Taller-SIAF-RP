@@ -34,6 +34,10 @@ export type TextFieldState = 'enabled' | 'error' | 'success';
  * - `type="select"` o `select-multiple` para listas cortas y cerradas: tipo de plan contable, tipo de libro y mes,
  *   ámbitos institucionales o estados en los paneles de búsqueda.
  * - `type="decimal"` para importes, como el importe de cada cuenta del asiento de ajuste; `number` solo para enteros.
+ * - `type="decimal"` con `[thousandsSeparator]="true"` cuando el diseño muestra el monto con coma de miles (65,500):
+ *   los montos de «Editar estimación de ingresos».
+ * - Sin `label` y con `ariaLabel` para un monto editable dentro de una celda de tabla (montos de la tabla de
+ *   secuencias de la base legal): el encabezado de la columna hace de etiqueta visible.
  * - `select-multiple` con `selectAllLabel="Seleccionar todo"` en los paneles de parámetros de las consultas: casillas,
  *   la fila para marcar todas y el valor en una línea.
  * - Con `trailingIcon` y `trailingButtonLabel` para una acción dentro del campo: «Buscar» en la bandeja de documentos
@@ -48,7 +52,8 @@ export type TextFieldState = 'enabled' | 'error' | 'success';
  * @teclado
  * - **Tab**: enfoca el campo o el botón del select; el botón de `trailingIcon` es otra parada.
  * - **Texto, número, decimal, correo y contraseña**: el teclado nativo del `<input>`; en `decimal` se descarta lo que
- *   no sea dígito o separador (la coma se guarda como punto) y al salir se completan los decimales.
+ *   no sea dígito o separador (la coma se guarda como punto) y al salir se completan los decimales. Con
+ *   `thousandsSeparator` la coma se descarta (es de miles) y el monto se ve formateado al salir.
  * - **Enter / Espacio** (select): abren o cierran la lista; al abrir, el foco entra en la opción elegida (o en la
  *   primera), que siguen `siaf-select-options` (flechas, Inicio y Fin).
  * - **Escape** (select): cierra la lista y el foco vuelve al botón del campo; salir de la lista con Tab también la
@@ -231,11 +236,12 @@ export type TextFieldState = 'enabled' | 'error' | 'success';
               [type]="inputType"
               [attr.inputmode]="inputMode"
               [placeholder]="floatingLabel || required ? '' : labelText"
+              [attr.aria-label]="ariaLabel || null"
               [attr.aria-required]="required"
               [disabled]="disabled"
-              [value]="internalValue"
+              [value]="valorVisible"
               [attr.autocomplete]="autocomplete || null"
-              (focus)="focused = true"
+              (focus)="onFocusInput($event)"
               (blur)="onBlur()"
               (input)="onInput($event)"
             />
@@ -292,6 +298,17 @@ export class TextFieldComponent implements OnChanges, ControlValueAccessor {
   @Input() autoSuccess = true;
   /** Decimales admitidos cuando `type="decimal"` (importes contables: 2). */
   @Input() decimals = 2;
+  /**
+   * En `type="decimal"`: muestra el monto con coma de miles fuera del foco («65,500») y la coma que se teclea se toma
+   * como separador de miles (se descarta), no como decimal. Al enfocar vuelve al número sin formato para editarlo; el
+   * valor emitido nunca lleva comas.
+   */
+  @Input() thousandsSeparator = false;
+  /**
+   * Nombre accesible del `<input>` cuando el campo va sin `label` visible: un monto editable dentro de una celda de
+   * tabla, donde el encabezado de la columna ya dice qué es.
+   */
+  @Input() ariaLabel = '';
   /**
    * En `select-multiple`, la lista del Figma «Parámetros de consulta»: una casilla por opción, arriba esta fila para
    * marcar o desmarcar todas, y el valor en una sola línea en vez de chips.
@@ -449,6 +466,37 @@ export class TextFieldComponent implements OnChanges, ControlValueAccessor {
     return this.type;
   }
 
+  /** Lo que pinta el `<input>`: el valor tal cual o, en `decimal` con `thousandsSeparator` y sin foco, con comas. */
+  get valorVisible(): string | number | string[] {
+    if (this.type !== 'decimal' || !this.thousandsSeparator || this.focused) {
+      return this.internalValue;
+    }
+
+    const texto = String(this.internalValue ?? '').trim();
+    const numero = Number(texto);
+    if (!texto || Number.isNaN(numero)) {
+      return this.internalValue;
+    }
+
+    return numero.toLocaleString('en-US', { minimumFractionDigits: this.decimals, maximumFractionDigits: this.decimals });
+  }
+
+  /**
+   * Al enfocar un monto con `thousandsSeparator`, quita las comas ahí mismo y conserva el cursor o la selección
+   * (si no, el navegador manda el cursor al final y lo que se escribe se suma al número en vez de reemplazarlo).
+   */
+  onFocusInput(event: FocusEvent): void {
+    const input = event.target as HTMLInputElement;
+    if (this.type === 'decimal' && this.thousandsSeparator && input.value.includes(',')) {
+      const sinComas = (texto: string) => texto.replace(/,/g, '');
+      const inicio = sinComas(input.value.slice(0, input.selectionStart ?? input.value.length)).length;
+      const fin = sinComas(input.value.slice(0, input.selectionEnd ?? input.value.length)).length;
+      input.value = sinComas(input.value);
+      input.setSelectionRange(inicio, fin);
+    }
+    this.focused = true;
+  }
+
   /** Teclado numérico en móvil para el tipo decimal. */
   get inputMode(): string | null {
     return this.type === 'decimal' ? 'decimal' : null;
@@ -523,7 +571,8 @@ export class TextFieldComponent implements OnChanges, ControlValueAccessor {
    * numérico) y se guarda como punto.
    */
   private sanitizarDecimal(texto: string): string {
-    let limpio = texto.replace(',', '.').replace(/[^\d.]/g, '');
+    // Con `thousandsSeparator` la coma es de miles: se descarta en vez de pasar a punto.
+    let limpio = (this.thousandsSeparator ? texto : texto.replace(',', '.')).replace(/[^\d.]/g, '');
 
     const partes = limpio.split('.');
     if (partes.length > 2) {

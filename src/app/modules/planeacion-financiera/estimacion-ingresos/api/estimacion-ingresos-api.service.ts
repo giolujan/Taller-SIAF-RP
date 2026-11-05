@@ -4,7 +4,6 @@ import { Observable } from 'rxjs';
 
 import { APP_CONFIG } from '../../../../core/config/app.config';
 import {
-  ActualizarClasificadorPayload,
   ActualizarEstimacionIngresosPayload,
   CrearEstimacionIngresosPayload,
   DetalleEstimacionIngresos,
@@ -59,10 +58,5 @@ export class EstimacionIngresosApiService {
   /** Graba los cambios de edición (Tipo de modificación y/o clasificadores): solo sobre un documento «Elaborado». */
   actualizar(id: string, payload: ActualizarEstimacionIngresosPayload): Observable<EstimacionIngresosRegistro> {
     return this.http.patch<EstimacionIngresosRegistro>(`${this.base}/estimacion-ingresos/${id}`, payload);
-  }
-
-  /** Graba una fila de la tabla de clasificadores (el backend recalcula la variación): solo sobre «Elaborado». */
-  actualizarClasificador(id: string, indice: number, payload: ActualizarClasificadorPayload): Observable<EstimacionIngresosRegistro> {
-    return this.http.patch<EstimacionIngresosRegistro>(`${this.base}/estimacion-ingresos/${id}/clasificadores/${indice}`, payload);
   }
 }

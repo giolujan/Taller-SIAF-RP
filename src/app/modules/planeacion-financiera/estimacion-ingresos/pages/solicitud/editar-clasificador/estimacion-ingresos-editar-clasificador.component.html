@@ -1,0 +1,372 @@
+<siaf-solicitude-form-card title="Editar estimación de ingresos">
+  <div card-actions class="flex shrink-0 items-center gap-siaf-xs">
+    <siaf-button variant="outline" (click)="canceled.emit()">Cancelar</siaf-button>
+    <siaf-button variant="filled" [disabled]="!puedeAceptar()" (click)="aceptar()">Aceptar</siaf-button>
+  </div>
+
+  <!-- Fuente de financiamiento y clasificador: precargados (las lupas no tienen buscador diseñado todavía). -->
+  <div class="flex flex-col gap-siaf-xs">
+    <div class="flex min-h-10 items-center justify-between gap-siaf-md">
+      <h3 class="m-0 text-sm font-bold uppercase text-text">Fuente de financiamiento</h3>
+      <siaf-button variant="accent" icon="search" [iconOnly]="true" [disabled]="true" ariaLabel="Buscar fuente de financiamiento" />
+    </div>
+    <siaf-summary-card [fields]="camposFuente()" [bordered]="true" [showClose]="false" />
+  </div>
+
+  <div class="flex flex-col gap-siaf-xs">
+    <div class="flex min-h-10 items-center justify-between gap-siaf-md">
+      <h3 class="m-0 text-sm font-bold uppercase text-text">Clasificador de ingresos</h3>
+      <siaf-button variant="accent" icon="search" [iconOnly]="true" [disabled]="true" ariaLabel="Buscar clasificador de ingresos" />
+    </div>
+    <siaf-summary-card [fields]="camposClasificador()" [bordered]="true" [showClose]="false" />
+  </div>
+
+  <div class="flex flex-col gap-siaf-xs">
+    <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Clasificador anterior</h3>
+    <div class="grid gap-siaf-lg md:grid-cols-3">
+      <siaf-input
+        label="Código anterior"
+        [value]="original()?.clasificadorAnterior ?? ''"
+        [disabled]="true"
+        trailingIcon="info"
+        trailingButtonLabel="Código del clasificador anterior, no editable"
+      />
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-siaf-xs">
+    <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Recaudación histórica</h3>
+    <div class="grid gap-siaf-lg md:grid-cols-3">
+      <siaf-input
+        label="Promedio anual (a)"
+        [value]="(original()?.promedioAnual ?? 0 | number) ?? ''"
+        [disabled]="true"
+        trailingIcon="info"
+        trailingButtonLabel="Promedio anual de la recaudación histórica, no editable"
+      />
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-siaf-xs">
+    <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Recaudación estimada</h3>
+    <div class="grid gap-siaf-lg md:grid-cols-3">
+      <siaf-input (dblclick)="aplicarAnio2027Propuesto($event)" label="Año 2027 (b)" type="decimal" [decimals]="0" [thousandsSeparator]="true" [autoSuccess]="false" [value]="form().anio2027" (valueChange)="actualizarAnio2027($any($event))" />
+      <siaf-input label="Año 2028 (c)" type="decimal" [decimals]="0" [thousandsSeparator]="true" [autoSuccess]="false" [value]="form().anio2028" (valueChange)="actualizar('anio2028', $any($event))" />
+      <siaf-input label="Año 2029 (d)" type="decimal" [decimals]="0" [thousandsSeparator]="true" [autoSuccess]="false" [value]="form().anio2029" (valueChange)="actualizar('anio2029', $any($event))" />
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-siaf-xs">
+    <h3 class="m-0 flex min-h-10 items-center gap-siaf-sm text-sm font-bold uppercase text-text">
+      Variación
+      <siaf-icon
+        class="cursor-help text-[var(--sys-color-icon-states-enabled)]"
+        name="info"
+        [size]="20"
+        label="Diferencia entre años: monto y porcentaje respecto del año anterior"
+        [decorative]="false"
+        title="Diferencia entre años: monto y porcentaje respecto del año anterior"
+      />
+    </h3>
+    <div class="grid gap-siaf-lg md:grid-cols-3">
+      @for (v of variaciones(); track v.titulo) {
+        <div class="rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] px-siaf-lg py-siaf-md">
+          <p class="m-0 mb-siaf-xs text-sm text-[var(--sys-color-text-neutral-medium)]">{{ v.titulo }}</p>
+          <p class="m-0 flex gap-siaf-lg text-sm font-bold text-text">
+            <span>{{ v.monto | number }}</span>
+            <span>{{ v.porcentaje }}</span>
+          </p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-siaf-xs">
+    <div class="flex min-h-10 items-center justify-between gap-siaf-md">
+      <h3 class="m-0 text-sm font-bold uppercase text-text">Documento de sustento</h3>
+      <!-- Como en el Figma: en esta etapa no se sube sustento, el botón va desactivado. -->
+      <siaf-button variant="accent" icon="file_upload" [iconOnly]="true" [disabled]="true" ariaLabel="Subir documento de sustento" />
+    </div>
+    <message-box text="No es necesario completar esta información en este momento." />
+    <div class="mt-siaf-md">
+      <text-area-control
+        placeholder="Descripción cualitativa"
+        [maxlength]="200"
+        [disabled]="true"
+        [value]="original()?.descripcionCualitativa ?? ''"
+      />
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-siaf-xs">
+    <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Distribución mensual 2027</h3>
+    <div class="grid grid-cols-2 gap-x-siaf-lg gap-y-siaf-lg md:grid-cols-3 xl:grid-cols-6">
+      @for (mes of meses; track mes; let i = $index) {
+        <siaf-input [label]="mes" type="decimal" [decimals]="0" [thousandsSeparator]="true" [autoSuccess]="false" [value]="form().meses[i]" (valueChange)="actualizarMes(i, $any($event))" />
+      }
+    </div>
+    <div class="mt-siaf-md grid gap-siaf-lg md:grid-cols-3">
+      <readonly-field caption="Total" variant="highlight" [value]="'S/ ' + (totalMeses() | number)" />
+      <readonly-field caption="Saldo por distribuir" variant="highlight" [value]="'S/ ' + (saldoPorDistribuir() | number)" />
+    </div>
+    @if (hayDistribucion() && saldoPorDistribuir() !== 0) {
+      <p class="m-0 text-xs text-[var(--sys-color-text-feedback-danger)]" role="status">
+        La distribución mensual debe sumar el monto del año 2027 (saldo por distribuir en 0).
+      </p>
+    }
+  </div>
+
+  <!-- Base legal de uso específico (Figma node 4304:68021). -->
+  <siaf-expansion-panel title="BASE LEGAL DE USO ESPECÍFICO" [expanded]="baseLegalAbierta()" (expandedChange)="baseLegalAbierta.set($event)">
+    <div class="flex flex-col gap-siaf-lg py-siaf-xs">
+      <div class="flex flex-col gap-siaf-xs">
+        <div class="flex min-h-10 items-center justify-between gap-siaf-md">
+          <h4 class="m-0 text-sm font-bold uppercase text-text">Fuente de financiamiento</h4>
+          <siaf-button variant="accent" icon="search" [iconOnly]="true" [disabled]="true" ariaLabel="Buscar fuente de financiamiento de la base legal" />
+        </div>
+        <siaf-summary-card [fields]="camposFuente()" [bordered]="true" [showClose]="false" />
+      </div>
+
+      <div class="flex flex-col gap-siaf-xs">
+        <div class="flex min-h-10 items-center justify-between gap-siaf-md">
+          <h4 class="m-0 text-sm font-bold uppercase text-text">Clasificador de ingresos</h4>
+          <siaf-button variant="accent" icon="search" [iconOnly]="true" [disabled]="true" ariaLabel="Buscar clasificador de ingresos de la base legal" />
+        </div>
+        <siaf-summary-card [fields]="camposClasificador()" [bordered]="true" [showClose]="false" />
+      </div>
+
+      <div class="flex flex-col gap-siaf-xs">
+        <h4 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Documento del marco legal</h4>
+        <p class="m-0 mb-siaf-md text-[11px] font-medium uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-medium)]">
+          Monto con asignación específica
+        </p>
+        <div class="grid gap-siaf-lg md:grid-cols-3" data-asignacion-especifica>
+          @for (anio of aniosBaseLegal; track anio; let i = $index) {
+            <siaf-input
+              (dblclick)="i === 0 && completarAsignacionConEstimada($event)"
+              [label]="'Año ' + anio"
+              type="decimal"
+              [decimals]="0"
+              [thousandsSeparator]="true"
+              [autoSuccess]="false"
+              [value]="form().asignacion[i]"
+              (valueChange)="actualizarAsignacion(i, $any($event))"
+            />
+          }
+          @for (anio of aniosBaseLegal; track anio; let i = $index) {
+            <readonly-field [caption]="'Saldo Año ' + anio" variant="highlight" [value]="(saldosBaseLegal()[i] | number) ?? '0'" />
+          }
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-siaf-lg">
+        <div class="flex min-h-10 items-center justify-between gap-siaf-md">
+          <h4 class="m-0 text-base font-bold uppercase tracking-[0.02px] text-text">Secuencia</h4>
+          <siaf-button variant="accent" icon="add" [iconOnly]="true" ariaLabel="Agregar secuencia" (click)="panelSecuenciaAbierto.set(true)" />
+        </div>
+
+        @if (form().secuencias.length === 0) {
+          <message-box text="Por favor, haga clic en el botón (+) para seleccionar una opción." />
+        } @else {
+          <!-- Con secuencias: buscador, controles y tabla «TableSecGenGasto/Edit» (Figma node 7202:240720). -->
+          <siaf-form-table-search [value]="busquedaSecuencias()" (valueChange)="busquedaSecuencias.set($event)" />
+
+          <siaf-table-controls
+            [showSelection]="true"
+            [showPagination]="false"
+            [checked]="secuenciasSeleccionadas().size > 0 && secuenciasSeleccionadas().size === secuenciasVisibles().length"
+            [indeterminate]="secuenciasSeleccionadas().size > 0 && secuenciasSeleccionadas().size < secuenciasVisibles().length"
+            [selectedCount]="secuenciasSeleccionadas().size"
+            [showEditAction]="secuenciasSeleccionadas().size > 0"
+            [editDisabled]="secuenciasSeleccionadas().size !== 1"
+            editLabel="Editar secuencia seleccionada"
+            [showDeleteAction]="secuenciasSeleccionadas().size > 0"
+            deleteLabel="Quitar secuencias seleccionadas"
+            (edit)="editarSecuenciaSeleccionada()"
+            (selectionChange)="toggleTodasSecuencias($event)"
+            (delete)="quitarSecuenciasSeleccionadas()"
+          />
+
+          <div class="siaf-table-shell">
+            <table class="siaf-table">
+              <thead>
+                <tr class="siaf-table-head-row">
+                  <th class="siaf-table-th w-12" rowspan="2"><span class="sr-only">Detalle</span></th>
+                  <th class="siaf-table-th w-12" rowspan="2"><span class="sr-only">Seleccionar</span></th>
+                  <th class="siaf-table-th" rowspan="2">Sec.</th>
+                  <th class="siaf-table-th border-l border-[var(--sys-color-divider-strong)] text-center" colspan="3">Monto según base legal</th>
+                  <th class="siaf-table-th border-l border-[var(--sys-color-divider-strong)]" rowspan="2">T. doc. marco legal</th>
+                  <th class="siaf-table-th" rowspan="2">Marco legal</th>
+                  <th class="siaf-table-th" rowspan="2">¿Debe presupuestarse?</th>
+                  <th class="siaf-table-th" rowspan="2">Descripción</th>
+                  <th class="siaf-table-th w-14" rowspan="2"><span class="sr-only">Acción</span></th>
+                </tr>
+                <tr class="siaf-table-head-row">
+                  @for (anio of aniosBaseLegal; track anio; let i = $index) {
+                    <th class="siaf-table-th min-w-[150px]" [class]="i === 0 ? 'border-l border-[var(--sys-color-divider-strong)]' : ''">Año {{ anio }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of secuenciasVisibles(); track s.secuencia) {
+                  <tr class="siaf-table-row align-top">
+                    <td class="siaf-table-td">
+                      <button
+                        type="button"
+                        class="inline-flex size-8 items-center justify-center rounded-siaf-md text-[var(--sys-color-text-neutral-medium)] hover:bg-surface-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+                        [attr.aria-expanded]="secuenciasExpandidas().has(s.secuencia)"
+                        [attr.aria-label]="(secuenciasExpandidas().has(s.secuencia) ? 'Contraer' : 'Expandir') + ' secuencia ' + s.secuencia"
+                        (click)="toggleExpandirSecuencia(s.secuencia)"
+                      >
+                        <siaf-icon [name]="secuenciasExpandidas().has(s.secuencia) ? 'expand_less' : 'expand_more'" [size]="24" />
+                      </button>
+                    </td>
+                    <td class="siaf-table-td">
+                      <label class="inline-flex h-8 w-8 items-center">
+                        <input
+                          type="checkbox"
+                          class="size-4 accent-[var(--sys-color-icon-states-enabled)]"
+                          [attr.aria-label]="'Seleccionar secuencia ' + s.secuencia"
+                          [checked]="secuenciasSeleccionadas().has(s.secuencia)"
+                          (change)="toggleSeleccionSecuencia(s.secuencia, $any($event.target).checked)"
+                        />
+                      </label>
+                    </td>
+                    <td class="siaf-table-td">{{ s.secuencia }}</td>
+                    @for (anio of aniosBaseLegal; track anio; let i = $index) {
+                      <td class="siaf-table-td">
+                        <siaf-input
+                          [ariaLabel]="'Monto según base legal ' + anio + ' de la secuencia ' + s.secuencia"
+                          type="decimal"
+                          [decimals]="0"
+                          [thousandsSeparator]="true"
+                          [autoSuccess]="false"
+                          [value]="s.montos[i]"
+                          (valueChange)="actualizarMontoSecuencia(s.secuencia, i, $any($event))"
+                        />
+                      </td>
+                    }
+                    <td class="siaf-table-td">{{ s.tipoDocumento }}</td>
+                    <td class="siaf-table-td">{{ s.marcoLegal }}</td>
+                    <td class="siaf-table-td">{{ s.sePresupuesta === 'SI' ? 'SÍ' : 'NO' }}</td>
+                    <td class="siaf-table-td">{{ s.descripcion || '--' }}</td>
+                    <td class="siaf-table-td">
+                      <siaf-button
+                        variant="text"
+                        size="sm"
+                        icon="post_add"
+                        [iconOnly]="true"
+                        ariaLabel="Agregar genérica de gasto"
+                        siafTooltip="Agregar genérica de gasto"
+                        (click)="secuenciaConGenericaAbierta.set(s.secuencia)"
+                      />
+                    </td>
+                  </tr>
+                  @if (secuenciasExpandidas().has(s.secuencia)) {
+                    <!-- Fila desplegada: «Genérica de gasto» de la secuencia (Figma node 7237:247215). -->
+                    <tr>
+                      <td class="border-b border-[var(--sys-color-divider-default)] bg-[var(--sys-color-bg-surfaces-surface-low)] px-siaf-md pb-siaf-md pt-siaf-xs" colspan="11">
+                        <h5 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-[var(--sys-color-text-neutral-high)]">Genérica de gasto</h5>
+                        @if (s.genericas?.length) {
+                          <div class="siaf-table-shell">
+                            <table class="siaf-table">
+                              <thead>
+                                <tr class="siaf-table-head-row">
+                                  <th class="siaf-table-th w-16" rowspan="2">Gen.</th>
+                                  <th class="siaf-table-th" rowspan="2">Genérica</th>
+                                  <th class="siaf-table-th border-l border-[var(--sys-color-divider-strong)] text-center" colspan="3">Monto con asignación específica</th>
+                                  <th class="siaf-table-th w-14 border-l border-[var(--sys-color-divider-strong)]" rowspan="2"><span class="sr-only">Acción</span></th>
+                                </tr>
+                                <tr class="siaf-table-head-row">
+                                  @for (anio of aniosBaseLegal; track anio; let i = $index) {
+                                    <th class="siaf-table-th min-w-[150px]" [class]="i === 0 ? 'border-l border-[var(--sys-color-divider-strong)]' : ''">Año {{ anio }}</th>
+                                  }
+                                </tr>
+                              </thead>
+                              <tbody>
+                                @for (g of s.genericas; track g.codigo) {
+                                  <tr class="siaf-table-row">
+                                    <td class="siaf-table-td">{{ g.codigo }}</td>
+                                    <td class="siaf-table-td">{{ g.nombre }}</td>
+                                    @for (anio of aniosBaseLegal; track anio; let i = $index) {
+                                      <td class="siaf-table-td">
+                                        <siaf-input
+                                          [ariaLabel]="'Monto ' + anio + ' de ' + g.nombre + ' en la secuencia ' + s.secuencia"
+                                          type="decimal"
+                                          [decimals]="0"
+                                          [thousandsSeparator]="true"
+                                          [autoSuccess]="false"
+                                          [value]="g.montos[i]"
+                                          (valueChange)="actualizarMontoGenerica(s.secuencia, g.codigo, i, $any($event))"
+                                        />
+                                      </td>
+                                    }
+                                    <td class="siaf-table-td">
+                                      <siaf-button
+                                        variant="text"
+                                        size="sm"
+                                        icon="delete"
+                                        [iconOnly]="true"
+                                        [ariaLabel]="'Quitar ' + g.nombre + ' de la secuencia ' + s.secuencia"
+                                        (click)="quitarGenerica(s.secuencia, g.codigo)"
+                                      />
+                                    </td>
+                                  </tr>
+                                }
+                                <tr class="siaf-table-row bg-[var(--sys-color-bg-surfaces-surface-low)] font-bold">
+                                  <td class="siaf-table-td text-right" colspan="2">TOTAL</td>
+                                  @for (total of totalesGenericas(s); track $index; let i = $index) {
+                                    <td class="siaf-table-td text-right" [class]="total > s.montos[i] ? 'text-[var(--sys-color-text-feedback-danger)]' : ''">
+                                      S/ {{ total | number }}
+                                    </td>
+                                  }
+                                  <td class="siaf-table-td"></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        } @else {
+                          <message-box text="Esta secuencia aún no tiene genéricas de gasto. Use el botón «Agregar genérica de gasto»." />
+                        }
+                      </td>
+                    </tr>
+                  }
+                } @empty {
+                  <tr class="siaf-table-row">
+                    <td class="siaf-table-td text-center text-[var(--sys-color-text-neutral-medium)]" colspan="11">No hay secuencias que coincidan con la búsqueda.</td>
+                  </tr>
+                }
+                <tr class="siaf-table-row bg-[var(--sys-color-bg-surfaces-surface-low)] font-bold">
+                  <td class="siaf-table-td" colspan="3">TOTAL</td>
+                  @for (total of totalesSecuencias(); track $index) {
+                    <td class="siaf-table-td text-right">S/ {{ total | number }}</td>
+                  }
+                  <td class="siaf-table-td" colspan="5"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  </siaf-expansion-panel>
+</siaf-solicitude-form-card>
+
+<siaf-estimacion-ingresos-agregar-secuencia
+  [secuencia]="secuenciaEnEdicion()"
+  [open]="panelSecuenciaAbierto()"
+  [anios]="aniosBaseLegal"
+  [asignacion]="montosAsignacion()"
+  [saldos]="saldosParaPanelSecuencia()"
+  [numero]="form().secuencias.length + 1"
+  (closed)="cerrarPanelSecuencia()"
+  (accepted)="onSecuenciaAgregada($event)"
+/>
+
+<siaf-estimacion-ingresos-agregar-generica
+  [secuencia]="secuenciaConGenerica()"
+  [anios]="aniosBaseLegal"
+  [open]="secuenciaConGenericaAbierta() !== null"
+  (closed)="secuenciaConGenericaAbierta.set(null)"
+  (accepted)="onGenericasAceptadas($event)"
+/>

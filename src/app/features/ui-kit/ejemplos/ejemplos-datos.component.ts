@@ -93,6 +93,10 @@ import { COLUMNAS_REPORTE_DE_MUESTRA, FILAS_REPORTE_DE_MUESTRA } from './reporte
             <p class="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">showVariations · Estimación de ingresos: Variaciones, Filtrar y Más opciones</p>
             <siaf-form-table-search [showVariations]="true" placeholder="Buscar" (variations)="accionBuscador.set('variations')" (filter)="accionBuscador.set('filter')" (more)="accionBuscador.set('more')" />
           </div>
+          <div class="min-w-0">
+            <p class="mb-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">[showFilter]="false" · genéricas de gasto: solo Más opciones</p>
+            <siaf-form-table-search [showFilter]="false" placeholder="Buscar" (more)="accionBuscador.set('more')" />
+          </div>
           <p class="text-xs text-text-muted" aria-live="polite">Último evento: {{ accionBuscador() ?? 'ninguno' }}</p>
         </div>
       }

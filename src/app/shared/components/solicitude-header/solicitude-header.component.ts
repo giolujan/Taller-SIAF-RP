@@ -246,6 +246,8 @@ const MOBILE_PRIMARY_ACTION_CLASS =
  * - Con `customActions` y botones en `[actions]` cuando el proceso tiene acciones fuera de la matriz, como «Reprocesar»
  *   en el detalle de contabilización.
  * - Con `saveDisabled` para dejar Grabar deshabilitado mientras no hay cambios (patrón «Grabar solo con cambios»).
+ * - Con `cancelDisabled` (y Grabar y Verificar apagados) mientras una sección de la página tiene su propia edición
+ *   abierta con Cancelar/Aceptar, como «Editar estimación de ingresos».
  * @evitar
  * - Suelto con su propio breadcrumb y contenedor: usar `siaf-solicitude-page-layout`, que lo fija bajo el navbar y
  *   reenvía los eventos (hoy solo la ruta `formulario` de asiento de ajuste lo arma a mano).
@@ -349,7 +351,7 @@ const MOBILE_PRIMARY_ACTION_CLASS =
         </div>
       } @else if (resolvedType === 'actions' && showButtonGroup) {
         <div class="hidden w-full flex-wrap items-center justify-end gap-siaf-sm lg:flex lg:w-auto lg:shrink-0">
-          <siaf-button variant="secondary" size="md" icon="close" (click)="canceled.emit()">Cancelar</siaf-button>
+          <siaf-button variant="secondary" size="md" icon="close" [disabled]="cancelDisabled" (click)="canceled.emit()">Cancelar</siaf-button>
           <siaf-button [variant]="resolvedSaveVariant" size="md" icon="save" [disabled]="saveDisabled" (click)="saved.emit()">Grabar</siaf-button>
           @if (resolvedShowVerify) {
             <siaf-button size="md" icon="task_alt" [disabled]="verifyDisabled" (click)="verified.emit()">{{ verifyLabel }}</siaf-button>
@@ -432,6 +434,9 @@ export class SolicitudeHeaderComponent {
   @Input() tagTone: SolicitudeHeaderTagTone = 'accent';
   @Input() saveVariant: SolicitudeHeaderButtonTone = 'secondary';
   @Input() saveDisabled = false;
+  /** Apaga «Cancelar» (estado `new`/`edit`) mientras hay una edición abierta dentro de la página que se cierra con sus
+   *  propios botones: p. ej. una fila en «Editar estimación de ingresos». */
+  @Input() cancelDisabled = false;
   @Input() verifyDisabled = false;
   @Input() showDelete = false;
   @Input() showEdit = false;
@@ -532,7 +537,7 @@ export class SolicitudeHeaderComponent {
     };
 
     if (this.resolvedType === 'actions') {
-      add(true, 'Cancelar', 'close', 'secondary', false, this.canceled);
+      add(true, 'Cancelar', 'close', 'secondary', this.cancelDisabled, this.canceled);
       add(true, 'Grabar', 'save', this.resolvedSaveVariant, this.saveDisabled, this.saved);
       add(this.resolvedShowVerify, this.verifyLabel, 'task_alt', 'accent', this.verifyDisabled, this.verified);
       return actions;

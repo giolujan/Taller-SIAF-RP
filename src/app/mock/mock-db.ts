@@ -29,7 +29,7 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 6;
+const VERSION = 7;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol. */
@@ -237,11 +237,44 @@ const ESTIMACION_INGRESOS_SEMILLA: Omit<EstimacionIngresosRegistro, 'id'>[] = [
  * cualquier «Solicitud de estimación de ingresos» que se crea desde «Crear documento» (es un taller de demo).
  */
 export const CLASIFICADORES_ESTIMACION_INGRESOS: ClasificadorEstimacionIngresos[] = [
-  { ff: '2.09', clasificador: '3.1.5.1 Venta de Publicaciones', promedioAnual: 66249, anio2027: 66582, anio2028: 66917, anio2029: 67253, baseLegal: 'SI', variacionMonto: 333, variacionPorcentaje: 0.5 },
-  { ff: '2.09', clasificador: '3.2.1.1 Tasas Registrales', promedioAnual: 9999, anio2027: 11549, anio2028: 10309, anio2029: 10618, baseLegal: 'NO', variacionMonto: 1550, variacionPorcentaje: 15.5 },
-  { ff: '2.09', clasificador: '3.2.5.2 Licencia de Construcción', promedioAnual: 212500, anio2027: 223468, anio2028: 230172, anio2029: 237077, baseLegal: 'NO', variacionMonto: 10968, variacionPorcentaje: 5.2 },
-  { ff: '4.13', clasificador: '9.1.1.1 Saldos de balance', promedioAnual: 48350, anio2027: 49317, anio2028: 50303, anio2029: 51309, baseLegal: 'NO', variacionMonto: 967, variacionPorcentaje: 2.0 },
+  // Calcada de «Editar estimación de ingresos» (Figma node 4145:309441): año 2027 y su distribución mensual.
+  {
+    ff: '2.09', clasificador: '3.1.5.1 Venta de Publicaciones', promedioAnual: 66249, anio2027: 65500, anio2028: 66917, anio2029: 67253,
+    baseLegal: 'SI', variacionMonto: -749, variacionPorcentaje: -1.1,
+    ffDescripcion: 'RECURSOS DIRECTAMENTE RECAUDADOS', ffSigla: 'RDR', clasificadorAnterior: '1.3.15.11',
+    // Doble clic en «Año 2027 (b)» lo carga (Figma node 4304:67918).
+    anio2027Propuesto: 66582,
+    distribucionMensual: [1389, 3222, 4869, 6449, 7389, 5196, 5674, 8506, 8096, 6668, 4616, 3426],
+  },
+  {
+    ff: '2.09', clasificador: '3.2.1.1 Tasas Registrales', promedioAnual: 9999, anio2027: 11549, anio2028: 10309, anio2029: 10618,
+    baseLegal: 'NO', variacionMonto: 1550, variacionPorcentaje: 15.5,
+    ffDescripcion: 'RECURSOS DIRECTAMENTE RECAUDADOS', ffSigla: 'RDR', clasificadorAnterior: '1.3.21.11',
+    distribucionMensual: distribuirPorMes(11549, [911, 886, 894, 914, 954]),
+  },
+  {
+    ff: '2.09', clasificador: '3.2.5.2 Licencia de Construcción', promedioAnual: 212500, anio2027: 223468, anio2028: 230172, anio2029: 237077,
+    baseLegal: 'NO', variacionMonto: 10968, variacionPorcentaje: 5.2,
+    ffDescripcion: 'RECURSOS DIRECTAMENTE RECAUDADOS', ffSigla: 'RDR', clasificadorAnterior: '1.3.25.21',
+    distribucionMensual: distribuirPorMes(223468, [14640, 17115, 16187, 17156, 18764]),
+  },
+  {
+    ff: '4.13', clasificador: '9.1.1.1 Saldos de balance', promedioAnual: 48350, anio2027: 49317, anio2028: 50303, anio2029: 51309,
+    baseLegal: 'NO', variacionMonto: 967, variacionPorcentaje: 2.0,
+    ffDescripcion: 'DONACIONES Y TRANSFERENCIAS', ffSigla: 'DYT', clasificadorAnterior: '1.9.11.11',
+    distribucionMensual: distribuirPorMes(49317, [4089, 4165, 4199, 4294, 4164]),
+  },
 ];
+
+/** Reparte un monto anual en 12 meses: enero a mayo con las cifras del Figma «Distribución mensual» (node
+ *  8083:261486) y junio a diciembre en partes iguales con lo que falta; diciembre absorbe el redondeo para que la
+ *  suma sea exacta (saldo por distribuir 0). */
+function distribuirPorMes(total: number, eneroAMayo: number[]): number[] {
+  const resto = total - eneroAMayo.reduce((s, v) => s + v, 0);
+  const porMes = Math.floor(resto / 7);
+  const junioANoviembre = Array.from({ length: 6 }, () => porMes);
+  return [...eneroAMayo, ...junioANoviembre, resto - porMes * 6];
+}
 
 /**
  * Detalle clave-valor de «Solicitud automática de Nota de débito» (documento `itb-1`, primero de
