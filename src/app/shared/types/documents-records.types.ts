@@ -123,6 +123,12 @@ export type DocumentsRecordsConfig = {
   // 'aprobar'   = rol APROBADOR (selecciona Verificados y aprueba)
   accionPrincipal?: 'verificar' | 'aprobar';
   /**
+   * Muestra el botón de la acción principal (Verificar/Aprobar) siempre deshabilitado: para procesos cuyo
+   * cambio de estado en lote todavía no está conectado a su backend (ej. Estimación de ingresos, que aprueba
+   * desde la solicitud).
+   */
+  accionPrincipalDeshabilitada?: boolean;
+  /**
    * Proceso de solo consulta: sin botón "+Crear documento" ni acción
    * principal (Verificar/Aprobar), y sin filtrar las filas por los
    * estados del rol. Útil para procesos cuyos documentos genera un

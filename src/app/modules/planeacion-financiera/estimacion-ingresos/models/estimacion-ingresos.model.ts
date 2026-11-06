@@ -5,8 +5,9 @@
  * Aprobado.
  */
 
-/** Estados del Figma «flow tags» para esta bandeja: gris (Elaborado), azul (Verificado) y verde (Aprobado). */
-export type EstadoEstimacionIngresos = 'Elaborado' | 'Verificado' | 'Aprobado';
+/** Estados del Figma «flow tags» para esta bandeja: gris (Elaborado), azul (Verificado), verde (Aprobado) y amarillo
+ *  (Observado). En este producto el aprobador no rechaza: solo observa o aprueba. */
+export type EstadoEstimacionIngresos = 'Elaborado' | 'Verificado' | 'Aprobado' | 'Observado';
 
 export interface EstimacionIngresosRegistro {
   id: string;
@@ -18,12 +19,18 @@ export interface EstimacionIngresosRegistro {
   /** Fecha de registro (ISO). */
   fecha: string;
   entidad: string;
+  /** Quien grabó la solicitud (las sembradas no lo traen: se muestra el creador demo). */
+  elaboradoPor?: string;
   /** Se completan al verificar (ver `EstimacionIngresosApiService.verificar`). */
   verificadoPor?: string;
   fechaVerificado?: string;
   /** Se completan al aprobar (ver `EstimacionIngresosApiService.aprobar`). */
   aprobadoPor?: string;
   fechaAprobado?: string;
+  /** Se completan al observar (ver `EstimacionIngresosApiService.observar`). */
+  observadoPor?: string;
+  fechaObservado?: string;
+  motivoObservacion?: string;
   /** Se completan al editar (ver `EstimacionIngresosApiService.actualizar`); sin editar, el detalle usa los
    *  valores por defecto (`CLASIFICADORES_ESTIMACION_INGRESOS` y «Montos»). */
   tipoModificacionTexto?: string;
@@ -148,6 +155,10 @@ export interface DetalleEstimacionIngresos {
   /** Solo cuando `estado === 'Aprobado'`. */
   aprobadoPor?: string;
   fechaAprobado?: string;
+  /** Solo cuando `estado === 'Observado'`. */
+  observadoPor?: string;
+  fechaObservado?: string;
+  motivoObservacion?: string;
 }
 
 /**

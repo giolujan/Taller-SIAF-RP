@@ -248,6 +248,8 @@ const MOBILE_PRIMARY_ACTION_CLASS =
  * - Con `saveDisabled` para dejar Grabar deshabilitado mientras no hay cambios (patrón «Grabar solo con cambios»).
  * - Con `cancelDisabled` (y Grabar y Verificar apagados) mientras una sección de la página tiene su propia edición
  *   abierta con Cancelar/Aceptar, como «Editar estimación de ingresos».
+ * - Con `rejectEnabled=false` en productos donde el aprobador no rechaza: en Estimación de ingresos solo Observar y
+ *   Aprobar (Figma node 2537:131023).
  * @evitar
  * - Suelto con su propio breadcrumb y contenedor: usar `siaf-solicitude-page-layout`, que lo fija bajo el navbar y
  *   reenvía los eventos (hoy solo la ruta `formulario` de asiento de ajuste lo arma a mano).
@@ -447,6 +449,9 @@ export class SolicitudeHeaderComponent {
   @Input() approveLabel = 'Aprobar';
   @Input() observeLabel = 'Observar';
   @Input() rejectLabel = 'Rechazar';
+  /** `false` quita «Rechazar» aunque la matriz rol/estado lo traiga: productos donde el rechazo no está habilitado
+   *  (Estimación de ingresos: el aprobador solo observa o aprueba). */
+  @Input() rejectEnabled = true;
 
   @Output() returned = new EventEmitter<void>();
   @Output() canceled = new EventEmitter<void>();
@@ -517,7 +522,7 @@ export class SolicitudeHeaderComponent {
   }
 
   get resolvedShowReject(): boolean {
-    return this.roleStateConfig?.showReject ?? false;
+    return this.rejectEnabled && (this.roleStateConfig?.showReject ?? false);
   }
 
   readonly mobileActionClass = MOBILE_ACTION_CLASS;

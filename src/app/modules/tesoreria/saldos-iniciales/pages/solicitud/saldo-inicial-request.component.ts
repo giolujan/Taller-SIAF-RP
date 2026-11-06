@@ -231,9 +231,8 @@ export class SaldoInicialRequestComponent implements OnInit {
       const nombre = h?.creador ? `${h.creador.nombres} ${h.creador.apellidoPaterno} ${h.creador.apellidoMaterno}` : '';
       return { label, actionBy: nombre.toUpperCase(), date: h ? new Date(h.createdAt).toLocaleString('es-PE') : '' };
     };
-    const tercero = this.estado() === 'OBSERVADO'
-      ? quien('OBSERVADO', 'Observado por')
-      : this.estado() === 'RECHAZADO' ? quien('RECHAZADO', 'Rechazado por') : quien('APROBADO', 'Aprobado por');
+    // Estándar: observar no firma ni cambia la acción, «Aprobado por» sigue sin asignar (Figma CEL-005 node 2537:130818).
+    const tercero = this.estado() === 'RECHAZADO' ? quien('RECHAZADO', 'Rechazado por') : quien('APROBADO', 'Aprobado por');
     return [quien('ELABORADO', 'Elaborado por'), quien('VERIFICADO', 'Verificado por'), tercero];
   });
 

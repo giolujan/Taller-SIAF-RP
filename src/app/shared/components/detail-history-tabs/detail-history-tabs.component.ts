@@ -116,7 +116,7 @@ export interface DetailHistoryEntry {
                         <td class="siaf-dht__td">{{ entry.iteracion }}</td>
                         <td class="siaf-dht__td siaf-dht__td--wrap">{{ entry.proceso }}</td>
                         <td class="siaf-dht__td siaf-dht__td--wrap">{{ entry.comentario }}</td>
-                        <td class="siaf-dht__td">{{ entry.descripcion || '—' }}</td>
+                        <td class="siaf-dht__td siaf-dht__td--wrap">{{ entry.descripcion || '—' }}</td>
                         <td class="siaf-dht__td">
                           <div>{{ entry.fecha }}</div>
                           <div>{{ entry.hora }}</div>
@@ -211,6 +211,9 @@ export interface DetailHistoryEntry {
       border-collapse: separate;
       border-spacing: 0;
       table-layout: fixed;
+      /* Suma de los anchos de columna: con table-layout fixed, en pantallas angostas «Descripción» se quedaba sin
+         ancho y su texto pisaba «Fecha»; así la tabla se desplaza en .siaf-dht__scroll. */
+      min-width: 1110px;
     }
     .siaf-dht__th {
       height: 40px;

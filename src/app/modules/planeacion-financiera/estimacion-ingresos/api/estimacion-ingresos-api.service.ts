@@ -50,6 +50,11 @@ export class EstimacionIngresosApiService {
     return this.http.post<EstimacionIngresosRegistro>(`${this.base}/estimacion-ingresos/${id}/aprobar`, {});
   }
 
+  /** Aprobador: Verificado → Observado, con la descripción de la observación. */
+  observar(id: string, motivo: string): Observable<EstimacionIngresosRegistro> {
+    return this.http.post<EstimacionIngresosRegistro>(`${this.base}/estimacion-ingresos/${id}/observar`, { motivo });
+  }
+
   /** Elimina un documento «Elaborado». */
   eliminar(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/estimacion-ingresos/${id}`);

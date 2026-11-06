@@ -14,6 +14,7 @@ import { SolicitudeInfoCardComponent, SolicitudeInfoField } from '../../../../..
 import { SolicitudePageLayoutComponent } from '../../../../../shared/components/solicitude-page-layout/solicitude-page-layout.component';
 import { SolicitudeFormCardComponent } from '../../../../../shared/components/solicitude-form-card/solicitude-form-card.component';
 import { TableControlsComponent } from '../../../../../shared/components/table-controls/table-controls.component';
+import { DetailHistoryComment, DetailHistoryEntry, DetailHistoryTabsComponent } from '../../../../../shared/components/detail-history-tabs/detail-history-tabs.component';
 import { ActionTrackerComponent, ActionTrackerSummary } from '../../../../../shared/ui/action-tracker/action-tracker.component';
 import { AlertComponent } from '../../../../../shared/ui/alert/alert.component';
 import { DocumentSummaryCardComponent } from '../../../../../shared/ui/document-summary-card/document-summary-card.component';
@@ -94,6 +95,7 @@ function aFechaHoraPe(iso: string): string {
     FormTableSearchComponent,
     IconComponent,
     AlertComponent,
+    DetailHistoryTabsComponent,
     IconDropdownMenuComponent,
     ReadonlyFieldComponent,
     RequestApprovalModalsComponent,
@@ -137,6 +139,7 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     const estado = this.detalle()?.estado;
     if (estado === 'Aprobado') return 'approved';
     if (estado === 'Verificado') return 'verified';
+    if (estado === 'Observado') return 'observed';
     return 'elaborated';
   });
 
@@ -144,6 +147,9 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   readonly modalVerificar = signal(false);
   readonly modalEliminar = signal(false);
   readonly modalAprobar = signal(false);
+  /** Observar (aprobador, en Verificado): modal con la descripción de la observación. Rechazar no está habilitado. */
+  readonly modalObservar = signal(false);
+  readonly motivoObservacion = signal('');
   readonly snackbarAbierto = signal(false);
   readonly snackbarVariante = signal<SnackbarVariant>('creation-elaborated');
 
@@ -265,6 +271,58 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     this.saving.set(true);
     this.estimacionApi.aprobar(id).subscribe({
       next: () => { this.mostrarAviso('creation-approved'); this.cargar(id); },
+      error: () => this.saving.set(false),
+    });
+  }
+
+  /** Observada: el comentario del aprobador en la pestaña Detalle. */
+  readonly comentarioObservacion = computed<DetailHistoryComment | null>(() => {
+    const d = this.detalle();
+    return d?.estado === 'Observado' && d.motivoObservacion ? { label: 'Comentario de observación', texto: d.motivoObservacion } : null;
+  });
+
+  /** Pestaña Historial: una fila por observación (hoy una sola iteración). */
+  readonly historialComentarios = computed<DetailHistoryEntry[]>(() => {
+    const d = this.detalle();
+    if (!d?.observadoPor || !d.fechaObservado) return [];
+    const [fecha, hora] = aFechaHoraPe(d.fechaObservado).split(/\s+/);
+    return [{
+      iteracion: 1,
+      proceso: `${d.tipoAccion}-Observado`,
+      comentario: 'Comentario',
+      descripcion: d.motivoObservacion ?? '',
+      fecha,
+      hora,
+      rol: 'Aprobador\nUE',
+      usuario: d.observadoPor,
+    }];
+  });
+
+  /**
+   * Prototipo: doble clic en «Comentario de la observación» lo completa con el texto del Figma. Escribe en el
+   * `<textarea>` como si lo tecleara el usuario (el campo enfocado no toma valores del padre).
+   */
+  completarObservacionDemo(evento: MouseEvent): void {
+    if (!this.modalObservar()) return;
+    const campo = evento.target as HTMLElement | null;
+    if (!(campo instanceof HTMLTextAreaElement)) return;
+    campo.value = 'La información registrada se encuentra incompleta.';
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  abrirObservar(): void {
+    this.motivoObservacion.set('');
+    this.modalObservar.set(true);
+  }
+
+  onConfirmarObservar(): void {
+    const id = this.detalle()?.documentoId;
+    const motivo = this.motivoObservacion().trim();
+    if (!id || !motivo) return;
+    this.modalObservar.set(false);
+    this.saving.set(true);
+    this.estimacionApi.observar(id, motivo).subscribe({
+      next: () => { this.mostrarAviso('creation-observed'); this.cargar(id); },
       error: () => this.saving.set(false),
     });
   }
@@ -403,6 +461,7 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     return [
       { label: 'Elaborado por', actionBy: d.elaboradoPor, date: aFechaHoraPe(d.fechaElaborado) },
       { label: 'Verificado por', actionBy: d.verificadoPor ?? '', date: d.fechaVerificado ? aFechaHoraPe(d.fechaVerificado) : '' },
+      // Observar no firma ni cambia la acción: «Aprobado por» sigue sin asignar (Figma node 2537:130818).
       { label: 'Aprobado por', actionBy: d.aprobadoPor ?? '', date: d.fechaAprobado ? aFechaHoraPe(d.fechaAprobado) : '' },
     ];
   }

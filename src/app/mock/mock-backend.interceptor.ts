@@ -480,7 +480,9 @@ const ingresosTributariosSunatReiniciarSimulacion: Manejador = ({ datos }) => {
 };
 
 // Proceso de solo consulta (Planeación financiera > Estimación de ingresos): sin bandeja por rol.
-const estimacionIngresos: Manejador = ({ datos }) => ok(datos.estimacionIngresos);
+// Las sembradas no guardan quién las elaboró: se completa con el creador demo, igual que en el detalle.
+const estimacionIngresos: Manejador = ({ datos }) =>
+  ok(datos.estimacionIngresos.map((d) => ({ ...d, elaboradoPor: d.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]) })));
 
 // Precarga de una solicitud «Nuevo» (aún sin número ni estado): cabecera y clasificadores con los que se abre la
 // pantalla al pulsar Aceptar en «Crear documento». No graba nada: el documento recién existe al Grabar.
@@ -515,6 +517,7 @@ const estimacionIngresosCrear: Manejador = ({ req, datos, sesion }) => {
     sistema: 'Tesorería',
     fecha: new Date().toISOString(),
     entidad: '009 Ministerio de Economía y Finanzas',
+    elaboradoPor: nombreCompleto(sesion.usuario),
     ...(dto.tipoModificacionTexto ? { tipoModificacionTexto: dto.tipoModificacionTexto } : {}),
     ...(dto.clasificadores ? { clasificadoresPersonalizados: dto.clasificadores } : {}),
   };
@@ -538,12 +541,15 @@ const estimacionIngresosDetalle: Manejador = ({ datos, params, sesion }) => {
     tipoAccion: doc.tipoAccion,
     tipoModificacion: doc.tipoAccion === 'Modificación' ? (doc.tipoModificacionTexto ?? 'Montos') : undefined,
     clasificadores: doc.clasificadoresPersonalizados ?? CLASIFICADORES_ESTIMACION_INGRESOS,
-    elaboradoPor: nombreCompleto(sesion?.usuario ?? USUARIOS_DEMO[0]),
+    elaboradoPor: doc.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]),
     fechaElaborado: doc.fecha,
     verificadoPor: doc.verificadoPor,
     fechaVerificado: doc.fechaVerificado,
     aprobadoPor: doc.aprobadoPor,
     fechaAprobado: doc.fechaAprobado,
+    observadoPor: doc.observadoPor,
+    fechaObservado: doc.fechaObservado,
+    motivoObservacion: doc.motivoObservacion,
   });
 };
 
@@ -567,6 +573,22 @@ const estimacionIngresosAprobar: Manejador = ({ datos, params, sesion }) => {
   doc.estado = 'Aprobado';
   doc.aprobadoPor = nombreCompleto(sesion?.usuario ?? USUARIOS_DEMO[1] ?? USUARIOS_DEMO[0]);
   doc.fechaAprobado = new Date().toISOString();
+  guardarDatos(datos);
+  return ok(doc);
+};
+
+// Observar (aprobador): Verificado → Observado, con la descripción de la observación. En este producto no hay
+// Rechazar.
+const estimacionIngresosObservar: Manejador = ({ req, datos, params, sesion }) => {
+  const doc = datos.estimacionIngresos.find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (doc.estado !== 'Verificado') return error(409, `No se puede observar un documento en estado ${doc.estado}.`);
+  const motivo = String((req.body as { motivo?: string } | null)?.motivo ?? '').trim();
+  if (!motivo) return error(400, 'Ingrese la descripción de la observación.');
+  doc.estado = 'Observado';
+  doc.observadoPor = nombreCompleto(sesion?.usuario ?? USUARIOS_DEMO[1] ?? USUARIOS_DEMO[0]);
+  doc.fechaObservado = new Date().toISOString();
+  doc.motivoObservacion = motivo;
   guardarDatos(datos);
   return ok(doc);
 };
@@ -631,6 +653,7 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/estimacion-ingresos\/([^/]+)\/detalle$/, estimacionIngresosDetalle],
   ['POST', /^\/estimacion-ingresos\/([^/]+)\/verificar$/, estimacionIngresosVerificar],
   ['POST', /^\/estimacion-ingresos\/([^/]+)\/aprobar$/, estimacionIngresosAprobar],
+  ['POST', /^\/estimacion-ingresos\/([^/]+)\/observar$/, estimacionIngresosObservar],
   ['DELETE', /^\/estimacion-ingresos\/([^/]+)$/, estimacionIngresosEliminar],
   ['PATCH', /^\/estimacion-ingresos\/([^/]+)$/, estimacionIngresosActualizar],
 ];

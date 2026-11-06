@@ -9,11 +9,20 @@ import { FocoDirective } from '../../ui/foco/foco.directive';
 export type DocumentHistoryRow = {
   usuario: string;
   rol: string;
+  /** Unidad organizacional de quien hizo el cambio. Sin ella se muestra `UNIDAD_ORGANIZACIONAL_PROVISIONAL`. */
+  unidadOrganizacional?: string;
+  /** `dd/mm/aaaa` o `dd/mm/aa`: la tabla la muestra con el año en dos cifras, como el Figma. */
   fecha: string;
   hora: string;
   estado: string;
   comentario: string;
 };
+
+/**
+ * Unidad organizacional que muestra el historial mientras no se confirme de dónde sale (el backend no la envía en el
+ * historial): la del Figma estándar «HistorialDocumento» (node 24084:128063).
+ */
+export const UNIDAD_ORGANIZACIONAL_PROVISIONAL = 'Dirección General del Tesoro Público';
 
 export type DocumentHistorySummary = {
   solicitudId: string;
@@ -52,8 +61,11 @@ const FLOW_STATUS_MAP: Record<string, FlowStatus> = {
  * desde la pestaña Documentos.
  *
  * Muestra el documento, su N° y el tipo de acción, una sección plegable opcional de atributos y la tabla «Historial
- * de estados» (usuario, unidad organizacional, fecha y estado con `siaf-flow-status-tag`), que pide a la API con
- * `solicitudId` o toma de `staticRows` sin consultar. Se cierra con la X o pulsando el fondo, que emiten `closed`.
+ * de estados» del estándar (Figma «HistorialDocumento», node 24084:128063 de Saldos iniciales): usuario, unidad
+ * organizacional, fecha (`dd/mm/aa  hh:mm:ss`) y estado con `siaf-flow-status-tag`, del cambio más reciente al más
+ * antiguo. Coincide con la trazabilidad de la solicitud (`siaf-action-tracker`): mismo nombre, fecha y estado. Pide
+ * a la API con `solicitudId` o toma de `staticRows` sin consultar. Se cierra con la X o pulsando el fondo, que
+ * emiten `closed`.
  *
  * @usar
  * - Para ver desde la pestaña Documentos de cualquier bandeja quién movió el documento y cuándo pasó por Elaborado,
@@ -170,13 +182,13 @@ const FLOW_STATUS_MAP: Record<string, FlowStatus> = {
 
                 @if (loading()) {
                   <div class="overflow-x-auto">
-                    <table class="w-full min-w-[640px] border-collapse text-left text-sm">
+                    <table class="w-full min-w-[720px] border-collapse text-left text-sm">
                       <thead>
-                        <tr class="h-10 bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-text">
-                          <th class="rounded-l-siaf-sm px-siaf-md py-siaf-sm">Usuario</th>
-                          <th class="px-siaf-md py-siaf-sm">Unidad Organizacional</th>
-                          <th class="px-siaf-md py-siaf-sm w-[160px]">Fecha</th>
-                          <th class="rounded-r-siaf-sm px-siaf-md py-siaf-sm w-[130px]">Estado</th>
+                        <tr class="h-10 bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                          <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm">Usuario</th>
+                          <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm">Unidad organizacional</th>
+                          <th class="w-[220px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm">Fecha</th>
+                          <th class="w-[200px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm">Estado</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -204,23 +216,23 @@ const FLOW_STATUS_MAP: Record<string, FlowStatus> = {
                   <p class="m-0 text-sm text-[var(--sys-color-text-neutral-medium)]">Sin historial disponible.</p>
                 } @else {
                   <div class="overflow-x-auto">
-                    <table class="w-full min-w-[640px] border-collapse text-left text-sm">
+                    <table class="w-full min-w-[720px] border-collapse text-left text-sm">
                       <thead>
-                        <tr class="h-10 bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-text">
-                          <th class="rounded-l-siaf-sm px-siaf-md py-siaf-sm">Usuario</th>
-                          <th class="px-siaf-md py-siaf-sm">Unidad Organizacional</th>
-                          <th class="px-siaf-md py-siaf-sm w-[160px]">Fecha</th>
-                          <th class="rounded-r-siaf-sm px-siaf-md py-siaf-sm w-[130px]">Estado</th>
+                        <tr class="h-10 bg-[var(--sys-color-bg-surfaces-surface-high)] text-xs font-bold uppercase text-[var(--sys-color-text-neutral-high)]">
+                          <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm">Usuario</th>
+                          <th class="border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm">Unidad organizacional</th>
+                          <th class="w-[220px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm">Fecha</th>
+                          <th class="w-[200px] border-b border-[var(--sys-color-divider-strong)] px-siaf-md py-siaf-sm">Estado</th>
                         </tr>
                       </thead>
                       <tbody>
+                        <!-- Figma «HistorialDocumento» (node 24084:128063): filas de 48 px, fecha y hora en una línea. -->
                         @for (row of rows(); track $index) {
-                          <tr class="border-b border-[var(--sys-color-divider-default)]">
-                            <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ row.usuario || '—' }}</td>
-                            <td class="whitespace-pre-wrap px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">{{ row.rol || '—' }}</td>
-                            <td class="px-siaf-md py-siaf-sm text-[var(--sys-color-text-neutral-medium)]">
-                              <div>{{ row.fecha }}</div>
-                              <div class="text-[var(--sys-color-text-neutral-low)]">{{ row.hora }}</div>
+                          <tr class="h-12 border-b border-[var(--sys-color-divider-default)] tracking-[0.0249px] text-[var(--sys-color-text-neutral-medium)]">
+                            <td class="px-siaf-md py-siaf-sm uppercase">{{ row.usuario || '—' }}</td>
+                            <td class="px-siaf-md py-siaf-sm">{{ row.unidadOrganizacional || unidadProvisional }}</td>
+                            <td class="whitespace-nowrap px-siaf-md py-siaf-sm">
+                              <span>{{ fechaCorta(row.fecha) }}</span><span class="ml-siaf-lg">{{ row.hora }}</span>
                             </td>
                             <td class="px-siaf-md py-siaf-sm">
                               <siaf-flow-status-tag [status]="flowStatus(row.estado)" size="small" />
@@ -262,12 +274,13 @@ export class DocumentHistoryPanelComponent implements OnChanges {
   readonly attributesExpanded = signal(true);
   readonly rows = signal<HistoryRow[]>([]);
   readonly skeletonRows = Array.from({ length: 4 });
+  readonly unidadProvisional = UNIDAD_ORGANIZACIONAL_PROVISIONAL;
 
   ngOnChanges(): void {
     if (this.open && this.summary.staticRows?.length) {
       // Historial provisto por el consumidor — sin consulta a la API.
       this.loading.set(false);
-      this.rows.set(this.summary.staticRows);
+      this.rows.set(this.ordenarRecientePrimero(this.summary.staticRows));
     } else if (this.open && this.summary.solicitudId) {
       this.cargarHistorial(this.summary.solicitudId);
     } else if (!this.open) {
@@ -282,7 +295,7 @@ export class DocumentHistoryPanelComponent implements OnChanges {
       next: (solicitud) => {
         const historial = [...(solicitud.historialEstados ?? [])]
           .filter(h => (h.estadoNuevo ?? '').toUpperCase() !== 'NUEVO') // NUEVO es estado interno, no se muestra
-          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // reciente primero
         this.rows.set(historial.map(h => {
           const d = new Date(h.createdAt);
           const nombreUsuario = h.creador
@@ -305,6 +318,23 @@ export class DocumentHistoryPanelComponent implements OnChanges {
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  /** `dd/mm/aaaa` → `dd/mm/aa`, como el Figma estándar; cualquier otro formato pasa tal cual. */
+  fechaCorta(fecha: string): string {
+    return fecha.replace(/^(\d{2}\/\d{2}\/)\d{2}(\d{2})$/, '$1$2');
+  }
+
+  /** Del cambio más reciente al más antiguo (fecha `dd/mm/aa[aa]` + hora); si alguna no se puede leer, respeta el orden. */
+  private ordenarRecientePrimero(filas: HistoryRow[]): HistoryRow[] {
+    const clave = (f: HistoryRow): number => {
+      const m = /^(\d{2})\/(\d{2})\/(\d{2,4})$/.exec(f.fecha);
+      if (!m) return NaN;
+      const anio = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+      return new Date(`${anio}-${m[2]}-${m[1]}T${f.hora || '00:00:00'}`).getTime();
+    };
+    if (filas.some((f) => Number.isNaN(clave(f)))) return filas;
+    return [...filas].sort((a, b) => clave(b) - clave(a));
   }
 
   flowStatus(estado: string): FlowStatus {

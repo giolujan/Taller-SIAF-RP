@@ -11,6 +11,7 @@
     [saveDisabled]="grabarDeshabilitado()"
     [cancelDisabled]="filaEnEdicion() !== null"
     [verifyDisabled]="esNuevo() || filaEnEdicion() !== null"
+    [rejectEnabled]="false"
     (returned)="regresar()"
     (edited)="iniciarEdicion()"
     (canceled)="cancelar()"
@@ -18,6 +19,7 @@
     (verified)="modalVerificar.set(true)"
     (deleted)="modalEliminar.set(true)"
     (approved)="modalAprobar.set(true)"
+    (observed)="abrirObservar()"
   >
     @if (cargando()) {
       <div class="rounded-siaf-md bg-surface p-siaf-xl">
@@ -365,6 +367,11 @@
         }
       </siaf-solicitude-form-card>
 
+      <!-- Observada: pestañas Detalle (comentario de observación, Figma node 2537:130818) e Historial (node 4226:328954). -->
+      @if (comentarioObservacion(); as comentario) {
+        <siaf-detail-history-tabs [comentario]="comentario" [entries]="historialComentarios()" />
+      }
+
       @if (detalle()) {
         <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
       }
@@ -380,11 +387,15 @@
   />
   <siaf-estimacion-ingresos-detalle-base-legal [fila]="filaBaseLegal()" (closed)="filaBaseLegal.set(null)" />
 
+  <!-- Prototipo: doble clic en «Comentario de la observación» lo completa con el texto del Figma. -->
   <siaf-request-approval-modals
+    (dblclick)="completarObservacionDemo($event)"
     [saveOpen]="modalGrabar()"
     [verifyOpen]="modalVerificar()"
     [deleteOpen]="modalEliminar()"
     [approveOpen]="modalAprobar()"
+    [observeOpen]="modalObservar()"
+    [reason]="motivoObservacion()"
     [saving]="saving()"
     [snackbarVariant]="snackbarVariante()"
     [snackbarOpen]="snackbarAbierto()"
@@ -394,10 +405,12 @@
     (verifyConfirmed)="onConfirmarVerificar()"
     (deleteConfirmed)="onConfirmarEliminar()"
     (approveConfirmed)="onConfirmarAprobar()"
+    (observeConfirmed)="onConfirmarObservar()"
+    (reasonChange)="motivoObservacion.set($event)"
     (saveClosed)="modalGrabar.set(false)"
     (verifyClosed)="modalVerificar.set(false)"
     (deleteClosed)="modalEliminar.set(false)"
-    (approvalClosed)="modalAprobar.set(false)"
+    (approvalClosed)="modalAprobar.set(false); modalObservar.set(false)"
     (snackbarClosed)="snackbarAbierto.set(false)"
   />
 </div>

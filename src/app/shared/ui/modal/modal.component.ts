@@ -131,7 +131,7 @@ const MODAL_PRESETS: Record<Exclude<ModalVariant, "custom">, ModalPreset> = {
   },
   observe: {
     title: "¿Observar solicitud?",
-    description: "La solicitud será observada.",
+    description: "Tendrá que escribir un comentario de observación.",
     icon: "visibility",
     illustration: "assets/figma/modals/observe.svg",
     confirmLabel: "Aceptar",
@@ -185,9 +185,9 @@ const MODAL_PRESETS: Record<Exclude<ModalVariant, "custom">, ModalPreset> = {
  *   false o al destruirse) lo devuelve a donde estaba.
  * - **2.1.2 Sin trampas de teclado (A)**: Tab queda dentro del diálogo mientras está abierto, pero Escape siempre lo
  *   cierra.
- * - **Pendiente · 3.3.2 Etiquetas o instrucciones (A)**: en `observe` y `reject` el motivo es obligatorio (Aceptar
- *   sigue deshabilitado sin texto) pero no se marca: no pasa `required` a `text-area-control`, que pondría el
- *   asterisco y `aria-required`.
+ * - **3.3.2 Etiquetas o instrucciones (A)**: en `observe` y `reject` el motivo es obligatorio (Aceptar sigue
+ *   deshabilitado sin texto) y se marca: pasa `required` a `text-area-control`, que pone el asterisco y
+ *   `aria-required` (Figma «¿Observar solicitud?», «Comentario de la observación *»).
  * - **2.4.7 Foco visible (AA)**: la X muestra un anillo `border-states-focus` de 2 px con `focus-visible`; los
  *   botones del pie siguen `siaf-button`.
  * - **1.4.11 Contraste no textual (AA)**: ese anillo es el azul del kit (`border-states-focus`, 5.35:1 claro / 10.15:1
@@ -284,6 +284,7 @@ const MODAL_PRESETS: Record<Exclude<ModalVariant, "custom">, ModalPreset> = {
                 [value]="reason"
                 [disabled]="reasonDisabled"
                 [maxlength]="reasonMaxLength"
+                [required]="true"
                 (valueChange)="onReasonValueChange($event)"
               />
             </div>

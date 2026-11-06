@@ -58,6 +58,8 @@ type DocumentsRecordsRoleMode = 'creator' | 'approver' | 'readOnly';
  *   eventos, eventos contables, contabilización y apertura contable (por entidad y anual).
  * - Cuando el creador verifica o el aprobador aprueba varias solicitudes a la vez: el botón, el modal y el snackbar
  *   salen del rol, sin código en el padre.
+ * - `accionPrincipalDeshabilitada` cuando el proceso todavía no conecta el cambio de estado en lote a su backend: el
+ *   botón se ve, deshabilitado (aprobador de Estimación de ingresos, que aprueba desde la solicitud).
  * - Con `modoConsulta` en procesos de solo consulta (contabilización, apertura anual) y con `serverQuery` /
  *   `serverRecordsQuery` cuando el backend busca y pagina (plan de cuentas, asiento de ajuste, catálogos, apertura).
  * @evitar
@@ -222,11 +224,11 @@ type DocumentsRecordsRoleMode = 'creator' | 'approver' | 'readOnly';
                 </h2>
                 @if (activeTab === 'documents' && effectiveConfig.accionPrincipal) {
                   @if (effectiveConfig.accionPrincipal === 'aprobar') {
-                    <siaf-button variant="primary" icon="check_circle" [disabled]="!canApproveSelectedDocuments" (click)="openApproveModal()">
+                    <siaf-button variant="primary" icon="check_circle" [disabled]="effectiveConfig.accionPrincipalDeshabilitada || !canApproveSelectedDocuments" (click)="openApproveModal()">
                       Aprobar
                     </siaf-button>
                   } @else {
-                    <siaf-button variant="primary" icon="task_alt" [disabled]="!canVerifySelectedDocuments" (click)="openVerifyModal()">Verificar</siaf-button>
+                    <siaf-button variant="primary" icon="task_alt" [disabled]="effectiveConfig.accionPrincipalDeshabilitada || !canVerifySelectedDocuments" (click)="openVerifyModal()">Verificar</siaf-button>
                   }
                 }
               </header>
@@ -875,7 +877,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   };
 
   openVerifyModal(): void {
-    if (!this.canVerifySelectedDocuments) {
+    if (this.effectiveConfig.accionPrincipalDeshabilitada || !this.canVerifySelectedDocuments) {
       return;
     }
 
@@ -888,7 +890,7 @@ export class DocumentsRecordsPageComponent implements OnChanges {
   }
 
   openApproveModal(): void {
-    if (!this.canApproveSelectedDocuments) return;
+    if (this.effectiveConfig.accionPrincipalDeshabilitada || !this.canApproveSelectedDocuments) return;
     this.closeToolbarMenus();
     this.approveModalOpen = true;
   }

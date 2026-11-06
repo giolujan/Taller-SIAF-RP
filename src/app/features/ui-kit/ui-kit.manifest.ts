@@ -4508,7 +4508,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "components",
     "importacion": "@siaf/shared/components/document-history-panel/document-history-panel.component",
     "archivo": "src/app/shared/components/document-history-panel/document-history-panel.component.ts",
-    "descripcion": "Panel lateral a pantalla completa «Historial del documento», que abre la bandeja `siaf-documents-records-page`\ndesde la pestaña Documentos.\n\nMuestra el documento, su N° y el tipo de acción, una sección plegable opcional de atributos y la tabla «Historial\nde estados» (usuario, unidad organizacional, fecha y estado con `siaf-flow-status-tag`), que pide a la API con\n`solicitudId` o toma de `staticRows` sin consultar. Se cierra con la X o pulsando el fondo, que emiten `closed`.",
+    "descripcion": "Panel lateral a pantalla completa «Historial del documento», que abre la bandeja `siaf-documents-records-page`\ndesde la pestaña Documentos.\n\nMuestra el documento, su N° y el tipo de acción, una sección plegable opcional de atributos y la tabla «Historial\nde estados» del estándar (Figma «HistorialDocumento», node 24084:128063 de Saldos iniciales): usuario, unidad\norganizacional, fecha (`dd/mm/aa  hh:mm:ss`) y estado con `siaf-flow-status-tag`, del cambio más reciente al más\nantiguo. Coincide con la trazabilidad de la solicitud (`siaf-action-tracker`): mismo nombre, fecha y estado. Pide\na la API con `solicitudId` o toma de `staticRows` sin consultar. Se cierra con la X o pulsando el fondo, que\nemiten `closed`.",
     "usaSesion": true,
     "proyectaContenido": false,
     "entradas": [
@@ -4582,16 +4582,22 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       },
       {
+        "token": "--sys-color-divider-strong",
+        "via": [
+          "var()"
+        ]
+      },
+      {
         "token": "--sys-color-text-neutral-high",
         "via": [
-          "text-text"
+          "text-text",
+          "var()"
         ]
       },
       {
         "token": "--sys-color-text-neutral-low",
         "via": [
-          "text-text-muted",
-          "var()"
+          "text-text-muted"
         ]
       },
       {
@@ -4603,7 +4609,8 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-lg",
         "via": [
-          "gap-siaf-lg"
+          "gap-siaf-lg",
+          "ml-siaf-lg"
         ]
       },
       {
@@ -4646,13 +4653,6 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "via": [
           "rounded-l-siaf-md",
           "rounded-siaf-md"
-        ]
-      },
-      {
-        "token": "--sys-radius-sm",
-        "via": [
-          "rounded-l-siaf-sm",
-          "rounded-r-siaf-sm"
         ]
       },
       {
@@ -4838,7 +4838,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Como pantalla principal de cada proceso: plan de cuentas, asiento de ajuste, catálogo de ajuste, catálogo de\n  eventos, eventos contables, contabilización y apertura contable (por entidad y anual).\n- Cuando el creador verifica o el aprobador aprueba varias solicitudes a la vez: el botón, el modal y el snackbar\n  salen del rol, sin código en el padre.\n- Con `modoConsulta` en procesos de solo consulta (contabilización, apertura anual) y con `serverQuery` /\n  `serverRecordsQuery` cuando el backend busca y pagina (plan de cuentas, asiento de ajuste, catálogos, apertura).",
+    "usar": "- Como pantalla principal de cada proceso: plan de cuentas, asiento de ajuste, catálogo de ajuste, catálogo de\n  eventos, eventos contables, contabilización y apertura contable (por entidad y anual).\n- Cuando el creador verifica o el aprobador aprueba varias solicitudes a la vez: el botón, el modal y el snackbar\n  salen del rol, sin código en el padre.\n- `accionPrincipalDeshabilitada` cuando el proceso todavía no conecta el cambio de estado en lote a su backend: el\n  botón se ve, deshabilitado (aprobador de Estimación de ingresos, que aprueba desde la solicitud).\n- Con `modoConsulta` en procesos de solo consulta (contabilización, apertura anual) y con `serverQuery` /\n  `serverRecordsQuery` cuando el backend busca y pagina (plan de cuentas, asiento de ajuste, catálogos, apertura).",
     "evitar": "- Para «Consultas y reportes» con búsqueda por criterios: usar `siaf-page-shell` con `siaf-page-header`.\n- Para ver o editar una solicitud: usar `siaf-solicitude-page-layout`.\n- Rearmar una bandeja con `siaf-table-controls`, `siaf-documents-records-table` y `siaf-pagination` sueltos, o\n  duplicar las reglas de rol: declarar otro `DocumentsRecordsConfig`.\n- Para la Bandeja de Documentos del shell (Recibidos, Enviados, Borradores, Papelera): es `siaf-tray-documents-view`.",
     "teclado": "- **Tab**: recorre el breadcrumb, «Crear documento», las pestañas, el buscador y sus menús, los filtros, «Agregar\n  filtro», la barra de la grilla, la tabla y la paginación; cada control sigue su componente.\n- **Flechas izquierda / derecha, Inicio y Fin**: cambian entre Documentos y Registros (`siaf-tabs`).\n- **Enter** en el buscador: aplica la búsqueda (con búsqueda en el servidor, recién ahí consulta).\n- **Enter / Espacio** en un chip de filtro personalizado: lo abre para editarlo; en su X, lo quita.\n- **Escape**: cierra el popover «Crear documento» o el filtro personalizado y el foco vuelve a su botón; salir del\n  popover con Tab también lo cierra. Las capas transparentes que cierran al pulsar fuera no son paradas de Tab.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: el título del proceso es el `h1` y «Documentos existentes» / «Registros\n  existentes», el `h2` de la grilla; el breadcrumb es un `nav` y la página vive dentro del `main` del shell.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: las pestañas no apuntan a un `role=\"tabpanel\"` (la grilla no lo\n  declara), y la X que quita un filtro personalizado es un `span` `role=\"button\"` dentro de otro `<button>`: un\n  control anidado en un botón puede no anunciarse.\n- **Pendiente · 2.5.3 Etiqueta en el nombre (A)**: cada chip de filtro personalizado se llama «Filtro personalizado\n  aplicado» y su texto visible («Campo: valor») no forma parte del nombre.\n- **2.4.3 Orden del foco (A)**: el popover «Crear documento» y el filtro personalizado reciben el foco al abrirse,\n  cierran con Escape y lo devuelven a su botón (`siafFoco`).\n- **Pendiente · 2.4.11 Foco no oculto (AA)**: en escritorio la cabecera (breadcrumb, título y pestañas) queda fija\n  bajo el navbar y no hay `scroll-padding`: al volver con Shift + Tab, un control de la grilla puede quedar tapado.\n- **4.1.3 Mensajes de estado (AA)**: la carga de la grilla se anuncia con `siaf-table-skeleton` (`role=\"status\"`) y\n  el resultado de verificar o aprobar en lote con `siaf-snackbar` (`role=\"status\"`; `role=\"alert\"` si falla).\n- **2.4.7 Foco visible (AA)**: los chips de filtro personalizado y «Agregar filtro» no tienen estilo propio ni\n  `outline-none`: queda el anillo nativo; el resto sigue su componente.\n- **1.4.3 Contraste mínimo (AA)**: `h1` y `h2` en `text-text` (16.29:1 / 16.53:1) y el subtítulo en\n  `text-text-muted` (5.01:1 / 8.86:1) sobre `bg-surface`.",
@@ -7788,7 +7788,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "usar": "- Para confirmar una acción sobre una solicitud con su preset (`save`, `verify`, `approve`, `delete-request`,\n  `observe`, `reject`…); en las request-pages llegan ya armados por `siaf-request-approval-modals`.\n- En las acciones masivas de la bandeja: «¿Deseas verificar / aprobar múltiples solicitudes?» de\n  `siaf-documents-records-page` (`custom` con ilustración).\n- Con `custom` y contenido proyectado para diálogos cortos con campos, como «Cambiar contraseña» del escritorio\n  virtual.\n- `observe` y `reject` para pedir el motivo (`reason` / `reasonChange`): Aceptar se habilita al escribirlo.",
     "evitar": "- Repetir a mano en una request-page los seis modales del flujo: usar `siaf-request-approval-modals`.\n- Para avisar el resultado después de confirmar: usar `siaf-snackbar`; para bloquear mientras se procesa,\n  `siaf-loader-overlay`.\n- Para buscar y elegir registros o adjuntar archivos: usar `siaf-selection-side-nav` o `siaf-upload-side-nav`.\n- Dentro de un bloque if sin enlazar `open`: sin ese input no se pinta; y si el bloque lo destruye al cerrar, no anima\n  la salida (el foco sí vuelve al control que lo abrió).",
     "teclado": "- **Tab / Shift + Tab**: al abrir, el foco ya está en el primer control (la X si `showClose`, o el diálogo si no hay\n  controles); recorren los controles y dan la vuelta del último al primero sin salir del diálogo.\n- **Escape**: cierra como Cancelar (emite `canceled` y `closed`) y devuelve el foco al elemento que lo tenía antes\n  de abrir.\n- **Enter / Espacio**: activan la X, Cancelar y Aceptar (emite `confirmed`); el campo de motivo sigue\n  `text-area-control`.",
-    "accesibilidad": "- **4.1.2 Nombre, función y valor (A)**: `role=\"dialog\"` con `aria-modal=\"true\"`, `aria-labelledby` al título y\n  `aria-describedby` a la descripción; la X se llama «Cerrar» (ícono con `label`).\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir mueve el foco al primer control y al cerrar (con `open` en\n  false o al destruirse) lo devuelve a donde estaba.\n- **2.1.2 Sin trampas de teclado (A)**: Tab queda dentro del diálogo mientras está abierto, pero Escape siempre lo\n  cierra.\n- **Pendiente · 3.3.2 Etiquetas o instrucciones (A)**: en `observe` y `reject` el motivo es obligatorio (Aceptar\n  sigue deshabilitado sin texto) pero no se marca: no pasa `required` a `text-area-control`, que pondría el\n  asterisco y `aria-required`.\n- **2.4.7 Foco visible (AA)**: la X muestra un anillo `border-states-focus` de 2 px con `focus-visible`; los\n  botones del pie siguen `siaf-button`.\n- **1.4.11 Contraste no textual (AA)**: ese anillo es el azul del kit (`border-states-focus`, 5.35:1 claro / 10.15:1\n  oscuro sobre la superficie).\n- **1.1.1 Contenido no textual (A)**: la ilustración va con `alt=\"\"` y el ícono de respaldo es decorativo.\n- **1.4.3 Contraste mínimo (AA)**: título `text-neutral-high` y descripción `text-neutral-medium` sobre\n  `surface-highest`, que en claro es el blanco de la superficie (16.29:1 y 14.53:1).",
+    "accesibilidad": "- **4.1.2 Nombre, función y valor (A)**: `role=\"dialog\"` con `aria-modal=\"true\"`, `aria-labelledby` al título y\n  `aria-describedby` a la descripción; la X se llama «Cerrar» (ícono con `label`).\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir mueve el foco al primer control y al cerrar (con `open` en\n  false o al destruirse) lo devuelve a donde estaba.\n- **2.1.2 Sin trampas de teclado (A)**: Tab queda dentro del diálogo mientras está abierto, pero Escape siempre lo\n  cierra.\n- **3.3.2 Etiquetas o instrucciones (A)**: en `observe` y `reject` el motivo es obligatorio (Aceptar sigue\n  deshabilitado sin texto) y se marca: pasa `required` a `text-area-control`, que pone el asterisco y\n  `aria-required` (Figma «¿Observar solicitud?», «Comentario de la observación *»).\n- **2.4.7 Foco visible (AA)**: la X muestra un anillo `border-states-focus` de 2 px con `focus-visible`; los\n  botones del pie siguen `siaf-button`.\n- **1.4.11 Contraste no textual (AA)**: ese anillo es el azul del kit (`border-states-focus`, 5.35:1 claro / 10.15:1\n  oscuro sobre la superficie).\n- **1.1.1 Contenido no textual (A)**: la ilustración va con `alt=\"\"` y el ícono de respaldo es decorativo.\n- **1.4.3 Contraste mínimo (AA)**: título `text-neutral-high` y descripción `text-neutral-medium` sobre\n  `surface-highest`, que en claro es el blanco de la superficie (16.29:1 y 14.53:1).",
     "figma": [],
     "aria": {
       "roles": [
@@ -11915,6 +11915,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "rejectEnabled",
+        "tipo": "boolean",
+        "porDefecto": "true",
+        "requerida": false,
+        "descripcion": "`false` quita «Rechazar» aunque la matriz rol/estado lo traiga: productos donde el rechazo no está habilitado (Estimación de ingresos: el aprobador solo observa o aprueba)."
+      },
+      {
         "nombre": "rejectLabel",
         "tipo": "string",
         "porDefecto": "'Rechazar'",
@@ -12088,7 +12095,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Dentro de `siaf-solicitude-page-layout`, que lo pinta con `role` y `state`: así lo usan las request-pages de\n  Contabilidad y los formularios de Admin.\n- Con `customActions` y botones en `[actions]` cuando el proceso tiene acciones fuera de la matriz, como «Reprocesar»\n  en el detalle de contabilización.\n- Con `saveDisabled` para dejar Grabar deshabilitado mientras no hay cambios (patrón «Grabar solo con cambios»).\n- Con `cancelDisabled` (y Grabar y Verificar apagados) mientras una sección de la página tiene su propia edición\n  abierta con Cancelar/Aceptar, como «Editar estimación de ingresos».",
+    "usar": "- Dentro de `siaf-solicitude-page-layout`, que lo pinta con `role` y `state`: así lo usan las request-pages de\n  Contabilidad y los formularios de Admin.\n- Con `customActions` y botones en `[actions]` cuando el proceso tiene acciones fuera de la matriz, como «Reprocesar»\n  en el detalle de contabilización.\n- Con `saveDisabled` para dejar Grabar deshabilitado mientras no hay cambios (patrón «Grabar solo con cambios»).\n- Con `cancelDisabled` (y Grabar y Verificar apagados) mientras una sección de la página tiene su propia edición\n  abierta con Cancelar/Aceptar, como «Editar estimación de ingresos».\n- Con `rejectEnabled=false` en productos donde el aprobador no rechaza: en Estimación de ingresos solo Observar y\n  Aprobar (Figma node 2537:131023).",
     "evitar": "- Suelto con su propio breadcrumb y contenedor: usar `siaf-solicitude-page-layout`, que lo fija bajo el navbar y\n  reenvía los eventos (hoy solo la ruta `formulario` de asiento de ajuste lo arma a mano).\n- Para pantallas sin ciclo de documento (consultas, listados): usar `siaf-page-header`.\n- Para acciones de una tarjeta o sección: ponerlas en la tarjeta y apagar la botonera con `showButtonGroup` en false,\n  como el Gestor de Usuarios.\n- Para mostrar el estado del documento en el flujo: usar `siaf-flow-status-tag`; esta etiqueta solo marca «Nuevo» o\n  «Edición».",
     "teclado": "- **Tab**: recorre Regresar (si `showReturn`) y los botones visibles en su orden; en móvil, la barra fija inferior va\n  en el DOM justo después del encabezado. Los deshabilitados no reciben foco.\n- **Enter / Espacio**: activan cada botón y emiten su evento (`returned`, `canceled`, `saved`, `verified`, `edited`,\n  `deleted`, `approved`, `observed` o `rejected`). Los botones siguen `siaf-button`.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: `heading` es el `h1` de la página; la etiqueta y el texto secundario van\n  como texto junto a él.\n- **4.1.2 Nombre, función y valor (A)**: Regresar lleva `aria-label=\"Regresar\"`; en la barra móvil cada botón se\n  nombra con su texto visible (el ícono de la principal es decorativo), y los deshabilitados (Grabar sin cambios,\n  Eliminar en observado) exponen `disabled`.\n- **2.5.8 Tamaño del objetivo (AA)**: los botones de la barra móvil miden 48 px de alto; en escritorio, 40.\n- **2.4.3 Orden del foco (A)**: en escritorio los botones siguen al título; en móvil la barra fija inferior va en el\n  DOM después del encabezado, así que Tab llega a las acciones antes que al formulario.\n- **Pendiente · 2.4.11 Foco no oculto (AA)**: en móvil la barra de acciones es `fixed` abajo y no hay\n  `scroll-padding`: al avanzar con Tab, un campo puede quedar tapado por ella.\n- **1.4.11 Contraste no textual (AA)**: el anillo de foco de Regresar (2 px) es el azul del kit\n  (`border-states-focus`, 5.35:1 claro / 10.15:1 oscuro sobre `bg-surface`). Los demás botones siguen `siaf-button`.\n- **1.4.3 Contraste mínimo (AA)**: `h1` `text-text` (16.29:1 / 16.53:1), texto secundario `text-text-muted` (5.01:1 /\n  8.86:1) y la etiqueta en blanco sobre `bg-brand-accent` (4.89:1 / 5.65:1) o `bg-brand-primary` (8.79:1 / 6.67:1).\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: con `loading` el título y los botones se cambian por un esqueleto\n  sin `aria-busy` ni `role=\"status\"`: la carga no se anuncia.\n- **Pendiente · 2.1.1 Teclado (A)**: desde `sm` el `h1` se corta y el texto completo sale con `siafTooltip`, que se\n  abre con el mouse o con el foco; como el `h1` no es enfocable, con teclado no se puede ver.",
@@ -12344,6 +12351,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "false",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "rejectEnabled",
+        "tipo": "boolean",
+        "porDefecto": "true",
+        "requerida": false,
+        "descripcion": "Pasa a `siaf-solicitude-header`: `false` quita «Rechazar» al aprobador en productos sin rechazo."
       },
       {
         "nombre": "role",

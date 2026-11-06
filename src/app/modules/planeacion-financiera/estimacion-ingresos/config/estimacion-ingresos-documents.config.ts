@@ -37,7 +37,7 @@ export const ESTIMACION_INGRESOS_CREATE_OPTIONS: DocumentsRecordsCreateProcessOp
 ];
 
 const documentColumns: DocumentsRecordsColumn[] = [
-  { key: 'document', label: 'Documento', visibility: 'visible', group: 'default', widthClass: 'w-[280px]' },
+  { key: 'document', label: 'Documento', visibility: 'visible', group: 'default', widthClass: 'w-[280px]', kind: 'document-link' },
   { key: 'number', label: 'Número', visibility: 'visible', group: 'default', widthClass: 'w-[90px]' },
   { key: 'actionType', label: 'Tipo de acción', visibility: 'visible', group: 'default', widthClass: 'w-[140px]' },
   { key: 'status', label: 'Estado', visibility: 'visible', group: 'default', widthClass: 'w-[120px]', kind: 'flow-status' },
