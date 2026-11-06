@@ -1,7 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map, switchMap } from 'rxjs/operators';
 
 import { PermissionService } from '../../../../../core/auth/permission.service';
@@ -15,9 +15,11 @@ import { SolicitudePageLayoutComponent } from '../../../../../shared/components/
 import { SolicitudeFormCardComponent } from '../../../../../shared/components/solicitude-form-card/solicitude-form-card.component';
 import { TableControlsComponent } from '../../../../../shared/components/table-controls/table-controls.component';
 import { ActionTrackerComponent, ActionTrackerSummary } from '../../../../../shared/ui/action-tracker/action-tracker.component';
+import { AlertComponent } from '../../../../../shared/ui/alert/alert.component';
 import { DocumentSummaryCardComponent } from '../../../../../shared/ui/document-summary-card/document-summary-card.component';
 import { ButtonGroupItem, ButtonsGroupComponent } from '../../../../../shared/ui/buttons-group/buttons-group.component';
 import { IconComponent } from '../../../../../shared/ui/icon/icon.component';
+import { IconDropdownMenuComponent, IconDropdownMenuItem } from '../../../../../shared/ui/icon-dropdown-menu/icon-dropdown-menu.component';
 import { TabItem, TabsComponent } from '../../../../../shared/ui/tabs/tabs.component';
 import { ReadonlyFieldComponent } from '../../../../../shared/ui/readonly-field/readonly-field.component';
 import { SnackbarVariant } from '../../../../../shared/ui/snackbar/snackbar.component';
@@ -25,8 +27,10 @@ import { TextFieldComponent } from '../../../../../shared/ui/text-field/text-fie
 import { buildProcessBreadcrumbs } from '../../../../../shared/utils/breadcrumbs.util';
 import { crearSnapshotFormulario, hayCambiosRespectoAlSnapshot } from '../../../../../shared/utils/form-snapshot.util';
 import { EstimacionIngresosApiService } from '../../api/estimacion-ingresos-api.service';
-import { PROCESS_ID, PROCESS_ROUTE, solicitudRoute } from '../../config/estimacion-ingresos.rutas';
+import { PROCESS_ID, PROCESS_ROUTE, registroRoute, solicitudRoute } from '../../config/estimacion-ingresos.rutas';
 import { EstimacionIngresosEditarClasificadorComponent } from './editar-clasificador/estimacion-ingresos-editar-clasificador.component';
+import { EstimacionIngresosDetalleBaseLegalComponent } from './detalles/estimacion-ingresos-detalle-base-legal.component';
+import { EstimacionIngresosDetalleRecaudacionComponent } from './detalles/estimacion-ingresos-detalle-recaudacion.component';
 import {
   ClasificadorEstimacionIngresos,
   DetalleEstimacionIngresos,
@@ -82,10 +86,15 @@ function aFechaHoraPe(iso: string): string {
     ActionTrackerComponent,
     ButtonsGroupComponent,
     DecimalPipe,
+    RouterLink,
     DocumentSummaryCardComponent,
+    EstimacionIngresosDetalleBaseLegalComponent,
+    EstimacionIngresosDetalleRecaudacionComponent,
     EstimacionIngresosEditarClasificadorComponent,
     FormTableSearchComponent,
     IconComponent,
+    AlertComponent,
+    IconDropdownMenuComponent,
     ReadonlyFieldComponent,
     RequestApprovalModalsComponent,
     SolicitudeFormCardComponent,
@@ -154,6 +163,22 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   private fotoEdicion: string | null = null;
 
   readonly editable = computed(() => this.esNuevo() || this.editando());
+
+  /** Registros grabados cuya variación (f) pasa el umbral: los mismos que llevan el ícono de tendencia en la tabla. */
+  readonly registrosFueraDelUmbral = computed(
+    () => (this.detalle()?.clasificadores ?? []).filter((c) => c.variacionPorcentaje > this.umbralVariacion).length,
+  );
+  /** «Variación fuera del umbral» (Figma node 4535:118789): arriba de la solicitud grabada (Elaborado, Verificado y
+   *  Aprobado), fuera de la edición, mientras haya registros fuera del umbral y el usuario no lo cierre. */
+  readonly avisoUmbralCerrado = signal(false);
+  readonly mostrarAvisoUmbral = computed(
+    () => !this.editable() && !!this.detalle() && this.registrosFueraDelUmbral() > 0 && !this.avisoUmbralCerrado(),
+  );
+  readonly textoAvisoUmbral = computed(() => {
+    const n = this.registrosFueraDelUmbral();
+    const registros = n === 1 ? '1 registro supera' : `${n} registros superan`;
+    return `${registros} el umbral de variación (±${this.umbralVariacion} %). Puede revisar el documento de sustento desde el detalle del registro o desde Más acciones (⋮).`;
+  });
 
   /** Filas visibles: las del formulario (en «Nuevo» y en edición) o las del documento grabado, filtradas por la
    *  búsqueda en ambos casos. */
@@ -374,10 +399,47 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   trazabilidad(): ActionTrackerSummary[] {
     const d = this.detalle();
     if (!d) return [];
-    const items: ActionTrackerSummary[] = [{ label: 'Elaborado por', actionBy: d.elaboradoPor, date: aFechaHoraPe(d.fechaElaborado) }];
-    if (d.verificadoPor) items.push({ label: 'Verificado por', actionBy: d.verificadoPor, date: d.fechaVerificado ? aFechaHoraPe(d.fechaVerificado) : '' });
-    if (d.aprobadoPor) items.push({ label: 'Aprobado por', actionBy: d.aprobadoPor, date: d.fechaAprobado ? aFechaHoraPe(d.fechaAprobado) : '' });
-    return items;
+    // Los tres roles siempre a la vista (Figma node 2448:143629): lo que aún no pasó queda «No asignado aún».
+    return [
+      { label: 'Elaborado por', actionBy: d.elaboradoPor, date: aFechaHoraPe(d.fechaElaborado) },
+      { label: 'Verificado por', actionBy: d.verificadoPor ?? '', date: d.fechaVerificado ? aFechaHoraPe(d.fechaVerificado) : '' },
+      { label: 'Aprobado por', actionBy: d.aprobadoPor ?? '', date: d.fechaAprobado ? aFechaHoraPe(d.fechaAprobado) : '' },
+    ];
+  }
+
+  /** Menú «Más acciones» (⋮) de cada registro en solo lectura; sin base legal, su detalle queda deshabilitado. */
+  private readonly accionesConBaseLegal: IconDropdownMenuItem[] = [
+    { label: 'Ver detalle recaudación histórica', value: 'recaudacion-historica', icon: 'calculate' },
+    { label: 'Ver detalle base legal de uso específico', value: 'base-legal', icon: 'balance' },
+  ];
+  private readonly accionesSinBaseLegal: IconDropdownMenuItem[] = this.accionesConBaseLegal.map((a) =>
+    a.value === 'base-legal' ? { ...a, disabled: true } : a,
+  );
+
+  accionesDe(fila: ClasificadorEstimacionIngresos): IconDropdownMenuItem[] {
+    return fila.baseLegal === 'SI' ? this.accionesConBaseLegal : this.accionesSinBaseLegal;
+  }
+
+  /** Registro cuyo detalle está abierto en su panel lateral (Figma nodes 4674:99530 y 4107:282169). */
+  readonly filaRecaudacion = signal<ClasificadorEstimacionIngresos | null>(null);
+  readonly filaBaseLegal = signal<ClasificadorEstimacionIngresos | null>(null);
+
+  /** Ruta de «Detalle de estimación de ingresos» del registro (solo en una solicitud grabada y en lectura). */
+  rutaDetalleRegistro(fila: ClasificadorEstimacionIngresos): string | null {
+    const id = this.detalle()?.documentoId;
+    return id ? registroRoute(id, fila.clasificador.split(' ')[0]) : null;
+  }
+
+  /** Clic en una fila en solo lectura: abre su detalle. En «Nuevo» y en edición, la fila no navega. */
+  abrirDetalleRegistro(fila: ClasificadorEstimacionIngresos): void {
+    if (this.editable()) return;
+    const ruta = this.rutaDetalleRegistro(fila);
+    if (ruta) void this.router.navigateByUrl(ruta);
+  }
+
+  onAccionRegistro(fila: ClasificadorEstimacionIngresos, accion: string): void {
+    if (accion === 'recaudacion-historica') this.filaRecaudacion.set(fila);
+    if (accion === 'base-legal') this.filaBaseLegal.set(fila);
   }
 
   /** Fila TOTAL de la tabla de clasificadores: suma de la columna indicada. */

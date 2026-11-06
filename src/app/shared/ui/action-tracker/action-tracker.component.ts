@@ -53,6 +53,9 @@ const DETAIL_LABELS: Record<ActionTrackerDetailType, string> = {
  * - Dentro de `siaf-account-history-panel` y `siaf-asiento-history-panel`, para cerrar el historial del registro con
  *   sus responsables.
  * - Con `summaryItems` reales: un `actionBy` o `date` vacío muestra «No asignado aún» o «Fecha y hora no registradas».
+ * - Siempre con todos los roles del flujo desde el primer estado (Elaborado, Verificado y Aprobado u Observado):
+ *   la tarjeta se va completando a medida que avanza la solicitud (Figma CEL-005, nodo 2448:143629). Cada fecha se
+ *   rotula con su rol («Fecha elaborado por»).
  * @evitar
  * - Para comentarios e iteraciones con pestañas Detalle / Historial: usar `siaf-detail-history-tabs`; las pestañas de
  *   este componente no cambian al pulsarlas y sus valores por defecto son de muestra.
@@ -173,7 +176,7 @@ const DETAIL_LABELS: Record<ActionTrackerDetailType, string> = {
 
                 <div class="flex flex-col gap-siaf-xxs">
                   <span class="sm:truncate text-[11px] font-medium uppercase leading-none tracking-[0.66px] text-text-muted" siafTooltip>
-                    FECHA
+                    Fecha {{ item.label }}
                   </span>
                   @if (item.date) {
                     <strong class="whitespace-pre-line text-sm font-bold leading-normal tracking-[-0.02px] text-text">

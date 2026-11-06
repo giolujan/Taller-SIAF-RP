@@ -121,6 +121,10 @@ import { MenuComponent, MenuDensity, MenuItem, MenuLeading } from '../../../shar
           <siaf-icon-dropdown-menu icon="more_vert" ariaLabel="Más opciones" [items]="opcionesDropdown" />
           <siaf-icon-dropdown-menu icon="file_download" variant="accent" ariaLabel="Exportar" [items]="exportar" />
           <siaf-icon-dropdown-menu label="Exportar" icon="open_in_new" density="standard" [menuWidth]="200" [items]="formatosExportacion" />
+          <!-- floating: el ⋮ de una fila dentro de un contenedor con scroll; el menú no se recorta. -->
+          <div class="h-14 w-24 overflow-auto rounded-siaf-md border border-[var(--sys-color-divider-default)] p-siaf-xs">
+            <siaf-icon-dropdown-menu icon="more_vert" ariaLabel="Más acciones de la fila" [floating]="true" [items]="opcionesDropdown" />
+          </div>
         </div>
       }
       @case ('siaf-cascading-menu') {

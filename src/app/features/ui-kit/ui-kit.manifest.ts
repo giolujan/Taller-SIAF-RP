@@ -289,6 +289,20 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "icon",
+        "tipo": "string",
+        "porDefecto": "''",
+        "requerida": false,
+        "descripcion": "Ícono Material a la derecha del valor (Figma «Readonly Forms» con ícono, p. ej. `info`)."
+      },
+      {
+        "nombre": "iconLabel",
+        "tipo": "string",
+        "porDefecto": "''",
+        "requerida": false,
+        "descripcion": "Texto del ícono: lo anuncia el lector de pantalla y se muestra al pasar el mouse. Vacío = decorativo."
+      },
+      {
         "nombre": "required",
         "tipo": "boolean",
         "porDefecto": "false",
@@ -311,10 +325,10 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "eventos": [],
-    "usar": "- En el modo lectura de una solicitud, en lugar del campo editable y con el mismo caption: cuenta contable, carga\n  masiva del plan de cuentas, clase de ajuste, tipo de asiento y asiento de ajuste.\n- Para los criterios de búsqueda sobre los resultados de las consultas (plan de cuentas, asiento de ajuste, tipos de\n  asiento, contabilización) y la cabecera de un detalle o reporte (pedido de contabilización, apertura contable,\n  libros contables).\n- Para leer un dato con contraste completo: un campo `[disabled]` pinta el texto tenue (exento de contraste) y aquí\n  el valor va en `text-neutral-high`.\n- `[required]` solo para repetir el asterisco del campo editable, así la lectura se ve igual que la edición.\n- `variant=\"highlight\"` para un total calculado dentro de un formulario que se está editando: «Total» y «Saldo por\n  distribuir» de la distribución mensual en «Editar estimación de ingresos».",
+    "usar": "- En el modo lectura de una solicitud, en lugar del campo editable y con el mismo caption: cuenta contable, carga\n  masiva del plan de cuentas, clase de ajuste, tipo de asiento y asiento de ajuste.\n- Para los criterios de búsqueda sobre los resultados de las consultas (plan de cuentas, asiento de ajuste, tipos de\n  asiento, contabilización) y la cabecera de un detalle o reporte (pedido de contabilización, apertura contable,\n  libros contables).\n- Para leer un dato con contraste completo: un campo `[disabled]` pinta el texto tenue (exento de contraste) y aquí\n  el valor va en `text-neutral-high`.\n- `[required]` solo para repetir el asterisco del campo editable, así la lectura se ve igual que la edición.\n- `variant=\"highlight\"` para un total calculado dentro de un formulario que se está editando: «Total» y «Saldo por\n  distribuir» de la distribución mensual en «Editar estimación de ingresos».\n- `icon` (con `iconLabel`) para el ícono informativo a la derecha del valor que trae el Figma «Readonly Forms»:\n  «Código anterior» y «Promedio anual (a)» en «Detalle de estimación de ingresos».",
     "evitar": "- Para un dato que el usuario puede cambiar: usar `siaf-input`, `text-area-control` o `siaf-date-time-picker`.\n- Para el ítem elegido desde un panel lateral: usar `siaf-summary-card`; para un aviso breve, `message-box`.\n- Confundirlo con `siaf-readonly`, el recuadro gris con etiqueta en mayúsculas que ninguna pantalla usa.",
     "teclado": "- No recibe foco: no es interactivo.",
-    "accesibilidad": "- **1.3.1 Información y relaciones (A)**: es texto estático, no un campo: el caption va antes del valor en el DOM,\n  así que se leen juntos y en orden; no usa `dt`/`dd` ni `aria-labelledby`.\n- **1.4.3 Contraste mínimo (AA)**: caption `text-neutral-low` 5.01:1 (8.86:1 oscuro), valor `text-neutral-high`\n  16.29:1 y asterisco `text-feedback-danger` 9.84:1 sobre `bg-surfaces-surface`. En `highlight` el valor va en\n  negrita `text-neutral-medium` sobre `bg-surfaces-highlight` (azul al 8 % sobre la superficie: contraste casi igual\n  al de la superficie sola); el caption sigue sobre su recuadro `bg-surface`.\n- **1.4.1 Uso del color (A)**: el obligatorio se marca con un asterisco, no solo con el color.",
+    "accesibilidad": "- **1.3.1 Información y relaciones (A)**: es texto estático, no un campo: el caption va antes del valor en el DOM,\n  así que se leen juntos y en orden; no usa `dt`/`dd` ni `aria-labelledby`.\n- **1.4.3 Contraste mínimo (AA)**: caption `text-neutral-low` 5.01:1 (8.86:1 oscuro), valor `text-neutral-high`\n  16.29:1 y asterisco `text-feedback-danger` 9.84:1 sobre `bg-surfaces-surface`. En `highlight` el valor va en\n  negrita `text-neutral-medium` sobre `bg-surfaces-highlight` (azul al 8 % sobre la superficie: contraste casi igual\n  al de la superficie sola); el caption sigue sobre su recuadro `bg-surface`.\n- **1.4.1 Uso del color (A)**: el obligatorio se marca con un asterisco, no solo con el color.\n- **1.1.1 Contenido no textual (A)**: con `iconLabel`, el ícono se anuncia con ese texto (y lo muestra como\n  `title`); sin él, es decorativo.",
     "figma": [],
     "aria": {
       "roles": [],
@@ -331,6 +345,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-color-bg-surfaces-surface",
         "via": [
           "bg-surface"
+        ]
+      },
+      {
+        "token": "--sys-color-icon-states-enabled",
+        "via": [
+          "var()"
         ]
       },
       {
@@ -366,6 +386,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-xs",
         "via": [
+          "ml-siaf-xs",
           "py-siaf-xs"
         ]
       },
@@ -388,7 +409,9 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       }
     ],
-    "usa": [],
+    "usa": [
+      "siaf-icon"
+    ],
     "sinUso": false
   },
   {
@@ -743,7 +766,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "eventos": [],
-    "usar": "- Al pie de las pantallas de solicitud, para quién elaboró, verificó y aprobó y cuándo (`[showSummaryCards]=\"true\"`\n  y `[showTabs]=\"false\"`): plan de cuentas, catálogo de ajustes, asiento de ajuste, apertura contable y\n  Contabilización.\n- Dentro de `siaf-account-history-panel` y `siaf-asiento-history-panel`, para cerrar el historial del registro con\n  sus responsables.\n- Con `summaryItems` reales: un `actionBy` o `date` vacío muestra «No asignado aún» o «Fecha y hora no registradas».",
+    "usar": "- Al pie de las pantallas de solicitud, para quién elaboró, verificó y aprobó y cuándo (`[showSummaryCards]=\"true\"`\n  y `[showTabs]=\"false\"`): plan de cuentas, catálogo de ajustes, asiento de ajuste, apertura contable y\n  Contabilización.\n- Dentro de `siaf-account-history-panel` y `siaf-asiento-history-panel`, para cerrar el historial del registro con\n  sus responsables.\n- Con `summaryItems` reales: un `actionBy` o `date` vacío muestra «No asignado aún» o «Fecha y hora no registradas».\n- Siempre con todos los roles del flujo desde el primer estado (Elaborado, Verificado y Aprobado u Observado):\n  la tarjeta se va completando a medida que avanza la solicitud (Figma CEL-005, nodo 2448:143629). Cada fecha se\n  rotula con su rol («Fecha elaborado por»).",
     "evitar": "- Para comentarios e iteraciones con pestañas Detalle / Historial: usar `siaf-detail-history-tabs`; las pestañas de\n  este componente no cambian al pulsarlas y sus valores por defecto son de muestra.\n- Para pasos numerados de un flujo: usar `siaf-steps`; para hitos con fecha, `siaf-timeline`.\n- Para el historial de estados de un documento desde la bandeja: usar `siaf-document-history-panel`.",
     "teclado": "- Tal como lo usa la app (solo tarjetas de responsables) no recibe foco: no es interactivo.\n- **Tab** (con `showTabs` o `variant=\"detail\"`): enfoca los botones Detalle e Historial.\n- **Enter / Espacio**: no cambian de pestaña; la activa la fija el padre con `activeTab`.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: el historial es una `table` con `thead` y `th` bajo un `h3`; en las\n  tarjetas cada etiqueta precede a su valor en el orden de lectura.\n- **1.4.1 Uso del color (A)**: responsables, fechas y procesos van en texto; la pestaña activa además va en negrita\n  y subrayada.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: en las tarjetas, etiquetas `text-neutral-low` 5.01:1 (oscuro 8.86:1)\n  y valores `text-neutral-high` 16.29:1 (16.53:1) cumplen; la pestaña activa usa la clase `text-brand-primary`\n  (color de fondo de marca), que en oscuro no llega a 4.5:1: da 2.66:1 sobre la superficie y la franja es\n  `surface-low`, más clara.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: las pestañas Detalle / Historial son `button` sin acción, sin\n  `role=\"tab\"` ni `aria-selected`: la activa solo se distingue a la vista.",
@@ -5959,6 +5982,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Deshabilita el botón disparador."
       },
       {
+        "nombre": "floating",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Menú en posición fija sobre la página, calculada desde el botón: para el ⋮ de una fila de tabla, donde el contenedor con scroll (`siaf-table-shell`) recortaría el menú y las celdas sticky de otras filas lo taparían: el panel se dibuja al final de `<body>`. Se abre hacia arriba si no cabe abajo y se cierra al desplazar o cambiar el tamaño de la ventana."
+      },
+      {
         "nombre": "icon",
         "tipo": "string",
         "porDefecto": "''",
@@ -6002,7 +6032,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "usar": "- Botones de ícono de la barra de búsqueda de la bandeja (`siaf-documents-records-page`): Campos (`layers`), Favorito\n  (`star_border`) y Más opciones (`more_vert`).\n- Exportar con `variant=\"accent\"` e ícono `file_download` en el encabezado de resultados de las consultas (Plan de\n  Cuentas, Asiento de ajuste, Catálogo de ajuste, Contabilización y Libros contables).\n- Acciones sobre las filas marcadas, proyectado en `siaf-table-controls` con el atributo `tableAction` (Gestor de\n  Usuarios de Admin, descarga de Libros contables), y el menú ⋮ de `siaf-expansion-panel`.\n- Con `label` cuando el Figma pide un botón con texto que abre el menú: «Exportar» (Excel, CSV y PDF) del resultado de\n  `siaf-query-report-page`, con `density=\"standard\"` como su menú «Opciones de tabla» (nodo 22402:16485).",
-    "evitar": "- Para una sola acción: usar `siaf-button` con `iconOnly` y `ariaLabel`, sin menú.\n- Con opciones en dos niveles: usar `siaf-cascading-menu`.\n- Para filtrar por un valor que debe quedar a la vista: usar `siaf-filter-pill`.\n- Un botón de ícono con una lista flotante hecha a mano: este componente ya da `aria-expanded`, Escape y el cierre al\n  pulsar fuera, y dibuja el panel con `siaf-menu`.",
+    "evitar": "- Para una sola acción: usar `siaf-button` con `iconOnly` y `ariaLabel`, sin menú.\n- Sin `floating` en el ⋮ de una fila de tabla: el contenedor con scroll de la tabla recorta el menú.\n- Con opciones en dos niveles: usar `siaf-cascading-menu`.\n- Para filtrar por un valor que debe quedar a la vista: usar `siaf-filter-pill`.\n- Un botón de ícono con una lista flotante hecha a mano: este componente ya da `aria-expanded`, Escape y el cierre al\n  pulsar fuera, y dibuja el panel con `siaf-menu`.",
     "teclado": "- **Tab**: enfoca el botón.\n- **Enter / Espacio**: abren o cierran el menú; al abrir, el foco entra en la primera opción habilitada.\n- **Flecha arriba / abajo** e **Inicio / Fin**: recorren las opciones (de `siaf-menu`).\n- **Enter / Espacio** sobre una opción: la eligen y cierran el menú, salvo con `closeOnSelect=false`.\n- **Escape**: cierra el menú y el foco vuelve al botón.\n- **Tab** desde el menú: lo cierra y el foco sigue al control siguiente.",
     "accesibilidad": "- **4.1.2 Nombre, función y valor (A)**: el disparador es un `<button>` con `aria-label` (por defecto «Más opciones»:\n  el padre debe dar uno propio, como «Exportar resultados»), `aria-haspopup=\"menu\"` y `aria-expanded`; el panel es\n  `siaf-menu` con el mismo nombre. Con `label`, el texto visible nombra el botón y el menú, sin `aria-label`.\n- **2.5.3 Etiqueta en el nombre (A)**: con `label`, el nombre es el mismo texto que se ve.\n- **1.1.1 Contenido no textual (A)**: el ícono del botón es decorativo (`siaf-icon`); el nombre lo da `aria-label`.\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir el foco entra en la primera opción y al cerrar (Escape o\n  elegir) vuelve al botón; salir con Tab cierra el menú. La capa que cierra al pulsar fuera no es parada de Tab.\n- **2.4.7 Foco visible (AA)**: el botón tiene contorno de 2 px `bg-brand-accent` en `accent` (4.89:1 claro / 3.14:1\n  oscuro), el anillo del kit `border-states-focus` con `label` y el anillo del navegador en `ghost`; las opciones, el\n  contorno interior azul de `siaf-menu` (`border-states-focus`).\n- **1.4.11 Contraste no textual (AA)**: en `accent`, relleno 4.89:1 / 3.14:1 sobre la superficie e ícono blanco\n  (`text-brand-white` sobre `bg-brand-accent`) 4.89:1 / 5.65:1; en `ghost` el ícono hereda el color del texto del\n  padre.\n- **2.5.8 Tamaño del objetivo (AA)**: botón de 40 px de alto y opciones de 32 px (`compact`) o 48 px (`standard`).",
     "figma": [],

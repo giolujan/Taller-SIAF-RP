@@ -1,0 +1,9 @@
+<siaf-side-panel title="Detalle base legal de uso específico" [open]="filaS() !== null" [showFooter]="false" (closed)="closed.emit()">
+  @if (filaS(); as f) {
+    <div class="px-siaf-md py-siaf-md">
+      <div class="rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] px-siaf-lg py-siaf-md">
+        <siaf-estimacion-ingresos-base-legal-lectura [fila]="f" />
+      </div>
+    </div>
+  }
+</siaf-side-panel>

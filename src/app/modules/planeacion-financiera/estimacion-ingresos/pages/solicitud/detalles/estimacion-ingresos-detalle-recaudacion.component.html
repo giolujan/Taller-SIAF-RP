@@ -1,0 +1,51 @@
+<siaf-side-panel title="Detalle recaudación histórica" [open]="filaS() !== null" [showFooter]="false" (closed)="closed.emit()">
+  @if (filaS(); as f) {
+    <div class="flex flex-col gap-siaf-lg px-siaf-md py-siaf-md">
+      <siaf-form-table-search placeholder="Buscar por año" [value]="busqueda()" (valueChange)="busqueda.set($event)" />
+
+      <!-- «Table Recaudacion_Historica» (Figma node 4674:100035): Total y % de tendencia fijos a la derecha. -->
+      <div class="siaf-table-shell">
+        <table class="siaf-table">
+          <thead>
+            <tr class="siaf-table-head-row">
+              <th class="siaf-table-th min-w-[140px]" rowspan="2">Cód. cla. inst.</th>
+              <th class="siaf-table-th min-w-[220px]" rowspan="2">Entidad</th>
+              <th class="siaf-table-th min-w-[220px]" rowspan="2">Unidad ejecutora</th>
+              <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="2">Fuente de financiamiento</th>
+              <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="2">Clasificador de ingresos</th>
+              <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)]" rowspan="2">Año</th>
+              <th class="siaf-table-th siaf-table-cell-fill-high sticky right-[120px] z-[2] min-w-[150px] border-l border-[var(--sys-color-divider-strong)] text-right" rowspan="2">Total rec. anual</th>
+              <th class="siaf-table-th siaf-table-cell-fill-high sticky right-0 z-[2] min-w-[120px] text-right" rowspan="2">% tend. anual</th>
+            </tr>
+            <tr class="siaf-table-head-row">
+              <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)]">Código</th>
+              <th class="siaf-table-th min-w-[200px]">Nombre</th>
+              <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)]">Código</th>
+              <th class="siaf-table-th min-w-[200px]">Nombre</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of filasVisibles(); track r.anio) {
+              <tr class="siaf-table-row">
+                <td class="siaf-table-td">{{ codigoInstitucional }}</td>
+                <td class="siaf-table-td uppercase">{{ entidad }}</td>
+                <td class="siaf-table-td uppercase">{{ unidadEjecutora }}</td>
+                <td class="siaf-table-td">{{ f.ff }}</td>
+                <td class="siaf-table-td">{{ nombreFuente() }}</td>
+                <td class="siaf-table-td">{{ f.clasificador.split(' ')[0] }}</td>
+                <td class="siaf-table-td">{{ f.clasificador.substring(f.clasificador.indexOf(' ') + 1) }}</td>
+                <td class="siaf-table-td">{{ r.anio }}</td>
+                <td class="siaf-table-td sticky right-[120px] z-[1] border-l border-[var(--sys-color-divider-strong)] bg-surface text-right">{{ r.totalAnual | number: '1.2-2' }}</td>
+                <td class="siaf-table-td sticky right-0 z-[1] bg-surface text-right">{{ r.tendencia | number: '1.2-2' }}</td>
+              </tr>
+            } @empty {
+              <tr class="siaf-table-row">
+                <td class="siaf-table-td text-center text-[var(--sys-color-text-neutral-medium)]" colspan="10">No hay años que coincidan con la búsqueda.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</siaf-side-panel>

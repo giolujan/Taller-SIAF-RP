@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, Output, ViewChild, signal } from '@angular/core';
 
 import { IconComponent } from '../icon/icon.component';
 import { MenuComponent, MenuDensity } from '../menu/menu.component';
@@ -59,6 +59,7 @@ export type IconDropdownMenuVariant = 'ghost' | 'accent';
  *   `siaf-query-report-page`, con `density="standard"` como su menú «Opciones de tabla» (nodo 22402:16485).
  * @evitar
  * - Para una sola acción: usar `siaf-button` con `iconOnly` y `ariaLabel`, sin menú.
+ * - Sin `floating` en el ⋮ de una fila de tabla: el contenedor con scroll de la tabla recorta el menú.
  * - Con opciones en dos niveles: usar `siaf-cascading-menu`.
  * - Para filtrar por un valor que debe quedar a la vista: usar `siaf-filter-pill`.
  * - Un botón de ícono con una lista flotante hecha a mano: este componente ya da `aria-expanded`, Escape y el cierre al
@@ -93,6 +94,7 @@ export type IconDropdownMenuVariant = 'ghost' | 'accent';
   template: `
     <div class="relative inline-block">
       <button
+        #disparador
         class="inline-flex items-center justify-center rounded-siaf-md transition disabled:cursor-not-allowed disabled:opacity-40"
         type="button"
         [class]="triggerClass"
@@ -112,6 +114,9 @@ export type IconDropdownMenuVariant = 'ghost' | 'accent';
       </button>
 
       @if (open()) {
+        <!-- Con floating, este bloque se mueve al final de <body>: una celda sticky (la columna ⋮ de una tabla) aísla su
+             contenido y las celdas sticky de las filas siguientes se pintarían encima del menú. -->
+        <div #capaFlotante class="contents">
         <button
           class="fixed inset-0 z-20 cursor-default bg-transparent"
           type="button"
@@ -120,9 +125,11 @@ export type IconDropdownMenuVariant = 'ghost' | 'accent';
         ></button>
         <!-- El panel es siaf-menu compact: su diseño (Figma UI KIT «menus») se cambia en un solo lugar. -->
         <div
-          class="absolute top-12 z-30"
-          [class.right-0]="align === 'right'"
-          [class.left-0]="align === 'left'"
+          [class]="floating ? 'fixed z-50' : 'absolute top-12 z-30'"
+          [class.right-0]="!floating && align === 'right'"
+          [class.left-0]="!floating && align === 'left'"
+          [style.top.px]="floating ? posicion().top : null"
+          [style.left.px]="floating ? posicion().left : null"
           siafFoco
           [siafFocoAtrapar]="false"
           (siafFocoSalida)="close()"
@@ -138,12 +145,13 @@ export type IconDropdownMenuVariant = 'ghost' | 'accent';
             (closed)="close()"
           />
         </div>
+        </div>
       }
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class IconDropdownMenuComponent {
+export class IconDropdownMenuComponent implements OnDestroy {
 
   /** Nombre del icono Material Symbols. */
   @Input() icon = '';
@@ -182,17 +190,68 @@ export class IconDropdownMenuComponent {
    * `hasChildren` donde el padre va a abrir un submenú separado).
    */
   @Input() closeOnSelect = true;
+  /**
+   * Menú en posición fija sobre la página, calculada desde el botón: para el ⋮ de una fila de tabla, donde el
+   * contenedor con scroll (`siaf-table-shell`) recortaría el menú y las celdas sticky de otras filas lo taparían: el
+   * panel se dibuja al final de `<body>`. Se abre hacia arriba si no cabe abajo y se cierra al desplazar o cambiar el
+   * tamaño de la ventana.
+   */
+  @Input() floating = false;
 
   /** Emite el `value` del item seleccionado (o `label` si no tiene value). */
   @Output() selected = new EventEmitter<string>();
 
+  @ViewChild('disparador') private disparador?: ElementRef<HTMLButtonElement>;
+
+  /** Con `floating`, la capa de cierre y el panel pasan a `<body>` (Angular los quita de ahí al cerrar). */
+  @ViewChild('capaFlotante') set capaFlotante(ref: ElementRef<HTMLElement> | undefined) {
+    if (this.floating && ref) document.body.appendChild(ref.nativeElement);
+  }
+
   readonly open = signal(false);
+  readonly posicion = signal({ top: 0, left: 0 });
 
   /** Abre o cierra. Al abrir, siafFoco lleva el foco a la primera opción; al cerrar, lo devuelve al botón. */
   toggle(event?: MouseEvent): void {
     if (this.disabled) return;
     event?.stopPropagation();
-    this.open.update(v => !v);
+    if (this.open()) {
+      this.close();
+      return;
+    }
+    if (this.floating) {
+      this.calcularPosicion();
+      // En captura: también avisa el scroll de los contenedores internos (la tabla, el contenido de la página).
+      const alDesplazar = () => this.close();
+      document.addEventListener('scroll', alDesplazar, true);
+      this.quitarEscuchaScroll = () => document.removeEventListener('scroll', alDesplazar, true);
+    }
+    this.open.set(true);
+  }
+
+  private quitarEscuchaScroll: (() => void) | null = null;
+
+  ngOnDestroy(): void {
+    this.quitarEscuchaScroll?.();
+  }
+
+  /** Coordenadas del menú flotante: alineado al botón según `align`, 8 px debajo o, si no cabe, encima. */
+  private calcularPosicion(): void {
+    const boton = this.disparador?.nativeElement.getBoundingClientRect();
+    if (!boton) return;
+    const separacion = 8;
+    const alto = this.items.length * (this.density === 'standard' ? 48 : 32) + 16;
+    const abajo = boton.bottom + separacion;
+    const top = abajo + alto > window.innerHeight ? Math.max(separacion, boton.top - separacion - alto) : abajo;
+    const izquierda = this.align === 'right' ? boton.right - this.menuWidth : boton.left;
+    const left = Math.min(Math.max(separacion, izquierda), window.innerWidth - this.menuWidth - separacion);
+    this.posicion.set({ top, left });
+  }
+
+  /** El menú flotante no sigue al botón: al cambiar el tamaño de la ventana, se cierra (el scroll, en `toggle`). */
+  @HostListener('window:resize')
+  onReposicion(): void {
+    if (this.floating && this.open()) this.close();
   }
 
   /** Hay que reservar la columna del ícono si alguna opción lo trae. */
@@ -207,6 +266,8 @@ export class IconDropdownMenuComponent {
   }
 
   close(): void {
+    this.quitarEscuchaScroll?.();
+    this.quitarEscuchaScroll = null;
     this.open.set(false);
   }
 

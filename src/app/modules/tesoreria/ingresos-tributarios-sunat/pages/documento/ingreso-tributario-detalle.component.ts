@@ -98,10 +98,10 @@ export class IngresoTributarioDetalleComponent implements OnInit {
   trazabilidad(): ActionTrackerSummary[] {
     const d = this.detalle();
     if (!d) return [];
-    const items: ActionTrackerSummary[] = [
+    // Ambos roles siempre a la vista: «Procesado por» queda «No asignado aún» hasta que se procesa.
+    return [
       { label: d.accionLabel ?? 'Registrado por', actionBy: d.registradoPor, date: d.fechaRegistrado },
+      { label: 'Procesado por', actionBy: d.procesadoPor ?? '', date: d.fechaProcesado ?? '' },
     ];
-    if (d.procesadoPor) items.push({ label: 'Procesado por', actionBy: d.procesadoPor, date: d.fechaProcesado ?? '' });
-    return items;
   }
 }

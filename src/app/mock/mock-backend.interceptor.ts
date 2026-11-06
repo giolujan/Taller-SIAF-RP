@@ -491,7 +491,12 @@ const estimacionIngresosPrecarga: Manejador = ({ sesion }) => {
     enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
     entidad: '009 Ministerio de Economía y Finanzas',
     unidadEjecutora: UNIDAD_CREADORA.nombre,
-    clasificadores: CLASIFICADORES_ESTIMACION_INGRESOS,
+    // Una solicitud nueva empieza sin base legal cargada: el monto con asignación específica se completa con doble
+    // clic en «Año 2027» y las secuencias con «+», al editar el clasificador. Las solicitudes sembradas sí la traen,
+    // para el panel «Detalle base legal de uso específico».
+    clasificadores: CLASIFICADORES_ESTIMACION_INGRESOS.map(
+      ({ montoAsignacionEspecifica: _monto, secuenciasBaseLegal: _secuencias, ...fila }) => fila,
+    ),
   });
 };
 

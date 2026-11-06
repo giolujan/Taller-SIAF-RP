@@ -146,6 +146,8 @@ import { UploaderComponent } from '../../../shared/ui/uploader/uploader.componen
           <readonly-field caption="Número de documento" value="PCC-SCC-00001-2026-MEF-DGCP" />
           <readonly-field caption="Unidad ejecutora" [required]="true" value="" />
           <readonly-field caption="Saldo por distribuir" variant="highlight" value="S/ 0" />
+          <readonly-field caption="Código anterior" value="1.3.15.11" icon="info" iconLabel="Código del clasificador anterior" />
+          <readonly-field caption="Promedio anual (a)" variant="highlight" value="66,249" icon="info" iconLabel="Promedio anual de la recaudación histórica" />
         </div>
       }
       @case ('siaf-readonly') {

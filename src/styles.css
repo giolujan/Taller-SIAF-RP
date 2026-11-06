@@ -287,6 +287,13 @@ input[type="checkbox"]:disabled:checked {
     border-left: var(--sys-border-linear-thin) solid var(--sys-color-divider-strong);
     background-color: inherit;
   }
+
+  /* Gris de cabecera / TOTAL opaco: `surface-high` es translúcido y, en una celda fija (sticky), deja ver los montos
+     que pasan por debajo al desplazar. Fondo blanco y el gris encima, como `.siaf-table-head-row`. */
+  .siaf-table-cell-fill-high {
+    background-color: var(--sys-color-bg-surfaces-surface);
+    background-image: linear-gradient(90deg, var(--sys-color-bg-surfaces-surface-high) 0%, var(--sys-color-bg-surfaces-surface-high) 100%);
+  }
 }
 
 .material-icons {

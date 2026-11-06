@@ -29,7 +29,7 @@ import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
  */
 
 const CLAVE = 'taller-siaf-rp:datos';
-const VERSION = 7;
+const VERSION = 8;
 
 export interface NotificacionMock extends NotificacionResponse {
   /** Destinatario: un usuario puntual o, si no hay, todos los perfiles con este rol. */
@@ -245,6 +245,15 @@ export const CLASIFICADORES_ESTIMACION_INGRESOS: ClasificadorEstimacionIngresos[
     // Doble clic en «Año 2027 (b)» lo carga (Figma node 4304:67918).
     anio2027Propuesto: 66582,
     distribucionMensual: [1389, 3222, 4869, 6449, 7389, 5196, 5674, 8506, 8096, 6668, 4616, 3426],
+    // «Detalle base legal de uso específico» (Figma node 4107:282169).
+    montoAsignacionEspecifica: [66582, 66917, 67253],
+    secuenciasBaseLegal: [
+      {
+        secuencia: 1, montos: [66582, 66917, 67253], tipoDocumento: '01 Resolución Directoral', marcoLegal: '001-2025-TCF (TUPA)',
+        descripcion: 'ORIENTADO A MANTENER EL SERVICIO', sePresupuesta: 'SI',
+        genericas: [{ codigo: '3', nombre: 'BIENES Y SERVICIOS', montos: [66582, 66917, 67253] }],
+      },
+    ],
   },
   {
     ff: '2.09', clasificador: '3.2.1.1 Tasas Registrales', promedioAnual: 9999, anio2027: 11549, anio2028: 10309, anio2029: 10618,

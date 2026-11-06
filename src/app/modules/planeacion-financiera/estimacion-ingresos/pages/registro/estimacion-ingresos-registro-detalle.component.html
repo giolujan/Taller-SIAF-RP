@@ -1,0 +1,123 @@
+<div class="min-h-[calc(100vh-56px)] bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
+  <siaf-solicitude-page-layout
+    [breadcrumbs]="breadcrumbs"
+    state="readonly"
+    heading="Detalle de estimación de ingresos"
+    secondaryText=""
+    [showReturn]="true"
+    [showTag]="false"
+    [showButtonGroup]="false"
+    [loading]="cargando()"
+    (returned)="regresar()"
+  >
+    @if (cargando()) {
+      <div class="rounded-siaf-md bg-surface p-siaf-xl">
+        <div class="siaf-skeleton-pulse h-4 w-64 rounded bg-[var(--sys-color-bg-surfaces-surface-low)]"></div>
+      </div>
+    } @else if (fila(); as f) {
+      <siaf-solicitude-form-card title="Estimación de ingresos">
+        <div class="flex flex-col gap-siaf-xs">
+          <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Fuente de financiamiento</h3>
+          <siaf-summary-card [fields]="camposFuente()" [bordered]="true" [showClose]="false" />
+        </div>
+
+        <div class="flex flex-col gap-siaf-xs">
+          <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Clasificador de ingresos</h3>
+          <siaf-summary-card [fields]="camposClasificador()" [bordered]="true" [showClose]="false" />
+        </div>
+
+        <div class="flex flex-col gap-siaf-xs">
+          <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Clasificador anterior</h3>
+          <div class="grid gap-siaf-lg md:grid-cols-3">
+            <readonly-field caption="Código anterior" [value]="f.clasificadorAnterior ?? ''" icon="info" iconLabel="Código del clasificador anterior" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-siaf-xs">
+          <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Recaudación histórica</h3>
+          <div class="grid gap-siaf-lg md:grid-cols-3">
+            <readonly-field
+              caption="Promedio anual (a)"
+              variant="highlight"
+              [value]="(f.promedioAnual | number) ?? ''"
+              icon="info"
+              iconLabel="Promedio anual de la recaudación histórica"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-siaf-xs">
+          <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Recaudación estimada</h3>
+          <div class="grid gap-siaf-lg md:grid-cols-3">
+            <readonly-field caption="Año 2027 (b)" variant="highlight" [value]="'S/ ' + (f.anio2027 | number)" />
+            <readonly-field caption="Año 2028 (c)" variant="highlight" [value]="'S/ ' + (f.anio2028 | number)" />
+            <readonly-field caption="Año 2029 (d)" variant="highlight" [value]="'S/ ' + (f.anio2029 | number)" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-siaf-xs">
+          <h3 class="m-0 flex min-h-10 items-center gap-siaf-sm text-sm font-bold uppercase text-text">
+            Variación
+            <siaf-icon
+              class="cursor-help text-[var(--sys-color-icon-states-enabled)]"
+              name="info"
+              [size]="20"
+              label="Diferencia entre años: monto y porcentaje respecto del año anterior"
+              [decorative]="false"
+              title="Diferencia entre años: monto y porcentaje respecto del año anterior"
+            />
+          </h3>
+          <div class="grid gap-siaf-lg md:grid-cols-3">
+            @for (v of variaciones(); track v.titulo) {
+              <div class="rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] px-siaf-lg py-siaf-md">
+                <p class="m-0 mb-siaf-xs text-sm text-[var(--sys-color-text-neutral-medium)]">{{ v.titulo }}</p>
+                <p class="m-0 flex gap-siaf-lg text-sm font-bold text-text">
+                  <span>{{ v.monto | number }}</span>
+                  <span>{{ v.porcentaje }}</span>
+                </p>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-siaf-xs">
+          <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Documento de sustento</h3>
+          <div class="flex flex-col gap-siaf-lg">
+            @if (f.sustento; as archivo) {
+              <readonly-field caption="Archivo adjunto" [value]="archivo.name" icon="description" />
+            } @else {
+              <message-box text="No se han adjuntado archivos." />
+            }
+            <readonly-field caption="Descripción cualitativa" [value]="f.descripcionCualitativa ?? ''" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-siaf-xs">
+          <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Distribución mensual 2027</h3>
+          <div class="grid grid-cols-2 gap-x-siaf-lg gap-y-siaf-lg md:grid-cols-3 xl:grid-cols-6">
+            @for (mes of meses; track mes; let i = $index) {
+              <readonly-field [caption]="mes" [value]="mesesTexto()[i]" />
+            }
+          </div>
+          <div class="mt-siaf-md grid gap-siaf-lg md:grid-cols-3">
+            <readonly-field caption="Total" variant="highlight" [value]="'S/ ' + (totalMeses() | number)" />
+            <readonly-field caption="Saldo por distribuir" variant="highlight" [value]="'S/ ' + (saldoPorDistribuir() | number)" />
+          </div>
+        </div>
+
+        <!-- Solo para los registros con base legal (columna «Base legal» = SI), como el menú ⋮ de la solicitud. -->
+        @if (f.baseLegal === 'SI') {
+          <siaf-expansion-panel title="BASE LEGAL DE USO ESPECÍFICO" [expanded]="baseLegalAbierta()" (expandedChange)="baseLegalAbierta.set($event)">
+            <div class="py-siaf-xs">
+              <siaf-estimacion-ingresos-base-legal-lectura [fila]="f" [columnas]="3" />
+            </div>
+          </siaf-expansion-panel>
+        }
+      </siaf-solicitude-form-card>
+    } @else {
+      <div class="rounded-siaf-md bg-surface p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-medium)]">
+        No se encontró este registro en la solicitud.
+      </div>
+    }
+  </siaf-solicitude-page-layout>
+</div>
