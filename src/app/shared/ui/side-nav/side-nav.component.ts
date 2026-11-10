@@ -26,6 +26,8 @@ let siguienteId = 0;
  * - `showFooter` en false para un panel de solo lectura; `confirmDisabled` mientras falte algo para aceptar.
  * - `showReturn` cuando el panel es un segundo paso y la flecha vuelve al anterior (emite `returned`).
  * - `embedded` para pintarlo dentro de otro contenedor, como el panel de filtros de `siaf-side-panel`.
+ * - `floating` para la versión redondeada del Figma, sin fondo oscuro detrás: «Observar registro» del Revisor /
+ *   Evaluador en Estimación de ingresos (CEL-005 node 9412:331009).
  * @evitar
  * - Para elegir registros de un catálogo: usar `siaf-selection-side-nav`; para adjuntar archivos, `siaf-upload-side-nav`;
  *   para los parámetros de una consulta, `siaf-query-parameters-panel`.
@@ -110,15 +112,21 @@ let siguienteId = 0;
       </section>
     } @else if (anim.visible()) {
       <section
-        class="siaf-sidepanel-overlay fixed inset-y-0 left-0 right-0 z-50 bg-black/55 pl-0 lg:pl-[65px]"
+        class="siaf-sidepanel-overlay fixed inset-y-0 left-0 right-0 z-50 pl-0 lg:pl-[65px]"
+        [class.bg-black/55]="!floating"
         [class.cerrando]="anim.cerrando()"
         role="dialog"
         aria-modal="true"
         [attr.aria-labelledby]="idTitulo"
         (click)="closed.emit()"
       >
+        <!-- floating: 420 px de alto completo, esquinas izquierdas redondeadas y sombra, sin oscurecer la página
+             (Figma «Observar registro», CEL-005 node 9412:331009). -->
         <aside
-          class="absolute bottom-0 right-0 top-0 flex w-full max-w-[420px] flex-col overflow-hidden border-l border-[var(--sys-color-divider-default)] bg-surface shadow-siaf-elevation-8"
+          class="absolute flex w-full max-w-[420px] flex-col overflow-hidden bg-surface shadow-siaf-elevation-8"
+          [class]="floating
+            ? 'bottom-0 right-0 top-0 sm:rounded-l-siaf-md'
+            : 'bottom-0 right-0 top-0 border-l border-[var(--sys-color-divider-default)]'"
           [siafFoco]="open"
           (siafFocoEscape)="closed.emit()"
           (click)="$event.stopPropagation()"
@@ -146,6 +154,8 @@ export class SideNavComponent implements OnChanges {
   @Input() cancelLabel = 'Cancelar';
   @Input() confirmLabel = 'Aceptar';
   @Input() confirmDisabled = false;
+  /** Panel de formulario breve con esquinas redondeadas, sombra y sin oscurecer la página (Figma «Observar registro»). */
+  @Input() floating = false;
 
   /** La X, Escape, el fondo oscuro o Cancelar (este último, salvo con `embedded`). */
   @Output() closed = new EventEmitter<void>();

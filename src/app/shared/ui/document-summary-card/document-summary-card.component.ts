@@ -1,6 +1,8 @@
 ﻿import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
 import { FlowStatus, FlowStatusTagComponent } from '../flow-status-tag/flow-status-tag.component';
+import { StatusTagComponent, StatusTagTone } from '../status-tag/status-tag.component';
+import { TagComponent } from '../tag/tag.component';
 import { TooltipDirective } from '../tooltip/tooltip.directive';
 import { ESTADO } from '../../../core/models/documento.model';
 
@@ -17,6 +19,9 @@ import { ESTADO } from '../../../core/models/documento.model';
  * - Con `contableNumber` cuando el documento ya tiene N° de documento contable: asiento de ajuste y asiento anual de
  *   apertura contable.
  * - En el detalle de los documentos y pedidos de Contabilización.
+ * - Con `expedienteNumber` (primera fila) y `expedienteStatus` (Creado, En trámite, Archivado en lugar del estado del
+ *   flujo) en la solicitud que ve el Revisor / Evaluador de Estimación de ingresos (Figma CEL-005); `statusCounter`
+ *   para un contador «1/2» junto al estado.
  * @evitar
  * - Para el ítem elegido desde un panel lateral: usar `siaf-summary-card`.
  * - Para datos generales como fecha, ente rector o entidad: usar `siaf-solicitude-info-card`.
@@ -40,11 +45,17 @@ import { ESTADO } from '../../../core/models/documento.model';
 @Component({
   selector: 'siaf-document-summary-card',
   standalone: true,
-  imports: [FlowStatusTagComponent, TooltipDirective],
+  imports: [FlowStatusTagComponent, StatusTagComponent, TagComponent, TooltipDirective],
   template: `
     <article class="h-full rounded-siaf-md bg-surface px-siaf-lg py-siaf-md">
       <!-- Mobile -->
       <div class="flex flex-col gap-siaf-xs lg:hidden">
+        @if (expedienteNumber) {
+          <div class="flex flex-col gap-siaf-xxs">
+            <span class="truncate text-[11px] font-medium uppercase leading-4 tracking-[0.66px] text-text-muted">{{ expedienteNumberLabel }}</span>
+            <strong class="min-w-0 break-words text-sm font-bold leading-6 text-text">{{ expedienteNumber }}</strong>
+          </div>
+        }
         <div class="flex items-start gap-siaf-xs">
           <div class="flex min-w-0 flex-1 flex-col gap-siaf-xxs">
             <span class="truncate text-[11px] font-medium uppercase leading-4 tracking-[0.66px] text-text-muted" siafTooltip>{{ documentNumberLabel }}</span>
@@ -53,7 +64,16 @@ import { ESTADO } from '../../../core/models/documento.model';
           </div>
           <div class="flex min-w-0 flex-1 flex-col gap-siaf-xxs">
             <span class="truncate text-[11px] font-medium uppercase leading-4 tracking-[0.66px] text-text-muted" siafTooltip>{{ statusLabel }}</span>
-            <siaf-flow-status-tag [status]="status" size="small" />
+            <span class="inline-flex items-center gap-siaf-xs">
+              @if (expedienteStatus) {
+                <siaf-status-tag appearance="soft" size="small" [tone]="toneExpediente">{{ expedienteStatus }}</siaf-status-tag>
+              } @else {
+                <siaf-flow-status-tag [status]="status" size="small" />
+              }
+              @if (statusCounter) {
+                <siaf-tag size="small" [attr.aria-label]="'Avance ' + statusCounter">{{ statusCounter }}</siaf-tag>
+              }
+            </span>
           </div>
         </div>
         @if (contableNumber) {
@@ -66,6 +86,12 @@ import { ESTADO } from '../../../core/models/documento.model';
 
       <!-- Desktop -->
       <div class="hidden gap-siaf-xs lg:grid">
+        @if (expedienteNumber) {
+          <div class="grid min-h-6 items-center gap-siaf-xs lg:grid-cols-[140px_1fr]">
+            <span class="truncate text-[11px] font-medium uppercase leading-4 tracking-[0.66px] text-text-muted" siafTooltip>{{ expedienteNumberLabel }}</span>
+            <strong class="min-w-0 truncate text-sm font-bold leading-6 text-text" siafTooltip>{{ expedienteNumber }}</strong>
+          </div>
+        }
         <div class="grid min-h-6 items-center gap-siaf-xs lg:grid-cols-[140px_1fr]">
           <span class="truncate text-[11px] font-medium uppercase leading-4 tracking-[0.66px] text-text-muted" siafTooltip>{{ documentNumberLabel }}</span>
           <strong class="min-w-0 truncate text-sm font-bold leading-6 text-text" siafTooltip>{{ documentNumber }}</strong>
@@ -78,7 +104,16 @@ import { ESTADO } from '../../../core/models/documento.model';
         }
         <div class="grid min-h-6 items-center gap-siaf-xs lg:grid-cols-[140px_1fr]">
           <span class="truncate text-[11px] font-medium uppercase leading-4 tracking-[0.66px] text-text-muted" siafTooltip>{{ statusLabel }}</span>
-          <siaf-flow-status-tag [status]="status" size="small" />
+          <span class="inline-flex items-center gap-siaf-xs">
+            @if (expedienteStatus) {
+              <siaf-status-tag appearance="soft" size="small" [tone]="toneExpediente">{{ expedienteStatus }}</siaf-status-tag>
+            } @else {
+              <siaf-flow-status-tag [status]="status" size="small" />
+            }
+            @if (statusCounter) {
+              <siaf-tag size="small" [attr.aria-label]="'Avance ' + statusCounter">{{ statusCounter }}</siaf-tag>
+            }
+          </span>
         </div>
       </div>
     </article>
@@ -93,4 +128,19 @@ export class DocumentSummaryCardComponent {
   /** Número de documento contable (ej: AA-1-2026-01) — opcional, se muestra como tercera fila */
   @Input() contableNumber: string | null = null;
   @Input() contableNumberLabel = 'N° Doc. Contable';
+  /** N° de expediente (ej. 0000001-2026) — opcional, va como primera fila. */
+  @Input() expedienteNumber: string | null = null;
+  @Input() expedienteNumberLabel = 'N° expediente';
+  /** Contador junto al estado (ej. «1/2», Figma «Input tags» small) — opcional. */
+  @Input() statusCounter: string | null = null;
+  /**
+   * Estado del expediente («Expediente tags» del Figma: Creado, En trámite, Archivado). Si viene, reemplaza la etiqueta
+   * del estado del flujo — opcional.
+   */
+  @Input() expedienteStatus: string | null = null;
+
+  /** Creado gris, En trámite amarillo y Archivado verde (Figma). */
+  get toneExpediente(): StatusTagTone {
+    return this.expedienteStatus === 'En trámite' ? 'warning' : this.expedienteStatus === 'Archivado' ? 'success' : 'default';
+  }
 }

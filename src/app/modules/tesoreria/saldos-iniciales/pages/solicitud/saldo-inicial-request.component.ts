@@ -123,6 +123,8 @@ export class SaldoInicialRequestComponent implements OnInit {
   readonly saving = signal(false);
 
   readonly headerRole = computed<'creator' | 'approver'>(() => (this.permissions.currentRole() === 'approver' ? 'approver' : 'creator'));
+  /** Revisor / Evaluador (rol `reviewer`): revisa los registros en solo lectura; la cabecera va sin botones. */
+  readonly esEvaluador = computed(() => this.permissions.currentRole() === 'reviewer');
   readonly elaborado = computed(() => this.estado() !== 'NUEVO');
   readonly soloLectura = computed(() => this.elaborado() && !this.editando());
   readonly puedeVerificar = computed(() => ['ELABORADO', 'OBSERVADO'].includes(this.estado()));

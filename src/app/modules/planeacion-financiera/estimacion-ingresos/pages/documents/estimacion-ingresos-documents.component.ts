@@ -4,11 +4,33 @@ import { PermissionService } from '../../../../../core/auth/permission.service';
 
 import { DocumentsRecordsPageComponent } from '../../../../../shared/components/documents-records-page/documents-records-page.component';
 import type { DocumentHistoryRow } from '../../../../../shared/components/document-history-panel/document-history-panel.component';
-import type { DocumentsRecordsConfig, DocumentsRecordsRow } from '../../../../../shared/types/documents-records.types';
+import type { DocumentsRecordsColumn, DocumentsRecordsConfig, DocumentsRecordsRow } from '../../../../../shared/types/documents-records.types';
 import { EstimacionIngresosApiService } from '../../api/estimacion-ingresos-api.service';
 import { ESTIMACION_INGRESOS_DOCUMENTS_CONFIG } from '../../config/estimacion-ingresos-documents.config';
 import { solicitudRoute } from '../../config/estimacion-ingresos.rutas';
-import { EstimacionIngresosRegistro } from '../../models/estimacion-ingresos.model';
+import { EstimacionIngresosRegistro, estadoExpedienteEstimacion, numeroExpedienteEstimacion } from '../../models/estimacion-ingresos.model';
+
+/**
+ * Columnas de la bandeja del Revisor / Evaluador (Figma node 14751:191854, 1716 px: se desplaza en horizontal): las
+ * de la bandeja más Expediente, Estado del expediente, Fecha de evaluación y Usuario evaluador, con los anchos del
+ * diseño.
+ */
+const COLUMNAS_REVISOR: DocumentsRecordsColumn[] = [
+  { key: 'document', label: 'Documento', visibility: 'visible', group: 'default', widthClass: 'w-[260px]', kind: 'document-link' },
+  { key: 'number', label: 'Número', visibility: 'visible', group: 'default', widthClass: 'w-[90px]' },
+  { key: 'actionType', label: 'Tipo de acción', visibility: 'visible', group: 'default', widthClass: 'w-[140px]' },
+  { key: 'status', label: 'Estado', visibility: 'visible', group: 'default', widthClass: 'w-[120px]', kind: 'flow-status' },
+  { key: 'system', label: 'Sistema', visibility: 'visible', group: 'default', widthClass: 'w-[150px]' },
+  { key: 'date', label: 'Fecha de registro', visibility: 'visible', group: 'default', widthClass: 'w-[116px]' },
+  { key: 'entity', label: 'Entidad', visibility: 'visible', group: 'default', widthClass: 'w-[130px]' },
+  { key: 'expediente', label: 'Expediente', visibility: 'visible', group: 'default', widthClass: 'w-[236px]' },
+  { key: 'estadoExpediente', label: 'Estado del expediente', visibility: 'visible', group: 'default', widthClass: 'w-[120px]', kind: 'expediente-status' },
+  { key: 'fechaEvaluacion', label: 'Fecha de evaluación', visibility: 'visible', group: 'default', widthClass: 'w-[116px]' },
+  { key: 'usuarioEvaluador', label: 'Usuario evaluador', visibility: 'visible', group: 'default', widthClass: 'w-[190px]', kind: 'two-lines' },
+];
+
+/** Evaluador asignado en la demo (el usuario Revisor / Evaluador): nombre y correo, como el Figma. */
+const EVALUADOR_DEMO = { nombre: 'Rosa Quispe Huamán', correo: 'rosa.quispe@taller.pe' };
 
 /** ISO → "dd/mm/aaaa", como lo muestra el Figma. */
 function aFechaPe(iso: string): string {
@@ -88,6 +110,43 @@ export class EstimacionIngresosDocumentsComponent implements OnInit {
       const documento = this.documentos().find((d) => d.id === row['documentId']);
       return documento ? { staticRows: historialDe(documento) } : null;
     };
+    // Revisor / Evaluador (Figma node 14751:191854): solo le llegan las solicitudes Aprobadas, con su expediente, el
+    // estado del expediente, la fecha de evaluación y el evaluador; la tabla mide 1716 px y se desplaza en
+    // horizontal. Bandeja en solo lectura: sin «Crear documento» ni acción principal.
+    if (this.permissions.currentRole() === 'reviewer') {
+      const aprobadas = this.documentos().filter((d) => d.estado === 'Aprobado');
+      return {
+        ...ESTIMACION_INGRESOS_DOCUMENTS_CONFIG,
+        documentColumns: COLUMNAS_REVISOR,
+        documentTableMinWidthClass: 'min-w-[1716px]',
+        fieldsMenuOptions: [
+          ...ESTIMACION_INGRESOS_DOCUMENTS_CONFIG.fieldsMenuOptions,
+          { label: 'Expediente' },
+          { label: 'Estado del expediente' },
+          { label: 'Fecha de evaluación' },
+          { label: 'Usuario evaluador' },
+        ],
+        filterCampoOptions: [
+          ...ESTIMACION_INGRESOS_DOCUMENTS_CONFIG.filterCampoOptions,
+          { label: 'Expediente', value: 'expediente' },
+          { label: 'Estado del expediente', value: 'estadoExpediente' },
+        ],
+        documentRows: documentRows
+          .filter((r) => r['status'] === 'Aprobado')
+          .map((r, i) => ({
+            ...r,
+            entity: String(r['entity'] ?? '').replace(/^(\d+)\s+/, '$1 - '),
+            expediente: numeroExpedienteEstimacion(aprobadas[i]),
+            estadoExpediente: estadoExpedienteEstimacion(aprobadas[i].clasificadoresPersonalizados),
+            fechaEvaluacion: aFechaPe(aprobadas[i].fechaAprobado ?? aprobadas[i].fecha),
+            usuarioEvaluador: EVALUADOR_DEMO.nombre,
+            usuarioEvaluadorDetalle: EVALUADOR_DEMO.correo,
+          })),
+        statusFilterOptions: ['Aprobado'],
+        buildDocumentHistory,
+        modoConsulta: false,
+      };
+    }
     if (this.permissions.currentRole() === 'approver') {
       return { ...ESTIMACION_INGRESOS_DOCUMENTS_CONFIG, documentRows, buildDocumentHistory, modoConsulta: false, accionPrincipalDeshabilitada: true };
     }

@@ -10,6 +10,12 @@ import type { CuentaBancariaDatos } from '../modules/tesoreria/cuentas-bancarias
 import type { SaldoInicialDatos } from '../modules/tesoreria/saldos-iniciales/models/saldo-inicial.model';
 import {
   CLASIFICADORES_ESTIMACION_INGRESOS,
+  CONSOLIDADO_PLIEGO_SEMILLA,
+  ESTIMACION_INGRESOS_APROBADAS_SEMILLA,
+  RELACION_PLIEGOS_CONSOLIDADOS,
+  RELACION_PLIEGOS_POR_CLASIFICADOR,
+  RELACION_PLIEGOS_POR_ENTIDAD,
+  UNIDADES_EJECUTORAS_PLIEGO,
   DatosTaller,
   DETALLES_DOCUMENTOS_INGRESOS_TRIBUTARIOS,
   detalleIngresoTributarioVivo,
@@ -481,8 +487,159 @@ const ingresosTributariosSunatReiniciarSimulacion: Manejador = ({ datos }) => {
 
 // Proceso de solo consulta (Planeación financiera > Estimación de ingresos): sin bandeja por rol.
 // Las sembradas no guardan quién las elaboró: se completa con el creador demo, igual que en el detalle.
-const estimacionIngresos: Manejador = ({ datos }) =>
-  ok(datos.estimacionIngresos.map((d) => ({ ...d, elaboradoPor: d.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]) })));
+// Siembra las solicitudes aprobadas de ejemplo una sola vez (también en datos ya guardados en el navegador), con el
+// siguiente correlativo, así no se pierde lo que el usuario ya creó.
+function sembrarAprobadas(datos: DatosTaller): void {
+  // Repara las fechas de las ya sembradas (una versión anterior guardó una hora inválida).
+  let cambio = false;
+  for (const s of ESTIMACION_INGRESOS_APROBADAS_SEMILLA) {
+    const d = datos.estimacionIngresos.find((x) => x.id === s.id);
+    if (d && Number.isNaN(new Date(d.fecha).getTime())) {
+      Object.assign(d, { fecha: s.fecha, fechaVerificado: s.fechaVerificado, fechaAprobado: s.fechaAprobado });
+      cambio = true;
+    }
+  }
+  const faltan = ESTIMACION_INGRESOS_APROBADAS_SEMILLA.filter((s) => !datos.estimacionIngresos.some((d) => d.id === s.id));
+  if (!faltan.length) {
+    if (cambio) guardarDatos(datos);
+    return;
+  }
+  for (const s of faltan) {
+    datos.estimacionIngresos.push({ ...s, numero: String(datos.estimacionIngresos.length + 1).padStart(4, '0') });
+  }
+  guardarDatos(datos);
+}
+
+const estimacionIngresos: Manejador = ({ datos }) => {
+  sembrarAprobadas(datos);
+  return ok(datos.estimacionIngresos.map((d) => ({ ...d, elaboradoPor: d.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]) })));
+};
+
+// Bandeja del consolidado pliego: sus documentos y cuántas unidades ejecutoras validaron su solicitud. Si los datos
+// guardados son de antes de esta bandeja, la siembra aquí.
+const consolidadosPliegoEstimacion: Manejador = ({ datos }) => {
+  if (!datos.consolidadosPliegoEstimacion) {
+    datos.consolidadosPliegoEstimacion = CONSOLIDADO_PLIEGO_SEMILLA.map((d) => ({ ...d }));
+    guardarDatos(datos);
+  }
+  return ok({
+    documentos: datos.consolidadosPliegoEstimacion.map((d) => ({ ...d, elaboradoPor: d.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]) })),
+    unidadesValidadas: UNIDADES_EJECUTORAS_PLIEGO,
+    unidadesTotal: UNIDADES_EJECUTORAS_PLIEGO,
+  });
+};
+
+// Consolidado «Nuevo»: cabecera y relación de pliegos, sin número ni estado hasta Grabar.
+const consolidadoPliegoPrecarga: Manejador = ({ sesion }) => {
+  if (!sesion) return error(401, 'Sesión expirada.');
+  return ok({
+    fecha: new Date().toISOString(),
+    enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
+    entidad: '009 Ministerio de Economía y Finanzas',
+    unidadEjecutora: UNIDAD_CREADORA.nombre,
+    pliegos: RELACION_PLIEGOS_CONSOLIDADOS,
+  });
+};
+
+// Grabar un consolidado «Nuevo»: queda «Elaborado» con el siguiente correlativo.
+const consolidadoPliegoCrear: Manejador = ({ req, datos, sesion }) => {
+  if (!sesion) return error(401, 'Sesión expirada.');
+  const registros = ((req.body ?? {}) as { registros?: string[] }).registros ?? [];
+  if (!registros.length) return error(400, 'Seleccione al menos un registro para el consolidado.');
+  const lista = (datos.consolidadosPliegoEstimacion ??= CONSOLIDADO_PLIEGO_SEMILLA.map((d) => ({ ...d })));
+  const nuevo = {
+    id: nuevoId(datos, 'cpe'),
+    documento: 'Consolidado pliego de estimación de ingresos',
+    numero: String(lista.length + 1).padStart(4, '0'),
+    tipoAccion: 'Creación',
+    estado: 'Elaborado' as const,
+    sistema: 'Tesorería',
+    fecha: new Date().toISOString(),
+    entidad: '009 Ministerio de Economía y Finanzas',
+  };
+  lista.unshift({ ...nuevo, elaboradoPor: nombreCompleto(sesion.usuario) });
+  guardarDatos(datos);
+  return ok(nuevo, 201);
+};
+
+const consolidadoDe = (datos: { consolidadosPliegoEstimacion?: { id: string }[] }, id: string) =>
+  (datos.consolidadosPliegoEstimacion ?? []).find((d) => d.id === id);
+
+// Detalle de un consolidado grabado (Figma node 7606:466323): la relación de pliegos es la misma de la demo.
+const consolidadoPliegoDetalle: Manejador = ({ datos, params }) => {
+  const doc = (datos.consolidadosPliegoEstimacion ?? []).find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  return ok({
+    documentoId: doc.id,
+    numero: doc.numero,
+    estado: doc.estado,
+    tipoAccion: doc.tipoAccion,
+    fecha: doc.fecha,
+    enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
+    entidad: 'PRESIDENCIA DEL CONSEJO DE MINISTROS',
+    pliegos: RELACION_PLIEGOS_CONSOLIDADOS,
+    pliegosPorClasificador: RELACION_PLIEGOS_POR_CLASIFICADOR,
+    pliegosPorEntidad: RELACION_PLIEGOS_POR_ENTIDAD,
+    elaboradoPor: doc.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]),
+    fechaElaborado: doc.fecha,
+    verificadoPor: doc.verificadoPor ?? (doc.estado === 'Elaborado' ? undefined : nombreCompleto(USUARIOS_DEMO[0])),
+    fechaVerificado: doc.fechaVerificado ?? (doc.estado === 'Elaborado' ? undefined : doc.fecha),
+    aprobadoPor: doc.aprobadoPor,
+    fechaAprobado: doc.fechaAprobado,
+    observadoPor: doc.observadoPor,
+    fechaObservado: doc.fechaObservado,
+    motivoObservacion: doc.motivoObservacion,
+  });
+};
+
+// Aprobar un consolidado (aprobador): Verificado → Aprobado, estado final.
+const consolidadoPliegoAprobar: Manejador = ({ datos, params, sesion }) => {
+  const doc = (datos.consolidadosPliegoEstimacion ?? []).find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (doc.estado !== 'Verificado') return error(409, `No se puede aprobar un documento en estado ${doc.estado}.`);
+  doc.estado = 'Aprobado';
+  doc.aprobadoPor = nombreCompleto(sesion?.usuario ?? USUARIOS_DEMO[1] ?? USUARIOS_DEMO[0]);
+  doc.fechaAprobado = new Date().toISOString();
+  guardarDatos(datos);
+  return ok(doc);
+};
+
+// Observar un consolidado (aprobador): Verificado → Observado, con el comentario. En este producto no hay Rechazar.
+const consolidadoPliegoObservar: Manejador = ({ req, datos, params, sesion }) => {
+  const doc = (datos.consolidadosPliegoEstimacion ?? []).find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (doc.estado !== 'Verificado') return error(409, `No se puede observar un documento en estado ${doc.estado}.`);
+  const motivo = String((req.body as { motivo?: string } | null)?.motivo ?? '').trim();
+  if (!motivo) return error(400, 'Ingrese el comentario de la observación.');
+  doc.estado = 'Observado';
+  doc.observadoPor = nombreCompleto(sesion?.usuario ?? USUARIOS_DEMO[1] ?? USUARIOS_DEMO[0]);
+  doc.fechaObservado = new Date().toISOString();
+  doc.motivoObservacion = motivo;
+  guardarDatos(datos);
+  return ok(doc);
+};
+
+// Verificar un consolidado: Elaborado → Verificado.
+const consolidadoPliegoVerificar: Manejador = ({ datos, params, sesion }) => {
+  const doc = (datos.consolidadosPliegoEstimacion ?? []).find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (doc.estado !== 'Elaborado') return error(409, `No se puede verificar un documento en estado ${doc.estado}.`);
+  doc.estado = 'Verificado';
+  doc.verificadoPor = nombreCompleto(sesion?.usuario ?? USUARIOS_DEMO[0]);
+  doc.fechaVerificado = new Date().toISOString();
+  guardarDatos(datos);
+  return ok(doc);
+};
+
+// Eliminar un consolidado (solo en Elaborado, como la solicitud).
+const consolidadoPliegoEliminar: Manejador = ({ datos, params }) => {
+  const lista = datos.consolidadosPliegoEstimacion ?? [];
+  const indice = lista.findIndex((d) => d.id === params[0]);
+  if (indice === -1 || !consolidadoDe(datos, params[0])) return error(404, 'El documento no existe.');
+  lista.splice(indice, 1);
+  guardarDatos(datos);
+  return ok(null, 204);
+};
 
 // Precarga de una solicitud «Nuevo» (aún sin número ni estado): cabecera y clasificadores con los que se abre la
 // pantalla al pulsar Aceptar en «Crear documento». No graba nada: el documento recién existe al Grabar.
@@ -579,6 +736,26 @@ const estimacionIngresosAprobar: Manejador = ({ datos, params, sesion }) => {
 
 // Observar (aprobador): Verificado → Observado, con la descripción de la observación. En este producto no hay
 // Rechazar.
+// Revisor / Evaluador: valida u observa un registro (clasificador) de una solicitud aprobada. Las solicitudes que usan
+// la tabla por defecto la copian antes, para no cambiarla en todas.
+const estimacionIngresosEvaluarRegistro: Manejador = ({ req, datos, params, sesion }) => {
+  if (sesion?.perfil.rolCodigo !== 'REVISOR') return error(403, 'Solo el Revisor / Evaluador evalúa los registros.');
+  const doc = datos.estimacionIngresos.find((d) => d.id === params[0]);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (doc.estado !== 'Aprobado') return error(409, 'Solo se evalúan los registros de una solicitud aprobada.');
+  const dto = (req.body ?? {}) as { estado?: 'Validado' | 'Observado'; comentario?: string };
+  if (dto.estado !== 'Validado' && dto.estado !== 'Observado') return error(400, 'Estado de evaluación no válido.');
+  if (dto.estado === 'Observado' && !dto.comentario?.trim()) return error(400, 'Escriba el comentario de la observación.');
+  const codigo = decodeURIComponent(params[1]);
+  const filas = (doc.clasificadoresPersonalizados ??= CLASIFICADORES_ESTIMACION_INGRESOS.map((c) => ({ ...c })));
+  const fila = filas.find((c) => c.clasificador.split(' ')[0] === codigo);
+  if (!fila) return error(404, 'El registro no existe.');
+  fila.estadoEvaluacion = dto.estado;
+  fila.comentarioEvaluacion = dto.estado === 'Observado' ? dto.comentario?.trim() : undefined;
+  guardarDatos(datos);
+  return ok(fila);
+};
+
 const estimacionIngresosObservar: Manejador = ({ req, datos, params, sesion }) => {
   const doc = datos.estimacionIngresos.find((d) => d.id === params[0]);
   if (!doc) return error(404, 'El documento no existe.');
@@ -648,12 +825,21 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/ingresos-tributarios-sunat\/([^/]+)\/detalle$/, ingresosTributariosSunatDetalle],
   ['POST', /^\/ingresos-tributarios-sunat\/reiniciar-simulacion$/, ingresosTributariosSunatReiniciarSimulacion],
   ['GET', /^\/estimacion-ingresos$/, estimacionIngresos],
+  ['GET', /^\/consolidado-pliego-estimacion-ingresos$/, consolidadosPliegoEstimacion],
+  ['GET', /^\/consolidado-pliego-estimacion-ingresos\/precarga$/, consolidadoPliegoPrecarga],
+  ['POST', /^\/consolidado-pliego-estimacion-ingresos$/, consolidadoPliegoCrear],
+  ['GET', /^\/consolidado-pliego-estimacion-ingresos\/([^/]+)\/detalle$/, consolidadoPliegoDetalle],
+  ['POST', /^\/consolidado-pliego-estimacion-ingresos\/([^/]+)\/verificar$/, consolidadoPliegoVerificar],
+  ['POST', /^\/consolidado-pliego-estimacion-ingresos\/([^/]+)\/aprobar$/, consolidadoPliegoAprobar],
+  ['POST', /^\/consolidado-pliego-estimacion-ingresos\/([^/]+)\/observar$/, consolidadoPliegoObservar],
+  ['DELETE', /^\/consolidado-pliego-estimacion-ingresos\/([^/]+)$/, consolidadoPliegoEliminar],
   ['GET', /^\/estimacion-ingresos\/precarga$/, estimacionIngresosPrecarga],
   ['POST', /^\/estimacion-ingresos$/, estimacionIngresosCrear],
   ['GET', /^\/estimacion-ingresos\/([^/]+)\/detalle$/, estimacionIngresosDetalle],
   ['POST', /^\/estimacion-ingresos\/([^/]+)\/verificar$/, estimacionIngresosVerificar],
   ['POST', /^\/estimacion-ingresos\/([^/]+)\/aprobar$/, estimacionIngresosAprobar],
   ['POST', /^\/estimacion-ingresos\/([^/]+)\/observar$/, estimacionIngresosObservar],
+  ['POST', /^\/estimacion-ingresos\/([^/]+)\/registros\/([^/]+)\/evaluar$/, estimacionIngresosEvaluarRegistro],
   ['DELETE', /^\/estimacion-ingresos\/([^/]+)$/, estimacionIngresosEliminar],
   ['PATCH', /^\/estimacion-ingresos\/([^/]+)$/, estimacionIngresosActualizar],
 ];

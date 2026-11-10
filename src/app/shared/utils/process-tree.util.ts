@@ -73,7 +73,21 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
                 ],
                 actionTypeOptions: ['Creación', 'Modificación'],
               },
-              { id: 'estimacion-ingresos-consolidado-pliego', label: 'Documentos de consolidado pliego de estimación de ingresos', comingSoon: true },
+              {
+                id: 'estimacion-ingresos-consolidado-pliego',
+                label: 'Documentos de consolidado pliego de estimación de ingresos',
+                moduleRoute: '/procesos/consolidado-pliego-estimacion-ingresos',
+                createRoute: '/procesos/consolidado-pliego-estimacion-ingresos/consolidado',
+                documentOptions: ['Consolidado pliego de estimación de ingresos'],
+                documentCreateOptions: [
+                  {
+                    label: 'Consolidado pliego de estimación de ingresos',
+                    route: '/procesos/consolidado-pliego-estimacion-ingresos/consolidado',
+                    actionTypes: ['Creación'],
+                  },
+                ],
+                actionTypeOptions: ['Creación'],
+              },
               { id: 'estimacion-ingresos-consolidado-dgtp', label: 'Documentos de consolidado DGTP de estimación de ingresos', comingSoon: true },
               { id: 'estimacion-ingresos-proyeccion-dgtp', label: 'Documentos de proyección DGTP de ingresos', comingSoon: true },
             ],

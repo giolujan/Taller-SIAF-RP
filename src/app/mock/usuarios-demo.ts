@@ -41,7 +41,7 @@ const ENTIDAD = {
   entidadAmbitoCodigo: 'GN',
 };
 
-function perfil(id: string, rolCodigo: 'CREADOR' | 'APROBADOR', rol: string, perfilFuncional: string): PerfilItem {
+function perfil(id: string, rolCodigo: 'CREADOR' | 'APROBADOR' | 'REVISOR', rol: string, perfilFuncional: string): PerfilItem {
   return { id, ...ENTIDAD, rol, rolCodigo, perfilFuncional };
 }
 
@@ -78,6 +78,18 @@ export const USUARIOS_DEMO: UsuarioDemo[] = [
       perfil('perfil-carla-creador', 'CREADOR', 'Creador', 'Operador de cuentas bancarias'),
       perfil('perfil-carla-aprobador', 'APROBADOR', 'Aprobador', 'Aprobador de cuentas bancarias'),
     ],
+  },
+  {
+    // Rol REVISOR del backend (frontend `reviewer`): revisa o evalúa los registros de las solicitudes, no crea
+    // documentos ni cambia su estado. Mismo inicio y mismo menú que los demás perfiles.
+    id: 'usr-rosa',
+    dni: '44444444',
+    email: 'rosa.quispe@taller.pe',
+    nombres: 'Rosa',
+    apellidoPaterno: 'Quispe',
+    apellidoMaterno: 'Huamán',
+    descripcion: 'Revisor / Evaluador: revisa y evalúa los registros de las solicitudes',
+    perfiles: [perfil('perfil-rosa-revisor', 'REVISOR', 'Revisor / Evaluador', 'Revisor de solicitudes')],
   },
 ];
 

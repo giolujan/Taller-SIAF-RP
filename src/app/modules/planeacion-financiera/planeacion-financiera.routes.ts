@@ -24,6 +24,23 @@ export const PLANEACION_FINANCIERA_ROUTES: Routes = [
       ),
   },
   {
+    path: 'procesos/consolidado-pliego-estimacion-ingresos',
+    loadComponent: () =>
+      import('./estimacion-ingresos/pages/consolidado-pliego/consolidado-pliego-documents.component').then(
+        (m) => m.ConsolidadoPliegoDocumentsComponent,
+      ),
+  },
+  {
+    path: 'procesos/consolidado-pliego-estimacion-ingresos/consolidado',
+    loadComponent: () =>
+      import('./estimacion-ingresos/pages/consolidado-pliego/consolidado-pliego.component').then((m) => m.ConsolidadoPliegoComponent),
+  },
+  {
+    path: 'procesos/consolidado-pliego-estimacion-ingresos/consolidado/:id',
+    loadComponent: () =>
+      import('./estimacion-ingresos/pages/consolidado-pliego/consolidado-pliego.component').then((m) => m.ConsolidadoPliegoComponent),
+  },
+  {
     path: 'procesos/estimacion-ingresos/solicitud/:id/registro/:codigo',
     loadComponent: () =>
       import('./estimacion-ingresos/pages/registro/estimacion-ingresos-registro-detalle.component').then(

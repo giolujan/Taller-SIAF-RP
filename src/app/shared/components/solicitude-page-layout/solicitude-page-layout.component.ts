@@ -67,6 +67,10 @@ import { SolicitudeHeaderComponent, SolicitudeHeaderRole, SolicitudeHeaderState 
           [saveDisabled]="saveDisabled"
           [cancelDisabled]="cancelDisabled"
           [verifyDisabled]="verifyDisabled"
+          [deleteDisabled]="deleteDisabled"
+          [editDisabled]="editDisabled"
+          [rejectDisabled]="rejectDisabled"
+          [observeDisabled]="observeDisabled"
           [rejectEnabled]="rejectEnabled"
           [loading]="loading"
           (returned)="returned.emit()"
@@ -106,6 +110,12 @@ export class SolicitudePageLayoutComponent {
   /** Pasa a `siaf-solicitude-header`: apaga «Cancelar» mientras hay una edición abierta dentro de la página. */
   @Input() cancelDisabled = false;
   @Input() verifyDisabled = false;
+  /** Pasan a `siaf-solicitude-header`: Eliminar / Editar visibles pero deshabilitados. */
+  @Input() deleteDisabled = false;
+  @Input() editDisabled = false;
+  /** Pasan a `siaf-solicitude-header`: Rechazar / Observar del aprobador visibles pero deshabilitados. */
+  @Input() rejectDisabled = false;
+  @Input() observeDisabled = false;
   /** Pasa a `siaf-solicitude-header`: `false` quita «Rechazar» al aprobador en productos sin rechazo. */
   @Input() rejectEnabled = true;
   @Input() trayMenuOpen = false;

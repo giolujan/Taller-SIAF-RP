@@ -11,3 +11,11 @@ export const registroRoute = (id: string, codigoClasificador: string): string =>
 
 /** Hoja «Registro de la estimación de Ingresos» del árbol de procesos: arma las migas de pan. */
 export const PROCESS_ID = 'estimacion-ingresos-registro';
+
+/** Hoja «Documentos de consolidado pliego de estimación de ingresos» (Figma CEL-005 node 4938:92579). */
+export const CONSOLIDADO_PLIEGO_ID = 'estimacion-ingresos-consolidado-pliego';
+export const CONSOLIDADO_PLIEGO_ROUTE = '/procesos/consolidado-pliego-estimacion-ingresos';
+/** Consolidado «Nuevo» que abre «Crear documento» (misma pantalla que la solicitud de estimación de ingresos). */
+export const CONSOLIDADO_PLIEGO_NUEVO_ROUTE = `${CONSOLIDADO_PLIEGO_ROUTE}/consolidado`;
+/** Consolidado ya grabado (Figma node 7606:466323). */
+export const consolidadoPliegoRoute = (id: string): string => `${CONSOLIDADO_PLIEGO_NUEVO_ROUTE}/${id}`;

@@ -2,6 +2,7 @@
   <siaf-solicitude-page-layout
     [breadcrumbs]="breadcrumbs"
     [role]="headerRole()"
+    [showButtonGroup]="!esEvaluador()"
     [state]="headerState()"
     [loading]="cargando()"
     heading="Solicitud de estimación de ingresos"
@@ -34,6 +35,15 @@
         No se encontró el detalle de este documento.
       </div>
     } @else {
+      @if (mostrarAvisoEvaluacion()) {
+        <siaf-alert
+          tone="info"
+          title="Estado de la estimación"
+          [description]="textoAvisoEvaluacion()"
+          [showClose]="true"
+          (closed)="avisoUmbralCerrado.set(true)"
+        />
+      }
       @if (mostrarAvisoUmbral()) {
         <siaf-alert
           tone="info"
@@ -48,7 +58,13 @@
       @if (detalle(); as d) {
         <section class="grid gap-siaf-md lg:grid-cols-[1fr_360px]">
           <siaf-solicitude-info-card [fields]="campos()" />
-          <siaf-document-summary-card [documentNumber]="d.numero" [status]="d.estado" />
+          <!-- Revisor / Evaluador: N° expediente, N° documento en cinco cifras y el estado del expediente («Creado»). -->
+          <siaf-document-summary-card
+            [documentNumber]="esEvaluador() ? d.numero.padStart(5, '0') : d.numero"
+            [status]="d.estado"
+            [expedienteNumber]="esEvaluador() ? numeroExpediente() : null"
+            [expedienteStatus]="esEvaluador() ? estadoExpediente() : null"
+          />
         </section>
       } @else {
         <siaf-solicitude-info-card [fields]="campos()" />
@@ -123,35 +139,64 @@
 
         @switch (vista()) {
           @case ('estimacion') {
-            <!-- Tabla «Table Estimacion_Ingresos» (Figma node 2448:143962): montos a la derecha y (f) con ícono de
-                 tendencia cuando la variación pasa el umbral. -->
+            <!-- Tabla «Table Estimacion_Ingresos» (Figma nodes 2448:143962 y 2448:143665): FF y clasificador (y la selección
+                 o el estado del Revisor) fijos a la izquierda, los montos y «¿Base legal de uso específico?» con scroll
+                 horizontal, y la variación (y ⋮) fijas a la derecha. (f) lleva el ícono de tendencia sobre el umbral. -->
             <div class="siaf-table-shell">
               <table class="siaf-table">
                 <thead>
                   <tr class="siaf-table-head-row">
                     @if (editable()) {
-                      <th class="siaf-table-th w-10" rowspan="2"><span class="sr-only">Seleccionar</span></th>
+                      <th class="siaf-table-th siaf-table-cell-fill-high sticky left-0 z-[3] w-12 min-w-12" rowspan="2"><span class="sr-only">Seleccionar</span></th>
                     }
-                    <th class="siaf-table-th" rowspan="2">FF</th>
-                    <th class="siaf-table-th" rowspan="2">Clasificador de ingresos</th>
-                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center">Rec. histórica</th>
+                    <th class="siaf-table-th siaf-table-cell-fill-high sticky z-[3] w-[70px] min-w-[70px]" [style.left.px]="fijas().ff" rowspan="2">FF</th>
+                    <th
+                      class="siaf-table-th siaf-table-cell-fill-high sticky z-[3] w-[268px] min-w-[268px]"
+                      [style.border-right]="esEvaluador() ? null : '1px solid var(--sys-color-divider-strong)'"
+                      [style.left.px]="fijas().clasificador"
+                      rowspan="2"
+                    >Clasificador de ingresos</th>
+                    <!-- Revisor / Evaluador: estado de la evaluación de cada registro (Figma node 14733:117688). -->
+                    @if (esEvaluador()) {
+                      <th
+                        class="siaf-table-th siaf-table-cell-fill-high sticky z-[3] w-[150px] min-w-[150px]"
+                        style="border-right: 1px solid var(--sys-color-divider-strong)"
+                        [style.left.px]="fijas().estado"
+                        rowspan="2"
+                      >Estado</th>
+                    }
+                    <th class="siaf-table-th text-center">Rec. histórica</th>
                     <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="3">Recaudación estimada</th>
-                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="2">
+                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] min-w-[172px] text-center" rowspan="2">
+                      ¿Base legal de uso específico?<br /><span class="normal-case">SI/NO</span>
+                    </th>
+                    <th
+                      class="siaf-table-th siaf-table-cell-fill-high sticky z-[3] text-center"
+                      style="border-left: 1px solid var(--sys-color-divider-strong)"
+                      [style.right.px]="fijas().porcentaje"
+                      colspan="2"
+                    >
                       Variación <span class="font-normal normal-case text-[var(--sys-color-text-neutral-low)]">(b) vs (a)</span>
                     </th>
                     @if (!editable()) {
-                      <th class="siaf-table-th siaf-table-cell-fill-high sticky right-0 z-[2] w-14 border-l border-[var(--sys-color-divider-strong)]" rowspan="2">
+                      <th class="siaf-table-th siaf-table-cell-fill-high sticky right-0 z-[3] w-14 min-w-14" rowspan="2">
                         <span class="sr-only">Acciones</span>
                       </th>
                     }
                   </tr>
                   <tr class="siaf-table-head-row">
-                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Promedio anual <sup class="normal-case">(a)</sup></th>
-                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Año 2027 <sup class="normal-case">(b)</sup></th>
-                    <th class="siaf-table-th text-right">Año 2028 <sup class="normal-case">(c)</sup></th>
-                    <th class="siaf-table-th text-right">Año 2029 <sup class="normal-case">(d)</sup></th>
-                    <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-right">Monto <sup class="normal-case">(e)</sup></th>
-                    <th class="siaf-table-th text-right">(%) <sup class="normal-case">(f)</sup></th>
+                    <th class="siaf-table-th min-w-[170px] text-right">Promedio anual <sup class="normal-case">(a)</sup></th>
+                    <th class="siaf-table-th min-w-[170px] border-l border-[var(--sys-color-divider-default)] text-right">Año 2027 <sup class="normal-case">(b)</sup></th>
+                    <th class="siaf-table-th min-w-[170px] text-right">Año 2028 <sup class="normal-case">(c)</sup></th>
+                    <th class="siaf-table-th min-w-[170px] text-right">Año 2029 <sup class="normal-case">(d)</sup></th>
+                    <th
+                      class="siaf-table-th siaf-table-cell-fill-high sticky z-[3] w-[115px] min-w-[115px] text-right"
+                      style="border-left: 1px solid var(--sys-color-divider-strong)"
+                      [style.right.px]="fijas().monto"
+                    >Monto <sup class="normal-case">(e)</sup></th>
+                    <th class="siaf-table-th siaf-table-cell-fill-high sticky z-[3] w-[100px] min-w-[100px] text-right" [style.right.px]="fijas().porcentaje">
+                      (%) <sup class="normal-case">(f)</sup>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -160,7 +205,7 @@
                          con el teclado, el enlace del clasificador. -->
                     <tr class="siaf-table-row" [class.cursor-pointer]="!editable()" (click)="abrirDetalleRegistro(fila)">
                       @if (editable()) {
-                        <td class="siaf-table-td">
+                        <td class="siaf-table-td sticky left-0 z-[1] bg-surface">
                           <label class="inline-flex h-10 w-10 items-center">
                             <input
                               type="checkbox"
@@ -172,8 +217,12 @@
                           </label>
                         </td>
                       }
-                      <td class="siaf-table-td">{{ fila.ff }}</td>
-                      <td class="siaf-table-td">
+                      <td class="siaf-table-td sticky z-[1] bg-surface" [style.left.px]="fijas().ff">{{ fila.ff }}</td>
+                      <td
+                        class="siaf-table-td sticky z-[1] bg-surface"
+                        [style.border-right]="esEvaluador() ? null : '1px solid var(--sys-color-divider-strong)'"
+                        [style.left.px]="fijas().clasificador"
+                      >
                         @if (editable()) {
                           {{ fila.clasificador }}
                         } @else {
@@ -184,12 +233,22 @@
                           >{{ fila.clasificador }}</a>
                         }
                       </td>
+                      @if (esEvaluador()) {
+                        <td class="siaf-table-td sticky z-[1] bg-surface" style="border-right: 1px solid var(--sys-color-divider-strong)" [style.left.px]="fijas().estado">
+                          <siaf-record-status-tag [status]="fila.estadoEvaluacion ?? 'Pendiente'" />
+                        </td>
+                      }
                       <td class="siaf-table-td text-right">{{ fila.promedioAnual | number }}</td>
-                      <td class="siaf-table-td text-right">{{ fila.anio2027 | number }}</td>
+                      <td class="siaf-table-td border-l border-[var(--sys-color-divider-default)] text-right">{{ fila.anio2027 | number }}</td>
                       <td class="siaf-table-td text-right">{{ fila.anio2028 | number }}</td>
                       <td class="siaf-table-td text-right">{{ fila.anio2029 | number }}</td>
-                      <td class="siaf-table-td text-right">{{ fila.variacionMonto | number }}</td>
-                      <td class="siaf-table-td text-right">
+                      <td class="siaf-table-td border-l border-[var(--sys-color-divider-default)] text-center">{{ fila.baseLegal }}</td>
+                      <td
+                        class="siaf-table-td sticky z-[1] bg-surface text-right"
+                        style="border-left: 1px solid var(--sys-color-divider-strong)"
+                        [style.right.px]="fijas().monto"
+                      >{{ fila.variacionMonto | number }}</td>
+                      <td class="siaf-table-td sticky z-[1] bg-surface text-right" [style.right.px]="fijas().porcentaje">
                         <span class="inline-flex items-center justify-end gap-siaf-xs">
                           @if (fila.variacionPorcentaje > umbralVariacion) {
                             <siaf-icon name="trending_up" [size]="20" label="Variación fuera del umbral" [decorative]="false" />
@@ -198,7 +257,7 @@
                         </span>
                       </td>
                       @if (!editable()) {
-                        <td class="siaf-table-td sticky right-0 z-[1] border-l border-[var(--sys-color-divider-strong)] bg-surface text-center" (click)="$event.stopPropagation()">
+                        <td class="siaf-table-td sticky right-0 z-[1] bg-surface text-center" (click)="$event.stopPropagation()">
                           <siaf-icon-dropdown-menu
                             icon="more_vert"
                             [ariaLabel]="'Más acciones de ' + fila.clasificador"
@@ -213,18 +272,30 @@
                   }
                   <tr class="siaf-table-row siaf-table-cell-fill-high font-bold">
                     @if (editable()) {
-                      <td class="siaf-table-td"></td>
+                      <td class="siaf-table-td siaf-table-cell-fill-high sticky left-0 z-[1]"></td>
                     }
-                    <td class="siaf-table-td"></td>
-                    <td class="siaf-table-td">TOTAL</td>
+                    <td class="siaf-table-td siaf-table-cell-fill-high sticky z-[1]" [style.left.px]="fijas().ff"></td>
+                    <td
+                      class="siaf-table-td siaf-table-cell-fill-high sticky z-[1]"
+                      [style.border-right]="esEvaluador() ? null : '1px solid var(--sys-color-divider-strong)'"
+                      [style.left.px]="fijas().clasificador"
+                    >TOTAL</td>
+                    @if (esEvaluador()) {
+                      <td class="siaf-table-td siaf-table-cell-fill-high sticky z-[1]" style="border-right: 1px solid var(--sys-color-divider-strong)" [style.left.px]="fijas().estado"></td>
+                    }
                     <td class="siaf-table-td text-right">S/ {{ totalColumna('promedioAnual') | number }}</td>
-                    <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2027') | number }}</td>
+                    <td class="siaf-table-td border-l border-[var(--sys-color-divider-default)] text-right">S/ {{ totalColumna('anio2027') | number }}</td>
                     <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2028') | number }}</td>
                     <td class="siaf-table-td text-right">S/ {{ totalColumna('anio2029') | number }}</td>
-                    <td class="siaf-table-td text-right">S/ {{ totalColumna('variacionMonto') | number }}</td>
-                    <td class="siaf-table-td text-right">{{ totalPorcentaje() }}%</td>
+                    <td class="siaf-table-td border-l border-[var(--sys-color-divider-default)]"></td>
+                    <td
+                      class="siaf-table-td siaf-table-cell-fill-high sticky z-[1] text-right"
+                      style="border-left: 1px solid var(--sys-color-divider-strong)"
+                      [style.right.px]="fijas().monto"
+                    >S/ {{ totalColumna('variacionMonto') | number }}</td>
+                    <td class="siaf-table-td siaf-table-cell-fill-high sticky z-[1] text-right" [style.right.px]="fijas().porcentaje">{{ totalPorcentaje() }}%</td>
                     @if (!editable()) {
-                      <td class="siaf-table-td siaf-table-cell-fill-high sticky right-0 z-[1] border-l border-[var(--sys-color-divider-strong)]"></td>
+                      <td class="siaf-table-td siaf-table-cell-fill-high sticky right-0 z-[1]"></td>
                     }
                   </tr>
                 </tbody>
@@ -372,7 +443,8 @@
         <siaf-detail-history-tabs [comentario]="comentario" [entries]="historialComentarios()" />
       }
 
-      @if (detalle()) {
+      <!-- El Revisor / Evaluador no ve la trazabilidad de la solicitud. -->
+      @if (detalle() && !esEvaluador()) {
         <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
       }
       }

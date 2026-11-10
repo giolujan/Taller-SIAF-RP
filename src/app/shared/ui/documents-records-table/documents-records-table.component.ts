@@ -7,6 +7,8 @@ import type { DocumentsRecordsColumn, DocumentsRecordsRow, DocumentsRecordsTab }
 import { FlowStatus, FlowStatusTagComponent } from '../flow-status-tag/flow-status-tag.component';
 import { IconComponent } from '../icon/icon.component';
 import { RecordStatus, RecordStatusTagComponent } from '../record-status-tag/record-status-tag.component';
+import { StatusTagComponent, StatusTagTone } from '../status-tag/status-tag.component';
+import { TagComponent } from '../tag/tag.component';
 import { TooltipDirective } from '../tooltip/tooltip.directive';
 
 export type DocumentsRecordsSelectionChange = {
@@ -32,6 +34,11 @@ type HeaderGroupCell =
  *   panel de columnas decide cuáles se ven.
  * - Con `selectionDisabled` para dejar marcables solo los documentos de la acción masiva: Elaborados para el creador
  *   (Verificar) y Verificados para el aprobador (Aprobar).
+ * - Con `kind: 'expediente-status'` para el estado del expediente (Creado, En trámite, Archivado) y `kind: 'two-lines'`
+ *   para un dato con su detalle debajo (usuario evaluador y su correo): bandeja del Revisor / Evaluador de Estimación
+ *   de ingresos (Figma node 14751:191854).
+ * - Con `statusCounter` en la fila para el contador «1/2» junto al estado (bandeja del Revisor / Evaluador de
+ *   Estimación de ingresos, Figma node 2926:296857).
  * - Con `headerGroup` en columnas consecutivas, para una cabecera de dos filas (un título agrupador arriba, sus
  *   columnas abajo), como «Info del documento» → Número / Nombre en Registros de Ingresos tributarios SUNAT.
  * @evitar
@@ -69,7 +76,7 @@ type HeaderGroupCell =
 @Component({
   selector: 'siaf-documents-records-table',
   standalone: true,
-  imports: [FlowStatusTagComponent, IconComponent, NgClass, RecordStatusTagComponent, RouterLink, TooltipDirective],
+  imports: [FlowStatusTagComponent, IconComponent, NgClass, RecordStatusTagComponent, RouterLink, StatusTagComponent, TagComponent, TooltipDirective],
   template: `
     <div class="siaf-table-scroll min-w-0">
       <table class="w-full border-collapse text-left text-sm" [ngClass]="minWidthClass">
@@ -132,9 +139,25 @@ type HeaderGroupCell =
                       }
                     </span>
                   } @else if (column.kind === 'flow-status') {
-                    <siaf-flow-status-tag [status]="flowStatus(row[column.key])" size="small" />
+                    @if (row['statusCounter']) {
+                      <!-- Contador junto al estado (Figma CEL-005 node 2926:296857, «Input tags» small), ej. «1/2». -->
+                      <span class="inline-flex items-center gap-siaf-md">
+                        <siaf-flow-status-tag [status]="flowStatus(row[column.key])" size="small" />
+                        <siaf-tag size="small" [attr.aria-label]="'Avance ' + row['statusCounter']">{{ row['statusCounter'] }}</siaf-tag>
+                      </span>
+                    } @else {
+                      <siaf-flow-status-tag [status]="flowStatus(row[column.key])" size="small" />
+                    }
                   } @else if (column.kind === 'record-status') {
                     <siaf-record-status-tag [status]="recordStatus(row[column.key])" [size]="activeTab === 'records' ? 'small' : 'standard'" />
+                  } @else if (column.kind === 'expediente-status') {
+                    <!-- «Expediente tags» (Figma CEL-005 node 14751:191854): Creado, En trámite, Archivado. -->
+                    <siaf-status-tag appearance="soft" size="small" icon="check_circle" [tone]="toneExpediente(row[column.key])">{{ row[column.key] }}</siaf-status-tag>
+                  } @else if (column.kind === 'two-lines') {
+                    <span class="flex min-w-0 flex-col">
+                      <span class="block truncate" siafTooltip>{{ row[column.key] }}</span>
+                      <span class="block truncate text-[var(--sys-color-text-neutral-low)]" siafTooltip>{{ row[column.key + 'Detalle'] }}</span>
+                    </span>
                   } @else {
                     <span class="block truncate" siafTooltip>{{ row[column.key] }}</span>
                   }
@@ -160,6 +183,11 @@ export class DocumentsRecordsTableComponent {
   @Input() columns: DocumentsRecordsColumn[] = [];
   @Input() rows: DocumentsRecordsRow[] = [];
   @Input() minWidthClass = '';
+
+  /** Tono de cada «Expediente tag»: Creado gris, En trámite amarillo y Archivado verde (Figma). */
+  toneExpediente(valor: unknown): StatusTagTone {
+    return valor === 'En trámite' ? 'warning' : valor === 'Archivado' ? 'success' : 'default';
+  }
   @Input() recordTrackKey = '';
   @Input() documentRoute: (row: DocumentsRecordsRow) => string = () => '';
   @Input() selectionDisabled: (row: DocumentsRecordsRow) => boolean = () => false;

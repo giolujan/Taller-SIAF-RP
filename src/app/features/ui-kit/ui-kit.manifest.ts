@@ -4709,11 +4709,39 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "expedienteNumber",
+        "tipo": "string | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": "N° de expediente (ej. 0000001-2026) — opcional, va como primera fila."
+      },
+      {
+        "nombre": "expedienteNumberLabel",
+        "tipo": "string",
+        "porDefecto": "'N° expediente'",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "expedienteStatus",
+        "tipo": "string | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": "Estado del expediente («Expediente tags» del Figma: Creado, En trámite, Archivado). Si viene, reemplaza la etiqueta del estado del flujo — opcional."
+      },
+      {
         "nombre": "status",
         "tipo": "FlowStatus",
         "porDefecto": "ESTADO.ELABORADO",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "statusCounter",
+        "tipo": "string | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": "Contador junto al estado (ej. «1/2», Figma «Input tags» small) — opcional."
       },
       {
         "nombre": "statusLabel",
@@ -4724,14 +4752,16 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "eventos": [],
-    "usar": "- En la cabecera de las pantallas de solicitud, junto a `siaf-solicitude-info-card`, para el N° y el estado del\n  documento abierto: plan de cuentas, catálogo de ajustes, catálogo de eventos, eventos contables y apertura contable.\n- Con `contableNumber` cuando el documento ya tiene N° de documento contable: asiento de ajuste y asiento anual de\n  apertura contable.\n- En el detalle de los documentos y pedidos de Contabilización.",
+    "usar": "- En la cabecera de las pantallas de solicitud, junto a `siaf-solicitude-info-card`, para el N° y el estado del\n  documento abierto: plan de cuentas, catálogo de ajustes, catálogo de eventos, eventos contables y apertura contable.\n- Con `contableNumber` cuando el documento ya tiene N° de documento contable: asiento de ajuste y asiento anual de\n  apertura contable.\n- En el detalle de los documentos y pedidos de Contabilización.\n- Con `expedienteNumber` (primera fila) y `expedienteStatus` (Creado, En trámite, Archivado en lugar del estado del\n  flujo) en la solicitud que ve el Revisor / Evaluador de Estimación de ingresos (Figma CEL-005); `statusCounter`\n  para un contador «1/2» junto al estado.",
     "evitar": "- Para el ítem elegido desde un panel lateral: usar `siaf-summary-card`.\n- Para datos generales como fecha, ente rector o entidad: usar `siaf-solicitude-info-card`.\n- Para el estado de un registro (Activo, Anulado): usar `siaf-record-status-tag`; esta card muestra el estado del\n  flujo del documento.\n- Etiquetas largas: en escritorio la columna mide 140 px y la etiqueta se trunca.",
     "teclado": "- No recibe foco: no es interactivo.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: cada etiqueta precede a su valor en el orden de lectura; las versiones\n  móvil y escritorio se ocultan con `display: none`, así que el lector de pantalla lee una sola.\n- **1.4.1 Uso del color (A)**: el estado va escrito en `siaf-flow-status-tag`, no solo en el color.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: etiquetas `text-neutral-low` 5.01:1 (oscuro 8.86:1) y N° de\n  documento `text-neutral-high` 16.29:1 (16.53:1) cumplen, pero el N° contable usa la clase `text-brand-primary`\n  (color de fondo de marca), 2.66:1 en oscuro, y el estado Observado / Pendiente / Fallido da 3.39:1 en claro.\n- **1.4.13 Contenido en hover o foco (AA)**: en escritorio el N° truncado se completa con `siafTooltip`, que se\n  cierra con Escape y se puede recorrer con el puntero.\n- **Pendiente · 2.1.1 Teclado (A)**: ese texto no recibe foco, así que con teclado el globo no aparece (el lector de\n  pantalla sí lee el valor entero).",
     "figma": [],
     "aria": {
       "roles": [],
-      "atributos": []
+      "atributos": [
+        "aria-label"
+      ]
     },
     "tokens": [
       {
@@ -4791,7 +4821,9 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     ],
     "usa": [
       "[siafTooltip]",
-      "siaf-flow-status-tag"
+      "siaf-flow-status-tag",
+      "siaf-status-tag",
+      "siaf-tag"
     ],
     "sinUso": false
   },
@@ -4838,7 +4870,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Como pantalla principal de cada proceso: plan de cuentas, asiento de ajuste, catálogo de ajuste, catálogo de\n  eventos, eventos contables, contabilización y apertura contable (por entidad y anual).\n- Cuando el creador verifica o el aprobador aprueba varias solicitudes a la vez: el botón, el modal y el snackbar\n  salen del rol, sin código en el padre.\n- `accionPrincipalDeshabilitada` cuando el proceso todavía no conecta el cambio de estado en lote a su backend: el\n  botón se ve, deshabilitado (aprobador de Estimación de ingresos, que aprueba desde la solicitud).\n- Con `modoConsulta` en procesos de solo consulta (contabilización, apertura anual) y con `serverQuery` /\n  `serverRecordsQuery` cuando el backend busca y pagina (plan de cuentas, asiento de ajuste, catálogos, apertura).",
+    "usar": "- Como pantalla principal de cada proceso: plan de cuentas, asiento de ajuste, catálogo de ajuste, catálogo de\n  eventos, eventos contables, contabilización y apertura contable (por entidad y anual).\n- Cuando el creador verifica o el aprobador aprueba varias solicitudes a la vez: el botón, el modal y el snackbar\n  salen del rol, sin código en el padre.\n- `accionPrincipalDeshabilitada` cuando el proceso todavía no conecta el cambio de estado en lote a su backend: el\n  botón se ve, deshabilitado (aprobador de Estimación de ingresos, que aprueba desde la solicitud).\n- Con un `siaf-alert` proyectado con el atributo `page-alert` para un aviso del proceso sobre la tarjeta de\n  documentos: «Consolidado disponible» en Documentos de consolidado pliego de estimación de ingresos.\n- Con `modoConsulta` en procesos de solo consulta (contabilización, apertura anual) y con `serverQuery` /\n  `serverRecordsQuery` cuando el backend busca y pagina (plan de cuentas, asiento de ajuste, catálogos, apertura).",
     "evitar": "- Para «Consultas y reportes» con búsqueda por criterios: usar `siaf-page-shell` con `siaf-page-header`.\n- Para ver o editar una solicitud: usar `siaf-solicitude-page-layout`.\n- Rearmar una bandeja con `siaf-table-controls`, `siaf-documents-records-table` y `siaf-pagination` sueltos, o\n  duplicar las reglas de rol: declarar otro `DocumentsRecordsConfig`.\n- Para la Bandeja de Documentos del shell (Recibidos, Enviados, Borradores, Papelera): es `siaf-tray-documents-view`.",
     "teclado": "- **Tab**: recorre el breadcrumb, «Crear documento», las pestañas, el buscador y sus menús, los filtros, «Agregar\n  filtro», la barra de la grilla, la tabla y la paginación; cada control sigue su componente.\n- **Flechas izquierda / derecha, Inicio y Fin**: cambian entre Documentos y Registros (`siaf-tabs`).\n- **Enter** en el buscador: aplica la búsqueda (con búsqueda en el servidor, recién ahí consulta).\n- **Enter / Espacio** en un chip de filtro personalizado: lo abre para editarlo; en su X, lo quita.\n- **Escape**: cierra el popover «Crear documento» o el filtro personalizado y el foco vuelve a su botón; salir del\n  popover con Tab también lo cierra. Las capas transparentes que cierran al pulsar fuera no son paradas de Tab.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: el título del proceso es el `h1` y «Documentos existentes» / «Registros\n  existentes», el `h2` de la grilla; el breadcrumb es un `nav` y la página vive dentro del `main` del shell.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: las pestañas no apuntan a un `role=\"tabpanel\"` (la grilla no lo\n  declara), y la X que quita un filtro personalizado es un `span` `role=\"button\"` dentro de otro `<button>`: un\n  control anidado en un botón puede no anunciarse.\n- **Pendiente · 2.5.3 Etiqueta en el nombre (A)**: cada chip de filtro personalizado se llama «Filtro personalizado\n  aplicado» y su texto visible («Campo: valor») no forma parte del nombre.\n- **2.4.3 Orden del foco (A)**: el popover «Crear documento» y el filtro personalizado reciben el foco al abrirse,\n  cierran con Escape y lo devuelven a su botón (`siafFoco`).\n- **Pendiente · 2.4.11 Foco no oculto (AA)**: en escritorio la cabecera (breadcrumb, título y pestañas) queda fija\n  bajo el navbar y no hay `scroll-padding`: al volver con Shift + Tab, un control de la grilla puede quedar tapado.\n- **4.1.3 Mensajes de estado (AA)**: la carga de la grilla se anuncia con `siaf-table-skeleton` (`role=\"status\"`) y\n  el resultado de verificar o aprobar en lote con `siaf-snackbar` (`role=\"status\"`; `role=\"alert\"` si falla).\n- **2.4.7 Foco visible (AA)**: los chips de filtro personalizado y «Agregar filtro» no tienen estilo propio ni\n  `outline-none`: queda el anillo nativo; el resto sigue su componente.\n- **1.4.3 Contraste mínimo (AA)**: `h1` y `h2` en `text-text` (16.29:1 / 16.53:1) y el subtítulo en\n  `text-text-muted` (5.01:1 / 8.86:1) sobre `bg-surface`.",
@@ -5066,7 +5098,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- En las pestañas Documentos / Registros de `siaf-documents-records-page` (plan de cuentas, asiento de ajuste,\n  catálogo de ajuste, catálogos de eventos, apertura contable y contabilización).\n- Cuando las columnas vienen de configuración (`DocumentsRecordsColumn` con `kind`, `align` y `widthClass`) y el\n  panel de columnas decide cuáles se ven.\n- Con `selectionDisabled` para dejar marcables solo los documentos de la acción masiva: Elaborados para el creador\n  (Verificar) y Verificados para el aprobador (Aprobar).\n- Con `headerGroup` en columnas consecutivas, para una cabecera de dos filas (un título agrupador arriba, sus\n  columnas abajo), como «Info del documento» → Número / Nombre en Registros de Ingresos tributarios SUNAT.",
+    "usar": "- En las pestañas Documentos / Registros de `siaf-documents-records-page` (plan de cuentas, asiento de ajuste,\n  catálogo de ajuste, catálogos de eventos, apertura contable y contabilización).\n- Cuando las columnas vienen de configuración (`DocumentsRecordsColumn` con `kind`, `align` y `widthClass`) y el\n  panel de columnas decide cuáles se ven.\n- Con `selectionDisabled` para dejar marcables solo los documentos de la acción masiva: Elaborados para el creador\n  (Verificar) y Verificados para el aprobador (Aprobar).\n- Con `kind: 'expediente-status'` para el estado del expediente (Creado, En trámite, Archivado) y `kind: 'two-lines'`\n  para un dato con su detalle debajo (usuario evaluador y su correo): bandeja del Revisor / Evaluador de Estimación\n  de ingresos (Figma node 14751:191854).\n- Con `statusCounter` en la fila para el contador «1/2» junto al estado (bandeja del Revisor / Evaluador de\n  Estimación de ingresos, Figma node 2926:296857).\n- Con `headerGroup` en columnas consecutivas, para una cabecera de dos filas (un título agrupador arriba, sus\n  columnas abajo), como «Info del documento» → Número / Nombre en Registros de Ingresos tributarios SUNAT.",
     "evitar": "- Para un listado de solo lectura con texto plano: `siaf-table`.\n- Usarla sola, sin barra ni paginado: va dentro de la grilla estándar (`siaf-table-controls` arriba, con el\n  seleccionar todo, y `siaf-pagination` con `position=\"Bottom\"` y `rowPage` abajo).\n- Mientras llegan las filas: `siaf-table-skeleton` con las mismas columnas y `minWidthClass`, no la tabla vacía.\n- Copiar su marcado en otra pantalla: `siaf-tray-documents-view` todavía tiene una tabla parecida hecha a mano.",
     "teclado": "- **Tab**: recorre, fila por fila, el checkbox (solo en Documentos), el enlace al documento y el botón de historial;\n  un checkbox deshabilitado queda fuera.\n- **Espacio**: marca o desmarca el checkbox de la fila (emite `selectionChanged`).\n- **Enter**: en el enlace, abre el documento (`routerLink`).\n- **Enter / Espacio**: en el botón de historial, emiten `historyOpened`.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: `<table>` con `<thead>` y un `<th>` por columna (sin `scope`, que con una\n  sola fila de cabecera no hace falta); las columnas del checkbox y del historial tienen el `<th>` vacío. No ordena\n  columnas, así que no aplica `aria-sort`.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: el checkbox de cada fila no tiene nombre (ni `aria-label` ni\n  `<label>`). El botón de historial sí lleva `aria-label`, pero en Registros dice siempre «Ver historial de cuenta\n  contable», también en los asientos de ajuste.\n- **Pendiente · 2.1.1 Teclado (A)**: la fila no es clicable y sus acciones son nativas, pero el texto completo de\n  las cabeceras y celdas cortadas solo sale con `siafTooltip` al pasar el mouse: esas celdas no reciben foco (el\n  enlace sí lo muestra al enfocarlo).\n- **1.4.13 Contenido en hover o foco (AA)**: ese tooltip se cierra con Escape y se puede recorrer con el puntero.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: el enlace va en `text-neutral-high` (16.29:1 / 16.53:1) y «Nuevo» en\n  blanco sobre `bg-brand-primary` (8.79:1 / 6.67:1), pero la etiqueta Observado de `siaf-flow-status-tag` (también\n  Pendiente y Fallido) da 3.39:1 en claro, y el enlace en hover (`text-brand-primary`) pinta en oscuro con\n  `bg-brand-primary` (2.66:1 sobre la superficie).\n- **1.4.1 Uso del color (A)**: los estados llevan su nombre en la etiqueta y «Nuevo» es texto.\n- **2.4.7 Foco visible (AA)**: sin estilo propio: enlace, checkbox y botón muestran el anillo nativo del navegador.\n- **2.5.8 Tamaño del objetivo (AA)**: botón de historial de 32 px; el checkbox mide 16 px, pero cumple por\n  espaciado (celda de 40 × 58 px).",
@@ -5129,8 +5161,15 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       },
       {
+        "token": "--sys-color-text-neutral-low",
+        "via": [
+          "var()"
+        ]
+      },
+      {
         "token": "--sys-gap-base-md",
         "via": [
+          "gap-siaf-md",
           "px-siaf-md"
         ]
       },
@@ -5166,7 +5205,9 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "[siafTooltip]",
       "siaf-flow-status-tag",
       "siaf-icon",
-      "siaf-record-status-tag"
+      "siaf-record-status-tag",
+      "siaf-status-tag",
+      "siaf-tag"
     ],
     "sinUso": false
   },
@@ -9657,7 +9698,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "ui",
     "importacion": "@siaf/ui/record-status-tag/record-status-tag.component",
     "archivo": "src/app/shared/ui/record-status-tag/record-status-tag.component.ts",
-    "descripcion": "Etiqueta del estado de un registro (Activo, Anulado, Abierto, Cerrado, Procesado…), dibujada con `siaf-status-tag`.\nLos estados que están en el Figma siguen su familia: Abierto y Cerrado, las «Period tags» (fondo suave azul y gris,\nsin ícono); En Proceso y Validado, las «status items tags» (solo borde, azul, con `change_circle` y `fact_check`).\nActivo, Inactivo, Anulado, Eliminado y Procesado, que el Figma no tiene, van con fondo suave, su ícono y su tono de\nsiempre.\n\nEs la etiqueta del estado del registro, junto con `siaf-flow-status-tag` para el estado del flujo de la solicitud:\nel mapa de estado a estilo vive aquí.",
+    "descripcion": "Etiqueta del estado de un registro (Activo, Anulado, Abierto, Cerrado, Procesado…), dibujada con `siaf-status-tag`.\nLos estados que están en el Figma siguen su familia: Abierto y Cerrado, las «Period tags» (fondo suave azul y gris,\nsin ícono); En Proceso, Validado, Pendiente y Observado, las «status items tags» (solo borde: azul con\n`change_circle` y `fact_check`, gris con `pending` y amarillo con `warning`).\nActivo, Inactivo, Anulado, Eliminado y Procesado, que el Figma no tiene, van con fondo suave, su ícono y su tono de\nsiempre.\n\nEs la etiqueta del estado del registro, junto con `siaf-flow-status-tag` para el estado del flujo de la solicitud:\nel mapa de estado a estilo vive aquí.",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
@@ -9670,14 +9711,14 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       },
       {
         "nombre": "status",
-        "tipo": "'Validado' | 'Procesado' | 'Eliminado' | 'Anulado' | 'Activo' | 'Inactivo' | 'En Proceso' | 'Abierto' | 'Cerrado'",
+        "tipo": "'Validado' | 'Procesado' | 'Observado' | 'Pendiente' | 'Eliminado' | 'Anulado' | 'Activo' | 'Inactivo' | 'En Proceso' | 'Abierto' | 'Cerrado'",
         "porDefecto": "'Activo'",
         "requerida": false,
         "descripcion": null
       }
     ],
     "eventos": [],
-    "usar": "- En la columna de estado de las grillas de Admin (usuarios, entidades, unidades, correlativos) y de las\n  consultas del catálogo de tipos de asiento de ajuste.\n- En Apertura contable, para el estado del ejercicio, de los periodos y de los pliegos (Abierto, Cerrado).\n- En «Estado del registro» del historial (`siaf-account-history-panel`, `siaf-asiento-history-panel`) y en la\n  columna de estado de `siaf-documents-records-table`.\n- `small` (24 px, el valor por defecto) en tablas; `standard` (32 px) sola.",
+    "usar": "- En la columna de estado de las grillas de Admin (usuarios, entidades, unidades, correlativos) y de las\n  consultas del catálogo de tipos de asiento de ajuste.\n- En Apertura contable, para el estado del ejercicio, de los periodos y de los pliegos (Abierto, Cerrado).\n- En «Estado del registro» del historial (`siaf-account-history-panel`, `siaf-asiento-history-panel`) y en la\n  columna de estado de `siaf-documents-records-table`.\n- `small` (24 px, el valor por defecto) en tablas; `standard` (32 px) sola.\n- Pendiente, Observado y Validado para la evaluación de cada registro de una solicitud: columna «Estado» que ve el\n  Revisor / Evaluador en Estimación de ingresos (Figma CEL-005 node 14733:117688).",
     "evitar": "- Para el estado del flujo de una solicitud (Elaborado, Verificado, Observado): usar `siaf-flow-status-tag`.\n- Para otros estados con los tonos del Figma: usar `siaf-status-tag` directo.\n- Para etiquetas libres, categorías o filtros: usar `siaf-tag`; para contadores, `siaf-badge`.\n- Como control por sí mismo: si el estado dispara una acción, envolverlo en un `<button>` con `aria-label` que\n  diga la acción, como los periodos abiertos en la configuración de Apertura contable.",
     "teclado": "- No recibe foco: no es interactivo.",
     "accesibilidad": "- **1.4.1 Uso del color (A)**: el estado va escrito; el tono y el ícono solo lo refuerzan.\n- **1.1.1 Contenido no textual (A)**: el ícono es decorativo (`siaf-icon` con `aria-hidden`); el estado se lee del\n  texto.\n- **1.4.3 Contraste mínimo (AA)**, en claro: con fondo suave, 5.81:1 en azul, 11.46:1 en gris y 6.21:1 en rojo;\n  con solo borde (En Proceso y Validado), 8.29:1 en azul sobre la superficie.\n- **1.3.1 Información y relaciones (A)**: es un `<span>`; el contexto lo da el padre (cabecera de la columna o\n  la etiqueta «Estado del registro»).\n- **4.1.3 Mensajes de estado (AA)**: no es región viva: un cambio de estado no se anuncia desde la etiqueta.",
@@ -10942,6 +10983,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Se pinta dentro de otro contenedor, sin fondo oscuro, diálogo ni animación."
       },
       {
+        "nombre": "floating",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Panel de formulario breve con esquinas redondeadas, sombra y sin oscurecer la página (Figma «Observar registro»)."
+      },
+      {
         "nombre": "open",
         "tipo": "boolean",
         "porDefecto": "false",
@@ -10999,7 +11047,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Para un panel lateral con contenido libre y, si hace falta, confirmación: un detalle breve, ayuda contextual o un\n  formulario corto que no tiene ya su panel propio.\n- `showFooter` en false para un panel de solo lectura; `confirmDisabled` mientras falte algo para aceptar.\n- `showReturn` cuando el panel es un segundo paso y la flecha vuelve al anterior (emite `returned`).\n- `embedded` para pintarlo dentro de otro contenedor, como el panel de filtros de `siaf-side-panel`.",
+    "usar": "- Para un panel lateral con contenido libre y, si hace falta, confirmación: un detalle breve, ayuda contextual o un\n  formulario corto que no tiene ya su panel propio.\n- `showFooter` en false para un panel de solo lectura; `confirmDisabled` mientras falte algo para aceptar.\n- `showReturn` cuando el panel es un segundo paso y la flecha vuelve al anterior (emite `returned`).\n- `embedded` para pintarlo dentro de otro contenedor, como el panel de filtros de `siaf-side-panel`.\n- `floating` para la versión redondeada del Figma, sin fondo oscuro detrás: «Observar registro» del Revisor /\n  Evaluador en Estimación de ingresos (CEL-005 node 9412:331009).",
     "evitar": "- Para elegir registros de un catálogo: usar `siaf-selection-side-nav`; para adjuntar archivos, `siaf-upload-side-nav`;\n  para los parámetros de una consulta, `siaf-query-parameters-panel`.\n- Para el historial de un documento o registro: usar `siaf-document-history-panel`, `siaf-account-history-panel` o\n  `siaf-asiento-history-panel`.\n- Cuando el contenido necesita todo el ancho de la pantalla (una tabla, un documento): usar `siaf-side-panel`.\n- Para una confirmación corta: usar `siaf-modal`.",
     "teclado": "- **Tab / Shift + Tab**: al abrir, el foco entra en el primer control del encabezado (la flecha o la X); recorren el\n  contenido y Cancelar / Aceptar, y dan la vuelta sin salir del panel.\n- **Escape**: cierra el panel (emite `closed`) y el foco vuelve al control que lo abrió.\n- **Enter / Espacio**: la flecha emite `returned`, la X emite `closed`, Cancelar emite `canceled` (y `closed` si no es\n  `embedded`) y Aceptar emite `confirmed`.\n- `embedded` no atrapa el foco ni cierra con Escape: sigue el orden de la página que lo contiene.",
     "accesibilidad": "- **4.1.2 Nombre, función y valor (A)**: el panel es `role=\"dialog\"` con `aria-modal=\"true\"` y `aria-labelledby` al\n  título; la X se llama «Cerrar» más el título y la flecha, «Volver». Con `embedded` es una sección nombrada por su\n  título, sin diálogo.\n- **1.3.1 Información y relaciones (A)**: el título es un `h2`; con `embedded`, un `h3`, porque va dentro de otro\n  panel con título propio.\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir lleva el foco al encabezado y al cerrar lo devuelve al control\n  que lo abrió; Tab no sale a la página de atrás.\n- **2.1.2 Sin trampas de teclado (A)**: Tab queda dentro mientras está abierto, pero Escape siempre lo cierra.\n- **2.4.7 Foco visible (AA)**: la flecha y la X muestran el anillo `border-states-focus` de 2 px (5.35:1 claro /\n  10.15:1 oscuro); Cancelar y Aceptar siguen `siaf-button`.\n- **2.5.8 Tamaño del objetivo (AA)**: la flecha y la X miden 40 px.\n- **1.4.3 Contraste mínimo (AA)**: título `text-neutral-high` sobre la superficie (16.29:1 claro / 16.53:1 oscuro).",
@@ -11093,6 +11141,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-radius-md",
         "via": [
+          "rounded-l-siaf-md",
           "rounded-siaf-md"
         ]
       },
@@ -11880,11 +11929,25 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Reemplaza el grupo de botones estándar por contenido proyectado con el atributo `actions`: `<siaf-button actions ...>`. Para procesos con acciones fuera de la matriz rol/estado."
       },
       {
+        "nombre": "deleteDisabled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Deshabilita «Eliminar» aunque la matriz rol/estado lo muestre (ej. el consolidado pliego, que no se elimina)."
+      },
+      {
         "nombre": "deleteLabel",
         "tipo": "string",
         "porDefecto": "'Eliminar'",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "editDisabled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Deshabilita «Editar» aunque la matriz rol/estado lo muestre (ej. el consolidado pliego, que no se edita)."
       },
       {
         "nombre": "editLabel",
@@ -11908,11 +11971,25 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "observeDisabled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Deshabilita «Observar» del aprobador sin ocultarlo."
+      },
+      {
         "nombre": "observeLabel",
         "tipo": "string",
         "porDefecto": "'Observar'",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "rejectDisabled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Deshabilita «Rechazar» del aprobador sin ocultarlo (a diferencia de `rejectEnabled=false`)."
       },
       {
         "nombre": "rejectEnabled",
@@ -12095,7 +12172,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Dentro de `siaf-solicitude-page-layout`, que lo pinta con `role` y `state`: así lo usan las request-pages de\n  Contabilidad y los formularios de Admin.\n- Con `customActions` y botones en `[actions]` cuando el proceso tiene acciones fuera de la matriz, como «Reprocesar»\n  en el detalle de contabilización.\n- Con `saveDisabled` para dejar Grabar deshabilitado mientras no hay cambios (patrón «Grabar solo con cambios»).\n- Con `cancelDisabled` (y Grabar y Verificar apagados) mientras una sección de la página tiene su propia edición\n  abierta con Cancelar/Aceptar, como «Editar estimación de ingresos».\n- Con `rejectEnabled=false` en productos donde el aprobador no rechaza: en Estimación de ingresos solo Observar y\n  Aprobar (Figma node 2537:131023).",
+    "usar": "- Dentro de `siaf-solicitude-page-layout`, que lo pinta con `role` y `state`: así lo usan las request-pages de\n  Contabilidad y los formularios de Admin.\n- Con `customActions` y botones en `[actions]` cuando el proceso tiene acciones fuera de la matriz, como «Reprocesar»\n  en el detalle de contabilización.\n- Con `saveDisabled` para dejar Grabar deshabilitado mientras no hay cambios (patrón «Grabar solo con cambios»).\n- Con `cancelDisabled` (y Grabar y Verificar apagados) mientras una sección de la página tiene su propia edición\n  abierta con Cancelar/Aceptar, como «Editar estimación de ingresos».\n- Con `rejectEnabled=false` en productos donde el aprobador no rechaza: en Estimación de ingresos solo Observar y\n  Aprobar (Figma node 2537:131023).\n- Con `deleteDisabled` / `editDisabled` cuando el documento muestra Eliminar y Editar pero no los permite: el\n  consolidado pliego de estimación de ingresos en Elaborado.\n- Con `rejectDisabled` / `observeDisabled` cuando el aprobador ve Rechazar y Observar pero solo puede Aprobar: el\n  consolidado pliego de estimación de ingresos en Verificado.",
     "evitar": "- Suelto con su propio breadcrumb y contenedor: usar `siaf-solicitude-page-layout`, que lo fija bajo el navbar y\n  reenvía los eventos (hoy solo la ruta `formulario` de asiento de ajuste lo arma a mano).\n- Para pantallas sin ciclo de documento (consultas, listados): usar `siaf-page-header`.\n- Para acciones de una tarjeta o sección: ponerlas en la tarjeta y apagar la botonera con `showButtonGroup` en false,\n  como el Gestor de Usuarios.\n- Para mostrar el estado del documento en el flujo: usar `siaf-flow-status-tag`; esta etiqueta solo marca «Nuevo» o\n  «Edición».",
     "teclado": "- **Tab**: recorre Regresar (si `showReturn`) y los botones visibles en su orden; en móvil, la barra fija inferior va\n  en el DOM justo después del encabezado. Los deshabilitados no reciben foco.\n- **Enter / Espacio**: activan cada botón y emiten su evento (`returned`, `canceled`, `saved`, `verified`, `edited`,\n  `deleted`, `approved`, `observed` o `rejected`). Los botones siguen `siaf-button`.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: `heading` es el `h1` de la página; la etiqueta y el texto secundario van\n  como texto junto a él.\n- **4.1.2 Nombre, función y valor (A)**: Regresar lleva `aria-label=\"Regresar\"`; en la barra móvil cada botón se\n  nombra con su texto visible (el ícono de la principal es decorativo), y los deshabilitados (Grabar sin cambios,\n  Eliminar en observado) exponen `disabled`.\n- **2.5.8 Tamaño del objetivo (AA)**: los botones de la barra móvil miden 48 px de alto; en escritorio, 40.\n- **2.4.3 Orden del foco (A)**: en escritorio los botones siguen al título; en móvil la barra fija inferior va en el\n  DOM después del encabezado, así que Tab llega a las acciones antes que al formulario.\n- **Pendiente · 2.4.11 Foco no oculto (AA)**: en móvil la barra de acciones es `fixed` abajo y no hay\n  `scroll-padding`: al avanzar con Tab, un campo puede quedar tapado por ella.\n- **1.4.11 Contraste no textual (AA)**: el anillo de foco de Regresar (2 px) es el azul del kit\n  (`border-states-focus`, 5.35:1 claro / 10.15:1 oscuro sobre `bg-surface`). Los demás botones siguen `siaf-button`.\n- **1.4.3 Contraste mínimo (AA)**: `h1` `text-text` (16.29:1 / 16.53:1), texto secundario `text-text-muted` (5.01:1 /\n  8.86:1) y la etiqueta en blanco sobre `bg-brand-accent` (4.89:1 / 5.65:1) o `bg-brand-primary` (8.79:1 / 6.67:1).\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: con `loading` el título y los botones se cambian por un esqueleto\n  sin `aria-busy` ni `role=\"status\"`: la carga no se anuncia.\n- **Pendiente · 2.1.1 Teclado (A)**: desde `sm` el `h1` se corta y el texto completo sale con `siafTooltip`, que se\n  abre con el mouse o con el foco; como el `h1` no es enfocable, con teclado no se puede ver.",
@@ -12332,6 +12409,20 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Reemplaza los botones estándar del header por el slot proyectado `[actions]`."
       },
       {
+        "nombre": "deleteDisabled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Pasan a `siaf-solicitude-header`: Eliminar / Editar visibles pero deshabilitados."
+      },
+      {
+        "nombre": "editDisabled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
         "nombre": "floatingPanelOpen",
         "tipo": "boolean",
         "porDefecto": "false",
@@ -12351,6 +12442,20 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "false",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "observeDisabled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "rejectDisabled",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Pasan a `siaf-solicitude-header`: Rechazar / Observar del aprobador visibles pero deshabilitados."
       },
       {
         "nombre": "rejectEnabled",

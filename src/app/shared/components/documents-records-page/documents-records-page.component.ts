@@ -60,6 +60,8 @@ type DocumentsRecordsRoleMode = 'creator' | 'approver' | 'readOnly';
  *   salen del rol, sin código en el padre.
  * - `accionPrincipalDeshabilitada` cuando el proceso todavía no conecta el cambio de estado en lote a su backend: el
  *   botón se ve, deshabilitado (aprobador de Estimación de ingresos, que aprueba desde la solicitud).
+ * - Con un `siaf-alert` proyectado con el atributo `page-alert` para un aviso del proceso sobre la tarjeta de
+ *   documentos: «Consolidado disponible» en Documentos de consolidado pliego de estimación de ingresos.
  * - Con `modoConsulta` en procesos de solo consulta (contabilización, apertura anual) y con `serverQuery` /
  *   `serverRecordsQuery` cuando el backend busca y pagina (plan de cuentas, asiento de ajuste, catálogos, apertura).
  * @evitar
@@ -216,7 +218,9 @@ type DocumentsRecordsRoleMode = 'creator' | 'approver' | 'readOnly';
             />
           </section>
 
-          <section class="relative p-siaf-md">
+          <section class="relative flex flex-col gap-siaf-md p-siaf-md">
+            <!-- Aviso del proceso sobre la tarjeta (ej. «Consolidado disponible», Figma CEL-005 node 4938:92579). -->
+            <ng-content select="[page-alert]" />
             <article class="flex min-h-[458px] flex-col gap-siaf-md rounded-siaf-md bg-surface p-siaf-lg">
               <header class="flex flex-col gap-siaf-md md:flex-row md:items-center md:justify-between">
                 <h2 class="m-0 text-sm font-bold uppercase leading-normal text-text">

@@ -6,15 +6,43 @@
     secondaryText=""
     [showReturn]="true"
     [showTag]="false"
-    [showButtonGroup]="false"
+    [showButtonGroup]="esEvaluador()"
+    [customActions]="esEvaluador()"
     [loading]="cargando()"
     (returned)="regresar()"
   >
+    <!-- Revisor / Evaluador: Observar y Validar el registro (Figma node 14755:89809). -->
+    @if (esEvaluador()) {
+      <div actions class="flex items-center gap-siaf-sm">
+        <siaf-button variant="secondary" icon="assignment_late" [disabled]="evaluado() || guardando()" (click)="abrirObservar()">Observar</siaf-button>
+        <siaf-button variant="accent" icon="assignment" [disabled]="evaluado() || guardando()" (click)="validar()">Validar</siaf-button>
+      </div>
+    }
+
     @if (cargando()) {
       <div class="rounded-siaf-md bg-surface p-siaf-xl">
         <div class="siaf-skeleton-pulse h-4 w-64 rounded bg-[var(--sys-color-bg-surfaces-surface-low)]"></div>
       </div>
     } @else if (fila(); as f) {
+      <!-- Revisor / Evaluador: sección «Registro» con el estado de la evaluación (Figma node 14755:89809). -->
+      @if (esEvaluador()) {
+        <siaf-solicitude-form-card title="Registro">
+          <!-- Estado a la izquierda y, si fue observado, el comentario a su derecha (Figma «Registro» observado). -->
+          <div class="grid gap-siaf-lg md:grid-cols-[minmax(0,260px)_1fr]">
+            <div class="flex flex-col items-start gap-siaf-xxs">
+              <span class="text-xs text-[var(--sys-color-text-neutral-low)]">Estado</span>
+              <siaf-record-status-tag [status]="estadoEvaluacion()" />
+            </div>
+            @if (f.comentarioEvaluacion) {
+              <div class="flex min-w-0 flex-col gap-siaf-xxs">
+                <span class="text-xs text-[var(--sys-color-text-neutral-low)]">Comentario de observación</span>
+                <p class="m-0 text-sm leading-5 text-text">{{ f.comentarioEvaluacion }}</p>
+              </div>
+            }
+          </div>
+        </siaf-solicitude-form-card>
+      }
+
       <siaf-solicitude-form-card title="Estimación de ingresos">
         <div class="flex flex-col gap-siaf-xs">
           <h3 class="m-0 flex min-h-10 items-center text-sm font-bold uppercase text-text">Fuente de financiamiento</h3>
@@ -120,4 +148,74 @@
       </div>
     }
   </siaf-solicitude-page-layout>
+
+  <!-- «¿Validar registro?» (Figma node 2926:296754): ilustración «Validate» del kit. -->
+  <siaf-modal
+    variant="validate"
+    title="¿Validar registro?"
+    description="El registro será validado."
+    [open]="modalValidar()"
+    confirmVariant="primary"
+    confirmLabel="Aceptar"
+    cancelLabel="Cancelar"
+    [showIllustration]="true"
+    [confirmDisabled]="guardando()"
+    (canceled)="modalValidar.set(false)"
+    (closed)="modalValidar.set(false)"
+    (confirmed)="onConfirmarValidar()"
+  />
+
+  <!-- «Observar registro» (Figma node 9412:331009): panel corto con el resumen del registro y el comentario. -->
+  <siaf-side-nav
+    title="Observar registro"
+    [open]="modalObservar()"
+    [floating]="true"
+    [confirmDisabled]="guardando() || !comentario().trim()"
+    (closed)="modalObservar.set(false)"
+    (confirmed)="onConfirmarObservar()"
+  >
+    @if (resumenObservar(); as r) {
+      <div class="flex flex-col gap-siaf-lg px-siaf-md py-siaf-xs">
+        <dl class="m-0 flex flex-col gap-siaf-lg rounded-siaf-md bg-[var(--sys-color-bg-surfaces-surface-low)] p-siaf-md">
+          <div class="flex flex-col gap-siaf-xxs">
+            <dt class="text-[11px] font-medium uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">Fuente de financiamiento</dt>
+            <dd class="m-0 text-sm text-text">{{ r.fuente }}</dd>
+          </div>
+          <div class="flex flex-col gap-siaf-xxs">
+            <dt class="text-[11px] font-medium uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">Sub fuente de financiamiento</dt>
+            <dd class="m-0 text-sm text-text">{{ r.subFuente }}</dd>
+          </div>
+          <div class="flex flex-col gap-siaf-xxs">
+            <dt class="text-[11px] font-medium uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">Clasificador de ingresos</dt>
+            <dd class="m-0 text-sm text-text">{{ r.clasificador }}</dd>
+          </div>
+          <div class="flex flex-col gap-siaf-xxs">
+            <dt class="text-[11px] font-medium uppercase tracking-[0.66px] text-[var(--sys-color-text-neutral-low)]">Variación %</dt>
+            <dd class="m-0 inline-flex items-center gap-siaf-sm text-sm text-text">
+              @if (r.variacion > umbralVariacion) {
+                <siaf-icon name="trending_up" [size]="24" label="Variación fuera del umbral" [decorative]="false" />
+              }
+              {{ r.variacion | number: '1.1-1' }}
+            </dd>
+          </div>
+        </dl>
+        <!-- Prototipo: doble clic completa el comentario de la demo y habilita Aceptar. -->
+        <text-area-control
+          (dblclick)="completarComentarioDemo($event)"
+          placeholder="Comentario de observación"
+          [maxlength]="200"
+          [value]="comentario()"
+          (valueChange)="comentario.set($event)"
+        />
+      </div>
+    }
+  </siaf-side-nav>
+
+  <siaf-request-approval-modals
+    [saving]="guardando()"
+    snackbarVariant="custom"
+    [snackbarMessage]="avisoTexto()"
+    [snackbarOpen]="avisoAbierto()"
+    (snackbarClosed)="avisoAbierto.set(false)"
+  />
 </div>

@@ -17,6 +17,7 @@ import { TableControlsComponent } from '../../../../../shared/components/table-c
 import { DetailHistoryComment, DetailHistoryEntry, DetailHistoryTabsComponent } from '../../../../../shared/components/detail-history-tabs/detail-history-tabs.component';
 import { ActionTrackerComponent, ActionTrackerSummary } from '../../../../../shared/ui/action-tracker/action-tracker.component';
 import { AlertComponent } from '../../../../../shared/ui/alert/alert.component';
+import { RecordStatusTagComponent } from '../../../../../shared/ui/record-status-tag/record-status-tag.component';
 import { DocumentSummaryCardComponent } from '../../../../../shared/ui/document-summary-card/document-summary-card.component';
 import { ButtonGroupItem, ButtonsGroupComponent } from '../../../../../shared/ui/buttons-group/buttons-group.component';
 import { IconComponent } from '../../../../../shared/ui/icon/icon.component';
@@ -41,6 +42,7 @@ import {
   PrecargaEstimacionIngresos,
   TIPOS_MODIFICACION_ESTIMACION_INGRESOS,
   UMBRAL_VARIACION_ESTIMACION_INGRESOS,
+  estadoExpedienteEstimacion,
 } from '../../models/estimacion-ingresos.model';
 
 type VistaTabla = 'estimacion' | 'mensual' | 'ff';
@@ -95,6 +97,7 @@ function aFechaHoraPe(iso: string): string {
     FormTableSearchComponent,
     IconComponent,
     AlertComponent,
+    RecordStatusTagComponent,
     DetailHistoryTabsComponent,
     IconDropdownMenuComponent,
     ReadonlyFieldComponent,
@@ -130,6 +133,20 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   readonly tipoAccion = signal('');
 
   readonly headerRole = computed<SolicitudeHeaderRole>(() => (this.permissions.currentRole() === 'approver' ? 'approver' : 'creator'));
+  /** Revisor / Evaluador (rol `reviewer`): revisa los registros en solo lectura; la cabecera va sin botones. */
+  readonly esEvaluador = computed(() => this.permissions.currentRole() === 'reviewer');
+
+  /**
+   * Posiciones (px) de las columnas fijas de la tabla de estimación (Figma node 2448:143665): a la izquierda la
+   * selección (48, al editar), FF (70), el clasificador (268) y el estado del Revisor (150); a la derecha ⋮ (56, en
+   * lectura), (%) (100) y Monto (115). Lo del medio se desplaza en horizontal.
+   */
+  readonly fijas = computed(() => {
+    const ff = this.editable() ? 48 : 0;
+    const clasificador = ff + 70;
+    const porcentaje = this.editable() ? 0 : 56;
+    return { ff, clasificador, estado: clasificador + 268, porcentaje, monto: porcentaje + 100 };
+  });
 
   /** «Nuevo»: Cancelar/Grabar/Verificar deshabilitado. «Elaborado»: Eliminar/Editar/Verificar para el creador (o
    *  Cancelar/Grabar si está editando). «Verificado»: Aprobar para el aprobador. «Aprobado»: sin botones. */
@@ -178,8 +195,30 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
    *  Aprobado), fuera de la edición, mientras haya registros fuera del umbral y el usuario no lo cierre. */
   readonly avisoUmbralCerrado = signal(false);
   readonly mostrarAvisoUmbral = computed(
-    () => !this.editable() && !!this.detalle() && this.registrosFueraDelUmbral() > 0 && !this.avisoUmbralCerrado(),
+    () => !this.esEvaluador() && !this.editable() && !!this.detalle() && this.registrosFueraDelUmbral() > 0 && !this.avisoUmbralCerrado(),
   );
+  /**
+   * Revisor / Evaluador: «Estado de la estimación» (Figma node 14733:117688) reemplaza el aviso de umbral: cuántos
+   * registros faltan evaluar, cuántos validó y cuántos observó, y cuántos pasan el umbral.
+   */
+  readonly mostrarAvisoEvaluacion = computed(() => this.esEvaluador() && !!this.detalle() && !this.avisoUmbralCerrado());
+  readonly textoAvisoEvaluacion = computed(() => {
+    const registros = this.detalle()?.clasificadores ?? [];
+    const contar = (estado: string) => registros.filter((r) => (r.estadoEvaluacion ?? 'Pendiente') === estado).length;
+    const n = this.registrosFueraDelUmbral();
+    const umbral = n === 1 ? '1 registro supera' : `${n} registros superan`;
+    return `Tiene ${contar('Pendiente')} registros pendientes de evaluación, ${contar('Validado')} validados y ${contar('Observado')} observados. Además, ${umbral} el umbral de variación (±${this.umbralVariacion} %). Revise cada registro desde su detalle o desde Más acciones (⋮).`;
+  });
+
+  /** Estado del expediente: «Creado» hasta que se evalúa un registro; luego «En trámite». */
+  readonly estadoExpediente = computed(() => estadoExpedienteEstimacion(this.detalle()?.clasificadores));
+
+  /** N° de expediente que ve el Revisor / Evaluador en la solicitud (Figma: «0000001-2026»): N° del documento y año. */
+  readonly numeroExpediente = computed(() => {
+    const d = this.detalle();
+    return d ? `${d.numero.padStart(7, '0')}-${new Date(d.fecha).getFullYear()}` : null;
+  });
+
   readonly textoAvisoUmbral = computed(() => {
     const n = this.registrosFueraDelUmbral();
     const registros = n === 1 ? '1 registro supera' : `${n} registros superan`;

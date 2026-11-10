@@ -69,7 +69,14 @@ export interface ClasificadorEstimacionIngresos {
   secuenciasBaseLegal?: SecuenciaBaseLegal[];
   /** Documento de sustento: solo nombre y tamaño (un `File` no se puede guardar en `localStorage`). */
   sustento?: ArchivoSustentoEstimacion | null;
+  /** Evaluación del registro por el Revisor / Evaluador (Figma node 14733:117688). Sin valor: «Pendiente». */
+  estadoEvaluacion?: EstadoEvaluacionRegistro;
+  /** Comentario del Revisor / Evaluador al observar el registro. */
+  comentarioEvaluacion?: string;
 }
+
+/** Estados de la evaluación de un registro: «status items tags» del Figma (`siaf-record-status-tag`). */
+export type EstadoEvaluacionRegistro = 'Pendiente' | 'Observado' | 'Validado';
 
 /** Una secuencia de la base legal: reparte parte del monto con asignación específica de cada año. */
 export interface SecuenciaBaseLegal {
@@ -185,3 +192,22 @@ export interface ActualizarEstimacionIngresosPayload {
 
 /** Opciones del selector «Tipo de modificación» (Figma «Text fields», node 4021:103143). */
 export const TIPOS_MODIFICACION_ESTIMACION_INGRESOS = ['Montos', 'Datos'] as const;
+
+/**
+ * N° de expediente de una solicitud (Figma CEL-005 node 14751:191854: «EX-2025-009-012-1721-00001»): año de registro,
+ * los códigos fijos del Figma y el N° del documento en cinco cifras. Formato provisional hasta que el backend lo envíe.
+ */
+export function numeroExpedienteEstimacion(d: { numero: string; fecha: string }): string {
+  return `EX-${new Date(d.fecha).getFullYear()}-009-012-1721-${d.numero.padStart(5, '0')}`;
+}
+
+/** Estado del expediente que ve el Revisor / Evaluador («Expediente tags» del Figma). */
+export type EstadoExpedienteEstimacion = 'Creado' | 'En trámite' | 'Archivado';
+
+/**
+ * «Creado» mientras todos los registros sigan pendientes de evaluación; «En trámite» en cuanto uno se valida u observa
+ * (Figma CEL-005 node 9788:214369).
+ */
+export function estadoExpedienteEstimacion(registros: { estadoEvaluacion?: EstadoEvaluacionRegistro }[] | undefined): EstadoExpedienteEstimacion {
+  return (registros ?? []).some((r) => (r.estadoEvaluacion ?? 'Pendiente') !== 'Pendiente') ? 'En trámite' : 'Creado';
+}

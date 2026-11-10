@@ -250,6 +250,10 @@ const MOBILE_PRIMARY_ACTION_CLASS =
  *   abierta con Cancelar/Aceptar, como «Editar estimación de ingresos».
  * - Con `rejectEnabled=false` en productos donde el aprobador no rechaza: en Estimación de ingresos solo Observar y
  *   Aprobar (Figma node 2537:131023).
+ * - Con `deleteDisabled` / `editDisabled` cuando el documento muestra Eliminar y Editar pero no los permite: el
+ *   consolidado pliego de estimación de ingresos en Elaborado.
+ * - Con `rejectDisabled` / `observeDisabled` cuando el aprobador ve Rechazar y Observar pero solo puede Aprobar: el
+ *   consolidado pliego de estimación de ingresos en Verificado.
  * @evitar
  * - Suelto con su propio breadcrumb y contenedor: usar `siaf-solicitude-page-layout`, que lo fija bajo el navbar y
  *   reenvía los eventos (hoy solo la ruta `formulario` de asiento de ajuste lo arma a mano).
@@ -289,10 +293,11 @@ const MOBILE_PRIMARY_ACTION_CLASS =
   imports: [ButtonComponent, IconComponent, NgClass, TooltipDirective],
   template: `
     <header
-      class="flex w-full flex-col gap-siaf-lg bg-surface px-siaf-lg py-siaf-md lg:flex-row lg:items-start lg:justify-between"
+      class="flex w-full flex-col gap-siaf-lg bg-surface px-siaf-lg py-siaf-md lg:flex-row lg:items-center lg:justify-between"
       [ngClass]="containerClass"
     >
-      <div class="flex min-w-0 flex-1 items-start gap-siaf-xs">
+      <!-- Título centrado en vertical con la flecha y los botones, con o sin texto secundario (Figma «Header Solicitude»). -->
+      <div class="flex min-w-0 flex-1 items-center gap-siaf-xs">
         @if (showReturn) {
           <button
             class="inline-flex size-10 shrink-0 items-center justify-center rounded-siaf-md text-text-muted transition hover:bg-surface-muted hover:text-text focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
@@ -364,16 +369,16 @@ const MOBILE_PRIMARY_ACTION_CLASS =
       @if (!loading && !customActions && resolvedType === 'readonly' && showButtonGroup) {
         <div class="hidden w-full flex-wrap items-center justify-end gap-siaf-sm lg:flex lg:w-auto lg:shrink-0">
           @if (resolvedShowReject) {
-            <siaf-button variant="secondary" size="md" icon="content_paste_off" (click)="rejected.emit()">{{ rejectLabel }}</siaf-button>
+            <siaf-button variant="secondary" size="md" icon="content_paste_off" [disabled]="rejectDisabled" (click)="rejected.emit()">{{ rejectLabel }}</siaf-button>
           }
           @if (resolvedShowObserve) {
-            <siaf-button variant="secondary" size="md" icon="assignment_late" (click)="observed.emit()">{{ observeLabel }}</siaf-button>
+            <siaf-button variant="secondary" size="md" icon="assignment_late" [disabled]="observeDisabled" (click)="observed.emit()">{{ observeLabel }}</siaf-button>
           }
           @if (resolvedShowDelete) {
-            <siaf-button variant="secondary" size="md" icon="delete" [disabled]="resolvedDeleteDisabled" (click)="deleted.emit()">{{ deleteLabel }}</siaf-button>
+            <siaf-button variant="secondary" size="md" icon="delete" [disabled]="resolvedDeleteDisabled || deleteDisabled" (click)="deleted.emit()">{{ deleteLabel }}</siaf-button>
           }
           @if (resolvedShowEdit) {
-            <siaf-button [variant]="resolvedEditVariant" size="md" icon="edit" (click)="edited.emit()">{{ editLabel }}</siaf-button>
+            <siaf-button [variant]="resolvedEditVariant" size="md" icon="edit" [disabled]="editDisabled" (click)="edited.emit()">{{ editLabel }}</siaf-button>
           }
           @if (resolvedShowApprove) {
             <siaf-button size="md" icon="inventory" (click)="approved.emit()">{{ approveLabel }}</siaf-button>
@@ -440,6 +445,14 @@ export class SolicitudeHeaderComponent {
    *  propios botones: p. ej. una fila en «Editar estimación de ingresos». */
   @Input() cancelDisabled = false;
   @Input() verifyDisabled = false;
+  /** Deshabilita «Eliminar» aunque la matriz rol/estado lo muestre (ej. el consolidado pliego, que no se elimina). */
+  @Input() deleteDisabled = false;
+  /** Deshabilita «Editar» aunque la matriz rol/estado lo muestre (ej. el consolidado pliego, que no se edita). */
+  @Input() editDisabled = false;
+  /** Deshabilita «Rechazar» del aprobador sin ocultarlo (a diferencia de `rejectEnabled=false`). */
+  @Input() rejectDisabled = false;
+  /** Deshabilita «Observar» del aprobador sin ocultarlo. */
+  @Input() observeDisabled = false;
   @Input() showDelete = false;
   @Input() showEdit = false;
   @Input() showVerify = true;
@@ -548,10 +561,10 @@ export class SolicitudeHeaderComponent {
       return actions;
     }
 
-    add(this.resolvedShowReject, this.rejectLabel, 'content_paste_off', 'secondary', false, this.rejected);
-    add(this.resolvedShowObserve, this.observeLabel, 'assignment_late', 'secondary', false, this.observed);
-    add(this.resolvedShowDelete, this.deleteLabel, 'delete', 'secondary', this.resolvedDeleteDisabled, this.deleted);
-    add(this.resolvedShowEdit, this.editLabel, 'edit', this.resolvedEditVariant, false, this.edited);
+    add(this.resolvedShowReject, this.rejectLabel, 'content_paste_off', 'secondary', this.rejectDisabled, this.rejected);
+    add(this.resolvedShowObserve, this.observeLabel, 'assignment_late', 'secondary', this.observeDisabled, this.observed);
+    add(this.resolvedShowDelete, this.deleteLabel, 'delete', 'secondary', this.resolvedDeleteDisabled || this.deleteDisabled, this.deleted);
+    add(this.resolvedShowEdit, this.editLabel, 'edit', this.resolvedEditVariant, this.editDisabled, this.edited);
     add(this.resolvedShowApprove, this.approveLabel, 'inventory', 'accent', false, this.approved);
     add(this.resolvedShowVerify, this.verifyLabel, 'task_alt', 'accent', this.verifyDisabled, this.verified);
     return actions;

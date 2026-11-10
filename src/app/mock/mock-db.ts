@@ -21,6 +21,7 @@ import {
   RegistroIngresoTributario,
 } from '../modules/tesoreria/ingresos-tributarios-sunat/models/ingreso-tributario.model';
 import { ClasificadorEstimacionIngresos, EstimacionIngresosRegistro } from '../modules/planeacion-financiera/estimacion-ingresos/models/estimacion-ingresos.model';
+import { ConsolidadoPliegoRegistro, NodoConsolidadoPliego } from '../modules/planeacion-financiera/estimacion-ingresos/models/consolidado-pliego.model';
 import { USUARIOS_DEMO, UsuarioDemo } from './usuarios-demo';
 
 /**
@@ -47,6 +48,8 @@ export interface DatosTaller {
   /** Instante (ISO) en que arrancó la simulación en vivo de Ingresos tributarios SUNAT — ver más abajo. */
   demoIngresosTributariosInicio: string;
   estimacionIngresos: EstimacionIngresosRegistro[];
+  /** Opcional: los datos guardados antes de esta bandeja no la traen; el backend simulado la siembra al leerla. */
+  consolidadosPliegoEstimacion?: ConsolidadoPliegoRegistro[];
   notificaciones: NotificacionMock[];
   correlativoDocumento: number;
   correlativoDocumentoSaldos: number;
@@ -224,12 +227,128 @@ const INGRESOS_TRIBUTARIOS_SEMILLA: Omit<IngresoTributarioRegistro, 'id'>[] = [
  * Semilla de «Estimación de ingresos» (Planeación financiera), calcada del Figma CEL-005.01.01.01.01
  * (node 2851:214434). `id` se completa en `crearDatosIniciales()`.
  */
+/**
+ * Solicitudes ya aprobadas, para que la bandeja del Revisor / Evaluador (que solo recibe Aprobadas, Figma node
+ * 2926:296857) no salga vacía. Elaboró y verificó Ana; aprobó Luis. El número se asigna al sembrarlas, después de las
+ * que ya existan (ver `estimacionIngresos` en mock-backend.interceptor.ts).
+ */
+export const ESTIMACION_INGRESOS_APROBADAS_SEMILLA: Omit<EstimacionIngresosRegistro, 'numero'>[] = [1, 2, 3].map((n) => ({
+  id: `esti-apr-${n}`,
+  documento: 'Solicitud de estimación de ingresos',
+  tipoAccion: 'Creación',
+  estado: 'Aprobado' as const,
+  sistema: 'Tesorería',
+  fecha: `2026-01-15T${String(7 + n).padStart(2, '0')}:00:59`,
+  entidad: '009 Ministerio de Economía y Finanzas',
+  elaboradoPor: 'Ana Torres Díaz',
+  verificadoPor: 'Ana Torres Díaz',
+  fechaVerificado: `2026-01-15T${String(7 + n).padStart(2, '0')}:30:59`,
+  aprobadoPor: 'Luis Ramírez Soto',
+  fechaAprobado: `2026-01-15T${String(10 + n).padStart(2, '0')}:00:59`,
+}));
+
 const ESTIMACION_INGRESOS_SEMILLA: Omit<EstimacionIngresosRegistro, 'id'>[] = [
   { documento: 'Solicitud de estimación de ingresos', numero: '0005', tipoAccion: 'Creación', estado: 'Elaborado', sistema: 'Tesorería', fecha: '2026-01-02T09:00:00', entidad: '009 Ministerio de Economía y Finanzas' },
   { documento: 'Solicitud de estimación de ingresos', numero: '0004', tipoAccion: 'Creación', estado: 'Elaborado', sistema: 'Tesorería', fecha: '2026-01-02T09:00:00', entidad: '009 Ministerio de Economía y Finanzas' },
   { documento: 'Solicitud de estimación de ingresos', numero: '0003', tipoAccion: 'Creación', estado: 'Verificado', sistema: 'Tesorería', fecha: '2026-01-02T09:00:00', entidad: '009 Ministerio de Economía y Finanzas' },
   { documento: 'Solicitud de estimación de ingresos', numero: '0002', tipoAccion: 'Creación', estado: 'Verificado', sistema: 'Tesorería', fecha: '2026-01-02T09:00:00', entidad: '009 Ministerio de Economía y Finanzas' },
   { documento: 'Solicitud de estimación de ingresos', numero: '0001', tipoAccion: 'Creación', estado: 'Elaborado', sistema: 'Tesorería', fecha: '2026-01-02T09:00:00', entidad: '009 Ministerio de Economía y Finanzas' },
+];
+
+/**
+ * Bandeja «Documentos de consolidado pliego de estimación de ingresos» (Figma CEL-005 node 4938:92579).
+ */
+export const CONSOLIDADO_PLIEGO_SEMILLA: ConsolidadoPliegoRegistro[] = (['Elaborado', 'Verificado', 'Verificado', 'Elaborado'] as const).map(
+  (estado, i) => ({
+    id: `cpe-${4 - i}`,
+    documento: 'Consolidado pliego de estimación de ingresos',
+    numero: String(4 - i).padStart(4, '0'),
+    tipoAccion: 'Creación',
+    estado,
+    sistema: 'Tesorería',
+    fecha: '2026-02-15T09:00:00',
+    entidad: '009 Ministerio de Economía y Finanzas',
+  }),
+);
+
+/** Unidades ejecutoras del pliego que ya validaron su solicitud (el aviso «Consolidado disponible» del Figma). */
+export const UNIDADES_EJECUTORAS_PLIEGO = 5;
+
+/** Montos del Figma en orden: promedio anual (a), años 2027 (b), 2028 (c) y 2029 (d), y participación en pliego (%). */
+type Montos = [number, number, number, number, number];
+const nodo = (id: string, etiqueta: string, [a, b, c, d, p]: Montos, hijos?: NodoConsolidadoPliego[]): NodoConsolidadoPliego =>
+  ({ id, etiqueta, promedioAnual: a, anio2027: b, anio2028: c, anio2029: d, participacion: p, ...(hijos ? { hijos } : {}) });
+const registro = (id: string, etiqueta: string, montos: Montos, baseLegal: 'SI' | 'NO'): NodoConsolidadoPliego =>
+  ({ ...nodo(id, etiqueta, montos), seleccionable: true, clasificador: true, baseLegal });
+/** Clasificador que se despliega (agrupación «Clasif. Ing.»). */
+const clasificadorNodo = (id: string, etiqueta: string, montos: Montos, baseLegal: 'SI' | 'NO', hijos?: NodoConsolidadoPliego[]): NodoConsolidadoPliego =>
+  ({ ...nodo(id, etiqueta, montos, hijos), clasificador: true, baseLegal });
+/** Fila final sin flecha. */
+const hoja = (id: string, etiqueta: string, montos: Montos): NodoConsolidadoPliego => ({ ...nodo(id, etiqueta, montos), hoja: true });
+
+/**
+ * «Relación de pliegos consolidados» de un consolidado nuevo (Figma node 7606:466337), con los montos del diseño. Solo
+ * la «003 Secretaría General - PCM» trae sus clasificadores; el resto de unidades y fuentes vienen sin detalle.
+ */
+export const RELACION_PLIEGOS_CONSOLIDADOS: NodoConsolidadoPliego[] = [
+  nodo('ff-2', '2 Recursos Directamente Recaudados', [1193950, 1238413, 1270748, 1301281, 74.52], [
+    nodo('rb-09', '09 Recursos Directamente Recaudados', [1193950, 1238413, 1270748, 1301281, 74.52], [
+      nodo('pl-pcm', 'PRESIDENCIA DEL CONSEJO DE MINISTROS', [1193950, 1238413, 1270748, 1301281, 74.52], [
+        nodo('ue-003', '003 SECRETARIA GENERAL - PCM', [288748, 301599, 307398, 314948, 18.15], [
+          registro('ue-003-3.1.5.1', '3.1.5.1 Venta de Publicaciones', [66249, 66582, 66917, 67253, 4.01], 'SI'),
+          registro('ue-003-3.2.1.1', '3.2.1.1 Tasas Registrales', [9999, 11549, 10309, 10618, 0.69], 'NO'),
+          registro('ue-003-3.2.5.2', '3.2.5.2 Licencia de Construcción', [212500, 223468, 230172, 237077, 13.45], 'NO'),
+        ]),
+        nodo('ue-1733', '1733 PCM SEC TEC', [231051, 238958, 245806, 250236, 14.38]),
+        nodo('ue-1763', '1763 PROY TRANS', [313899, 323840, 334373, 344351, 19.49]),
+        nodo('ue-1781', '1781 ANATP CHANCAY', [176217, 184033, 187965, 191910, 11.07]),
+        nodo('ue-1788', '1788 PROG MEJ AT CID', [184035, 189983, 195206, 199836, 11.43]),
+      ]),
+    ]),
+  ]),
+  nodo('ff-3', '3 Recursos por Operaciones Oficiales de Crédito', [180878, 189777, 193293, 198345, 11.42]),
+  nodo('ff-4', '4 Donaciones y Transferencias', [224814, 233620, 239715, 245041, 14.06]),
+];
+
+/** La misma relación agrupada por clasificador de ingresos (Figma node 8349:509061), con los montos del diseño. */
+export const RELACION_PLIEGOS_POR_CLASIFICADOR: NodoConsolidadoPliego[] = [
+  nodo('c-ff-2', '2 Recursos Directamente Recaudados', [1193950, 1238413, 1270748, 1301281, 74.52], [
+    nodo('c-rb-09', '09 Recursos Directamente Recaudados', [1193950, 1238413, 1270748, 1301281, 74.52], [
+      clasificadorNodo('c-3.1.5.1', '3.1.5.1 Venta de Publicaciones', [66249, 66582, 66917, 67253, 4.01], 'SI', [
+        nodo('c-3.1.5.1-pcm', 'PRESIDENCIA DEL CONSEJO DE MINISTROS', [288545, 298996, 304598, 309823, 17.99], [
+          hoja('c-3.1.5.1-003', '003 SECRETARIA GENERAL - PCM', [66249, 66582, 66917, 67253, 4.01]),
+          hoja('c-3.1.5.1-1733', '1733 PCM SEC TEC', [34208, 35619, 36165, 36999, 2.14]),
+          hoja('c-3.1.5.1-1763', '1763 PROY TRANS', [87396, 90304, 92440, 94334, 5.43]),
+          hoja('c-3.1.5.1-1781', '1781 ANATP CHANCAY', [73281, 77666, 79361, 80695, 4.67]),
+          hoja('c-3.1.5.1-1788', '1788 PROG MEJ AT CID', [27411, 28825, 29715, 30542, 1.73]),
+        ]),
+      ]),
+      clasificadorNodo('c-3.2.1.1', '3.2.1.1 Tasas Registrales', [96767, 102762, 104191, 107047, 6.18], 'NO'),
+      clasificadorNodo('c-3.2.5.2', '3.2.5.2 Licencia de Construcción', [808638, 836655, 861959, 884411, 50.35], 'NO'),
+    ]),
+  ]),
+  nodo('c-ff-3', '3 Recursos por Operaciones Oficiales de Crédito', [180878, 189777, 193293, 198345, 11.42]),
+  nodo('c-ff-4', '4 Donaciones y Transferencias', [224814, 233620, 239715, 245041, 14.06]),
+];
+
+/** La misma relación agrupada por entidad (Figma node 8349:491365), con los montos del diseño. */
+export const RELACION_PLIEGOS_POR_ENTIDAD: NodoConsolidadoPliego[] = [
+  nodo('e-pcm', 'PRESIDENCIA DEL CONSEJO DE MINISTROS', [1599642, 1661810, 1703756, 1744667, 100], [
+    nodo('e-003', '003 SECRETARIA GENERAL - PCM', [337098, 350916, 357701, 366257, 21.12], [
+      nodo('e-003-ff-2', '2 Recursos Directamente Recaudados', [288748, 301599, 307398, 314948, 18.15], [
+        nodo('e-003-rb-09', '09 Recursos Directamente Recaudados', [288748, 301599, 307398, 314948, 18.15], [
+          { ...hoja('e-3.1.5.1', '3.1.5.1 Venta de Publicaciones', [66249, 66582, 66917, 67253, 4.01]), clasificador: true, baseLegal: 'SI' },
+          { ...hoja('e-3.2.1.1', '3.2.1.1 Tasas Registrales', [9999, 11549, 10309, 10618, 0.69]), clasificador: true, baseLegal: 'NO' },
+          { ...hoja('e-3.2.5.2', '3.2.5.2 Licencia de Construcción', [212500, 223468, 230172, 237077, 13.45]), clasificador: true, baseLegal: 'NO' },
+        ]),
+      ]),
+      nodo('e-003-ff-4', '4 Donaciones y Transferencias', [48350, 49317, 50303, 51309, 2.97]),
+    ]),
+    nodo('e-1733', '1733 PCM SEC TEC', [339299, 352558, 362092, 369636, 21.22]),
+    nodo('e-1763', '1763 PROY TRANS', [414614, 429847, 443029, 455868, 25.87]),
+    nodo('e-1781', '1781 ANATP CHANCAY', [267973, 280094, 285956, 291424, 16.85]),
+    nodo('e-1788', '1788 PROG MEJ AT CID', [240658, 248395, 254978, 261482, 14.95]),
+  ]),
 ];
 
 /**
@@ -712,6 +831,7 @@ function crearDatosIniciales(): DatosTaller {
     registrosIngresosTributarios: REGISTROS_INGRESOS_TRIBUTARIOS_SEMILLA.map((r, i) => ({ ...r, id: `rit-${i + 1}` })),
     demoIngresosTributariosInicio: new Date().toISOString(),
     estimacionIngresos: ESTIMACION_INGRESOS_SEMILLA.map((d, i) => ({ ...d, id: `esti-${i + 1}` })),
+    consolidadosPliegoEstimacion: CONSOLIDADO_PLIEGO_SEMILLA.map((d) => ({ ...d })),
     notificaciones: [],
     correlativoDocumento: 0,
     correlativoDocumentoSaldos: 0,

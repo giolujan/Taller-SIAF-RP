@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
 import { StatusTagAppearance, StatusTagComponent, StatusTagTone } from '../status-tag/status-tag.component';
 
-export type RecordStatus = 'Activo' | 'Inactivo' | 'Anulado' | 'En Proceso' | 'Validado' | 'Eliminado' | 'Abierto' | 'Cerrado' | 'Procesado';
+export type RecordStatus =
+  | 'Activo' | 'Inactivo' | 'Anulado' | 'En Proceso' | 'Validado' | 'Pendiente' | 'Observado' | 'Eliminado' | 'Abierto' | 'Cerrado' | 'Procesado';
 export type RecordStatusTagSize = 'standard' | 'small';
 
 interface EstiloRegistro {
@@ -14,7 +15,8 @@ interface EstiloRegistro {
 /**
  * Etiqueta del estado de un registro (Activo, Anulado, Abierto, Cerrado, Procesado…), dibujada con `siaf-status-tag`.
  * Los estados que están en el Figma siguen su familia: Abierto y Cerrado, las «Period tags» (fondo suave azul y gris,
- * sin ícono); En Proceso y Validado, las «status items tags» (solo borde, azul, con `change_circle` y `fact_check`).
+ * sin ícono); En Proceso, Validado, Pendiente y Observado, las «status items tags» (solo borde: azul con
+ * `change_circle` y `fact_check`, gris con `pending` y amarillo con `warning`).
  * Activo, Inactivo, Anulado, Eliminado y Procesado, que el Figma no tiene, van con fondo suave, su ícono y su tono de
  * siempre.
  *
@@ -30,6 +32,8 @@ interface EstiloRegistro {
  * - En «Estado del registro» del historial (`siaf-account-history-panel`, `siaf-asiento-history-panel`) y en la
  *   columna de estado de `siaf-documents-records-table`.
  * - `small` (24 px, el valor por defecto) en tablas; `standard` (32 px) sola.
+ * - Pendiente, Observado y Validado para la evaluación de cada registro de una solicitud: columna «Estado» que ve el
+ *   Revisor / Evaluador en Estimación de ingresos (Figma CEL-005 node 14733:117688).
  * @evitar
  * - Para el estado del flujo de una solicitud (Elaborado, Verificado, Observado): usar `siaf-flow-status-tag`.
  * - Para otros estados con los tonos del Figma: usar `siaf-status-tag` directo.
@@ -69,6 +73,8 @@ export class RecordStatusTagComponent {
     // Figma «status items tags».
     'En Proceso': { tone: 'info', appearance: 'outline', icon: 'change_circle' },
     Validado: { tone: 'info', appearance: 'outline', icon: 'fact_check' },
+    Pendiente: { tone: 'default', appearance: 'outline', icon: 'pending' },
+    Observado: { tone: 'warning', appearance: 'outline', icon: 'warning' },
     // Sin familia en el Figma: el estilo de siempre.
     Activo: { tone: 'info', appearance: 'soft', icon: 'check_circle' },
     Inactivo: { tone: 'default', appearance: 'soft', icon: 'info' },

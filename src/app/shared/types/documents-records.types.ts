@@ -33,6 +33,8 @@ export type DocumentsRecordsCreateProcessOption = {
 
 export type DocumentsRecordsRow = {
   selected?: boolean;
+  /** Contador que la columna de estado (`kind: 'flow-status'`) muestra junto a la etiqueta, ej. «1/2». */
+  statusCounter?: string;
   [key: string]: string | boolean | undefined;
 };
 
@@ -43,7 +45,11 @@ export type DocumentsRecordsColumn = {
   group: ColumnGroup;
   widthClass?: string;
   align?: 'left' | 'right' | 'center';
-  kind?: 'text' | 'document-link' | 'flow-status' | 'record-status';
+  /**
+   * `expediente-status`: «Expediente tags» del Figma (Creado, En trámite, Archivado) con `siaf-status-tag` soft.
+   * `two-lines`: el valor y, debajo en gris, `row[key + 'Detalle']` (ej. usuario y su correo).
+   */
+  kind?: 'text' | 'document-link' | 'flow-status' | 'record-status' | 'expediente-status' | 'two-lines';
   /**
    * Agrupa columnas consecutivas bajo un título común en una segunda fila de cabecera (ej. «Info del documento»
    * sobre «Número» y «Nombre», en Registros de Ingresos tributarios SUNAT). No confundir con `group`
