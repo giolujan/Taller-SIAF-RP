@@ -893,6 +893,229 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "sinUso": false
   },
   {
+    "selector": "siaf-advanced-filters-panel",
+    "clase": "AdvancedFiltersPanelComponent",
+    "tipo": "componente",
+    "capa": "components",
+    "importacion": "@siaf/shared/components/advanced-filters-panel/advanced-filters-panel.component",
+    "archivo": "src/app/shared/components/advanced-filters-panel/advanced-filters-panel.component.ts",
+    "descripcion": "Panel lateral «Filtros avanzados» (Figma «Filtrar por», nodos 4451:46835 y 4663:59398): «Condiciones» refina el\nresultado ya traído con una o más comparaciones sobre sus columnas, y «Tipo de resultado» reorganiza esas filas en\ngrupos con subtotales (Agrupado) o en un panel de entidades consolidadas (Agregado) según los niveles elegidos.\nSin niveles, el resultado sigue siendo la tabla detallada de siempre.\n\nTrabaja sobre un borrador, igual que `siaf-query-parameters-panel`: cerrar sin aplicar no cambia nada, y reabrirlo\nmuestra lo último aplicado.",
+    "usaSesion": false,
+    "proyectaContenido": false,
+    "entradas": [
+      {
+        "nombre": "fields",
+        "tipo": "readonly QueryReportAdvancedFilterField[]",
+        "porDefecto": "[]",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "open",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "value",
+        "tipo": "QueryReportAdvancedFilters | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "valueOptions",
+        "tipo": "Record<string, TextFieldOption[]>",
+        "porDefecto": "{}",
+        "requerida": false,
+        "descripcion": "Valores que el campo tiene en el resultado (los entrega la pantalla); vacío = texto libre."
+      }
+    ],
+    "eventos": [
+      {
+        "nombre": "applied",
+        "tipo": "QueryReportAdvancedFilters",
+        "descripcion": null
+      },
+      {
+        "nombre": "closed",
+        "tipo": "void",
+        "descripcion": null
+      }
+    ],
+    "usar": "- Desde el ícono de filtro de `siaf-form-table-search` en `siaf-query-report-page`, con `advancedFilterFields` de su\n  configuración.\n- Los niveles son hasta 3. Los campos con `hierarchy` (Entidad ▶ Unidad ejecutora) mantienen el orden del\n  clasificador: el select no ofrece un campo que rompería el orden y el arrastre no los intercambia. El ícono de\n  arrastre se apaga en un nivel con jerarquía que no puede subir (Entidad; Unidad ejecutora justo debajo de Entidad). `groupableIn` limita un campo a Agrupado o a Agregado.",
+    "evitar": "- Para los criterios que arman la consulta (fechas, cuenta, entidad): eso es «Parámetros de consulta»\n  (`siaf-query-parameters-panel`).\n- Para un filtro de una sola columna con opciones fijas: usar `siaf-filter-pill`.",
+    "teclado": "- **Tab**: recorre cada condición (Campo, Condición, Valor y su ✕), «Agregar condición», los radios de tipo de\n  resultado, cada nivel (Campo y su ✕), «Agregar nivel», «Limpiar todo» y «Aplicar».\n- **Escape**: cierra sin aplicar, como el panel de parámetros.",
+    "accesibilidad": "- **4.1.2 Nombre, función y valor (A)**: `role=\"dialog\"` con `aria-modal` y `aria-labelledby`, igual que\n  `siaf-query-parameters-panel`.\n- **Pendiente**: los niveles no tienen reordenamiento por teclado; el ícono de arrastre del Figma es solo visual.",
+    "figma": [
+      {
+        "nodo": "4451:46835",
+        "nombre": "Filtros avanzados (vacío)"
+      },
+      {
+        "nodo": "4663:59398",
+        "nombre": "Filtros avanzados (con condición y niveles)"
+      }
+    ],
+    "aria": {
+      "roles": [
+        "dialog",
+        "radio",
+        "radiogroup"
+      ],
+      "atributos": [
+        "aria-checked",
+        "aria-label",
+        "aria-labelledby",
+        "aria-modal"
+      ]
+    },
+    "tokens": [
+      {
+        "token": "--sys-color-bg-states-light-pressed",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-states-light-selected",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-surfaces-surface",
+        "via": [
+          "bg-surface"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-surfaces-surface-high",
+        "via": [
+          "bg-surface-muted"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-surfaces-surface-low",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-border-states-active",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-border-states-enabled",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-border-states-focus",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-divider-default",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-icon-states-disabled",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-icon-states-enabled",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-activated",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-high",
+        "via": [
+          "text-text",
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-medium",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-lg",
+        "via": [
+          "gap-siaf-lg"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-md",
+        "via": [
+          "gap-siaf-md",
+          "p-siaf-md",
+          "pb-siaf-md",
+          "px-siaf-md"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-sm",
+        "via": [
+          "gap-siaf-sm",
+          "p-siaf-sm",
+          "pt-siaf-sm",
+          "py-siaf-sm"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-xs",
+        "via": [
+          "gap-siaf-xs"
+        ]
+      },
+      {
+        "token": "--sys-radius-md",
+        "via": [
+          "rounded-siaf-md"
+        ]
+      },
+      {
+        "token": "--sys-radius-sm",
+        "via": [
+          "rounded-siaf-sm"
+        ]
+      },
+      {
+        "token": "--sys-shadow-elevation-8",
+        "via": [
+          "shadow-siaf-elevation-8"
+        ]
+      }
+    ],
+    "usa": [
+      "[siafFoco]",
+      "siaf-button",
+      "siaf-date-time-picker",
+      "siaf-icon",
+      "siaf-input"
+    ],
+    "sinUso": false
+  },
+  {
     "selector": "siaf-alert",
     "clase": "AlertComponent",
     "tipo": "componente",
@@ -2396,10 +2619,17 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "ui",
     "importacion": "@siaf/ui/chart-legend/chart-legend.component",
     "archivo": "src/app/shared/ui/chart-legend/chart-legend.component.ts",
-    "descripcion": "Leyenda de los gráficos del kit (Figma UI KIT, página «Graphics», «Leyenda»): un punto de 15 px con el color de\ncada serie y su nombre, alineados a la derecha sobre el gráfico.",
+    "descripcion": "Leyenda de los gráficos del kit (Figma UI KIT, página «Graphics», «Leyenda»): un punto de 15 px con el color de\n\ncada serie y su nombre. Van alineados a la derecha sobre el gráfico por defecto; con `align=\"start\"`, a la\nizquierda (el donut, con pocas series y su leyenda encima, se lee mejor así).",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
+      {
+        "nombre": "align",
+        "tipo": "'start' | 'end'",
+        "porDefecto": "'end'",
+        "requerida": false,
+        "descripcion": null
+      },
       {
         "nombre": "items",
         "tipo": "readonly ChartLegendItem[]",
@@ -2409,7 +2639,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "eventos": [],
-    "usar": "- Dentro de los gráficos del kit: `siaf-bar-chart` y `siaf-line-chart` la arman solos con los nombres de sus\n  series; `siaf-diverging-chart`, con los de sus dos lados, y `siaf-donut-chart`, con los de sus partes.\n- En un gráfico propio que use la paleta del kit (`TOKENS_SERIES`), para que colores y nombres coincidan.",
+    "usar": "- Dentro de los gráficos del kit: `siaf-bar-chart` y `siaf-line-chart` la arman solos con los nombres de sus\n  series; `siaf-diverging-chart`, con los de sus dos lados, y `siaf-donut-chart`, con los de sus partes.\n\n- En un gráfico propio que use la paleta del kit (`TOKENS_SERIES`), para que colores y nombres coincidan.\n- `align=\"start\"` cuando el gráfico tiene pocas series y conviene leerlas de corrido desde la izquierda, como en\n  `siaf-donut-chart`.",
     "evitar": "- Como única forma de leer los datos: el gráfico debe traer además su tooltip y su tabla de datos.\n- Para filtros o selección de series: no es interactiva.",
     "teclado": "- No recibe foco: no es interactiva.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: es una lista (`ul` y `li`); el punto de color va con `aria-hidden` y el\n  nombre de la serie queda en texto.\n- **1.4.1 Uso del color (A)**: el color solo relaciona la leyenda con las barras; los valores de cada serie también\n  están en el tooltip y en la tabla de datos del gráfico.\n- **1.4.3 Contraste mínimo (AA)**: nombres en `text-neutral-medium` sobre la superficie (14.53:1 claro / 12.87:1\n  oscuro).\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: en oscuro los puntos de las series 1 y 2 (`bg-brand-primary`,\n  2.66:1, y `bg-brand-secondary`, 2.99:1) no llegan a 3:1 sobre la superficie y la 2 y la 3 quedan del mismo tono;\n  la paleta oscura de los gráficos está por definir con diseño.",
@@ -3645,7 +3875,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "ui",
     "importacion": "@siaf/ui/date-time-picker/date-time-picker.component",
     "archivo": "src/app/shared/ui/date-time-picker/date-time-picker.component.ts",
-    "descripcion": "Selector de fecha (y opcionalmente hora) con calendario propio, label flotante,\nestados de error/éxito y `[minDate]` para deshabilitar días anteriores.\n\nEs el control canónico de fecha del design system: úsalo en vez de un `input type=\"date\"`\nnativo para que el campo respete tokens, textos en español y el formato dd/mm/aaaa.\n\nEn la cabecera del calendario, el mes y el año son botones: el mes abre los 12 meses y el año una\ngrilla de 12 años (las flechas dobles pasan de página). Al elegir, vuelve a los días de ese mes o año.\nCon `minDate`, los meses y años que terminan antes quedan deshabilitados.",
+    "descripcion": "Selector de fecha (y opcionalmente hora) con calendario propio, label flotante,\nestados de error/éxito, `[minDate]` para deshabilitar días anteriores y `[maxDate]` para los posteriores (no se aceptan tampoco al escribirlos; con `[maxDateError]` y `[minDateError]`, la fecha fuera de rango escrita y confirmada se conserva con ese mensaje de error).\n\nEs el control canónico de fecha del design system: úsalo en vez de un `input type=\"date\"`\nnativo para que el campo respete tokens, textos en español y el formato dd/mm/aaaa.\n\nEn la cabecera del calendario, el mes y el año son botones: el mes abre los 12 meses y el año una\ngrilla de 12 años (las flechas dobles pasan de página). Al elegir, vuelve a los días de ese mes o año.\nCon `minDate`, los meses y años que terminan antes quedan deshabilitados; con `maxDate`, los que empiezan después.",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
@@ -3692,6 +3922,20 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "maxDate",
+        "tipo": "string",
+        "porDefecto": "''",
+        "requerida": false,
+        "descripcion": "Fecha máxima seleccionable (ISO, YYYY-MM-DD): los días posteriores quedan deshabilitados y no se aceptan al escribirlos."
+      },
+      {
+        "nombre": "maxDateError",
+        "tipo": "string",
+        "porDefecto": "''",
+        "requerida": false,
+        "descripcion": "Con `maxDate`: texto de error cuando se escribe y confirma una fecha posterior; el campo la conserva en rojo hasta que se corrija."
+      },
+      {
         "nombre": "minDate",
         "tipo": "string",
         "porDefecto": "''",
@@ -3699,11 +3943,25 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Fecha mínima seleccionable en formato ISO (YYYY-MM-DD). Los días anteriores quedan deshabilitados."
       },
       {
+        "nombre": "minDateError",
+        "tipo": "string",
+        "porDefecto": "''",
+        "requerida": false,
+        "descripcion": "Con `minDate`: texto de error cuando se escribe y confirma una fecha anterior; se conserva igual que con `maxDateError`."
+      },
+      {
         "nombre": "placeholder",
         "tipo": "string",
         "porDefecto": "''",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "recentKey",
+        "tipo": "string",
+        "porDefecto": "''",
+        "requerida": false,
+        "descripcion": "Clave para recordar las últimas fechas elegidas en este campo (`localStorage`): al enfocar el campo vacío se ofrecen como «Recientes». Vacío, sin sugerencias."
       },
       {
         "nombre": "required",
@@ -3742,9 +4000,9 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "usar": "- Para las fechas de vigencia de una solicitud («Fecha inicio desde» y «Fecha fin hasta» en clase de ajuste, tipo de\n  asiento, evento y evento contable), con `[minDate]` para que el fin no quede antes del inicio.\n- Para los rangos «Fecha desde» / «Fecha hasta» de los paneles de búsqueda de las consultas y de libros contables.\n- Para una fecha puntual de un formulario: la fecha del asiento de ajuste o las fechas de contrato del usuario en Admin.",
-    "evitar": "- Un `input type=\"date\"` nativo o un `siaf-input` con `trailingIcon=\"calendar_today\"` (como la vigencia del\n  formulario de cuenta contable): usar este componente.\n- Dejar `defaultToToday` en `true` en filtros o fechas opcionales: pinta la fecha de hoy sin emitirla, así que el\n  padre sigue vacío. Pasar `[defaultToToday]=\"false\"`.\n- `variant=\"datetime\"` para capturar una hora: los campos de hora no están conectados; emite solo la fecha y la\n  muestra con 00:00:00.\n- Para mostrar una fecha que no se edita: en modo lectura va `readonly-field`, no el selector `[disabled]`.",
-    "teclado": "- **Tab**: enfoca el campo. Al abrir el calendario el foco entra en el día elegido (o en hoy); desde ahí recorre\n  las flechas de la cabecera, el mes, el año y cada día habilitado, y salir con Tab cierra el calendario.\n- **Enter / Espacio**: en el campo abren o cierran el calendario; dentro, activan la flecha o eligen el día, mes o\n  año enfocado (botones nativos). Cancelar y Aceptar de `datetime` siguen `siaf-button`.\n- **Escape**: cierra el calendario y el foco vuelve al campo.\n- **Flechas**: no están implementadas entre los días; el calendario también se cierra al elegir un día (variante\n  `date`) o con Cancelar o Aceptar.",
-    "accesibilidad": "- **Pendiente · 1.3.1 Información y relaciones (A)**: la etiqueta no se une al botón del campo con `aria-labelledby`\n  ni `aria-label`: un único `<label>` envuelve etiqueta flotante, botón, ayuda, error y calendario, y con fecha\n  elegida el botón muestra solo la fecha. En `datetime`, los tres campos de hora no tienen etiqueta.\n- **Pendiente · 3.3.1 Identificación de errores (A)**: el texto de `error` se ve bajo el campo, pero no se asocia con\n  `aria-describedby` ni se anuncia al aparecer; con `state=\"error\"` y sin `error`, el aviso es solo el borde rojo.\n- **Pendiente · 3.3.2 Etiquetas o instrucciones (A)**: el obligatorio es solo el asterisco rojo: `aria-required` va\n  en un `<button>`, rol que no admite ese atributo en ARIA 1.2.\n- **4.1.2 Nombre, función y valor (A)**: el campo publica `aria-haspopup=\"dialog\"` y `aria-expanded`; el calendario\n  es `role=\"dialog\"` con `aria-label`, y las grillas de meses y años, `role=\"listbox\"` con `aria-selected`.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: cada día se lee solo como número («05») y el día elegido no\n  publica estado (`aria-selected` o `aria-pressed`); las grillas `listbox` no responden a flechas.\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir el foco entra en el día elegido (o en hoy) y al cerrarse\n  (un día, Cancelar, Aceptar, Escape o salir con Tab) vuelve al campo.\n- **2.4.7 Foco visible (AA)**: el botón del campo pasa al borde azul de 2 px (`border-states-focus`, 5.35:1 claro /\n  10.15:1 oscuro) al recibir el foco, también con valor (éxito); con error, el borde sigue rojo y el foco se ve en un\n  contorno azul por fuera. Los botones del calendario conservan el anillo nativo.\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: el borde del campo vacío es `border-states-enabled` (2.44:1\n  claro, 2.59:1 oscuro).\n- **1.4.3 Contraste mínimo (AA)**: valor `text-neutral-high` 16.29:1, etiqueta `text-neutral-low` 5.01:1, días\n  `text-neutral-medium` 14.53:1 y día elegido en blanco sobre `bg-brand-primary` 8.79:1 (6.67:1 oscuro). Con valor,\n  la ayuda pasa a `text-feedback-success`, par que la tabla no mide.\n- **Pendiente · 2.5.8 Tamaño del objetivo (AA)**: las flechas de la cabecera miden 20 px (`size-5`) con 4 px entre\n  ellas; los días miden 36 px y el campo, 40 px.",
+    "evitar": "- Un `input type=\"date\"` nativo o un `siaf-input` con `trailingIcon=\"calendar_today\"` (como la vigencia del\n  formulario de cuenta contable): usar este componente.\n- Dejar `defaultToToday` en `true` en filtros o fechas opcionales: pinta la fecha de hoy sin emitirla, así que el\n  padre sigue vacío. Pasar `[defaultToToday]=\"false\"`.\n- `variant=\"datetime\"` esperando solo la fecha: emite `aaaa-mm-ddThh:mm:ss` (con la hora, minutos y segundos del panel) y\n  acepta ese mismo formato en `value`.\n- Para mostrar una fecha que no se edita: en modo lectura va `readonly-field`, no el selector `[disabled]`.",
+    "teclado": "- **Escribir**: al enfocar, el campo muestra la plantilla dd/mm/aaaa (y hh:mm:ss en `datetime`) y se llena por secciones:\n  cada dígito ocupa su lugar y, al completar una sección, pasa a la siguiente (un 5 en el mes se vuelve 05). Con clic, flechas\n  izquierda/derecha o Tab se elige una sección (día, mes o año) y lo que se teclee la reemplaza; Retroceso/Supr la vacía\n  o quita su último dígito, y «/» cierra la sección. La fecha se elige al completarla si es válida y respeta `minDate`;\n  una fecha completa que no existe (00/00/0000, 31/02) o fuera de rango se queda en rojo con su mensaje, y al salir del campo una incompleta vuelve a la elegida.\n  Con `defaultToToday` en `false`, vaciar el campo borra la fecha.\n- **Recientes**: con `recentKey`, al enfocar el campo vacío aparece, como el tooltip nativo del navegador (globo oscuro con una X por fecha para quitarla), la lista de las últimas 5 fechas elegidas en él\n  (se guardan en `localStorage`, respetan `minDate` y `maxDate`); se elige con clic o con flecha abajo/arriba y Enter, y Escape\n  o empezar a escribir la cierra.\n- **Tab**: enfoca el campo y luego el botón del calendario (Alt + flecha abajo también lo abre). Al abrir el calendario el foco entra en el día elegido (o en hoy); desde ahí recorre\n  las flechas de la cabecera, el mes, el año y cada día habilitado, y salir con Tab cierra el calendario.\n- **Enter / Espacio**: en el botón abren o cierran el calendario (Enter en el campo confirma lo escrito); dentro, activan la flecha o eligen el día, mes o\n  año enfocado (botones nativos). Cancelar y Aceptar de `datetime` siguen `siaf-button`.\n- **Escape**: cierra el calendario y el foco vuelve al campo.\n- **Flechas**: no están implementadas entre los días; el calendario también se cierra al elegir un día (variante\n  `date`) o con Cancelar o Aceptar.",
+    "accesibilidad": "- **1.3.1 Información y relaciones (A)**: el campo de texto y los tres de la hora llevan `aria-label` (la etiqueta del\n  campo y «Hora», «Minutos», «Segundos»); el botón del calendario se llama «Abrir calendario».\n- **Pendiente · 3.3.1 Identificación de errores (A)**: el texto de `error` se ve bajo el campo, pero no se asocia con\n  `aria-describedby` ni se anuncia al aparecer; con `state=\"error\"` y sin `error`, el aviso es solo el borde rojo.\n- **3.3.2 Etiquetas o instrucciones (A)**: el campo de texto publica `aria-required` y `aria-invalid`; el obligatorio se\n  ve además con el asterisco rojo y el formato dd/mm/aaaa queda como plantilla en el campo al enfocar y se va llenando por secciones.\n- **4.1.2 Nombre, función y valor (A)**: el botón del calendario publica `aria-haspopup=\"dialog\"` y `aria-expanded`; el calendario\n  es `role=\"dialog\"` con `aria-label`, y las grillas de meses y años, `role=\"listbox\"` con `aria-selected`.\n- **Pendiente · 4.1.2 Nombre, función y valor (A)**: cada día se lee solo como número («05») y el día elegido no\n  publica estado (`aria-selected` o `aria-pressed`); las grillas `listbox` no responden a flechas.\n- **2.4.3 Orden del foco (A)**: con `siafFoco`, al abrir el foco entra en el día elegido (o en hoy) y al cerrarse\n  (un día, Cancelar, Aceptar, Escape o salir con Tab) vuelve al campo.\n- **2.4.7 Foco visible (AA)**: el botón del campo pasa al borde azul de 2 px (`border-states-focus`, 5.35:1 claro /\n  10.15:1 oscuro) al recibir el foco, también con valor (éxito); con error, el borde sigue rojo y el foco se ve en un\n  contorno azul por fuera. Los botones del calendario conservan el anillo nativo.\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: el borde del campo vacío es `border-states-enabled` (2.44:1\n  claro, 2.59:1 oscuro).\n- **1.4.3 Contraste mínimo (AA)**: valor `text-neutral-high` 16.29:1, etiqueta `text-neutral-low` 5.01:1, días\n  `text-neutral-medium` 14.53:1 y día elegido en blanco sobre `bg-brand-primary` 8.79:1 (6.67:1 oscuro). Con valor,\n  la ayuda pasa a `text-feedback-success`, par que la tabla no mide.\n- **Pendiente · 2.5.8 Tamaño del objetivo (AA)**: las flechas de la cabecera miden 20 px (`size-5`) con 4 px entre\n  ellas; los días miden 36 px y el campo, 40 px.",
     "figma": [],
     "aria": {
       "roles": [
@@ -3756,6 +4014,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "aria-expanded",
         "aria-haspopup",
         "aria-hidden",
+        "aria-invalid",
         "aria-label",
         "aria-required",
         "aria-selected"
@@ -3766,6 +4025,18 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-color-bg-brand-primary",
         "via": [
           "bg-brand-primary"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-feedback-dark-default",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-snackbar",
+        "via": [
+          "var()"
         ]
       },
       {
@@ -3880,15 +4151,24 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-md",
         "via": [
+          "pl-siaf-md",
           "px-siaf-md"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-sm",
+        "via": [
+          "px-siaf-sm"
         ]
       },
       {
         "token": "--sys-gap-base-xs",
         "via": [
           "gap-siaf-xs",
+          "mr-siaf-xs",
           "mt-siaf-xs",
           "p-siaf-xs",
+          "pr-siaf-xs",
           "pt-siaf-xs",
           "px-siaf-xs",
           "py-siaf-xs"
@@ -3898,6 +4178,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-gap-base-xxs",
         "via": [
           "gap-siaf-xxs",
+          "mr-siaf-xxs",
           "px-siaf-xxs",
           "py-siaf-xxs"
         ]
@@ -3923,7 +4204,6 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     ],
     "usa": [
       "[siafFoco]",
-      "[siafTooltip]",
       "siaf-button",
       "siaf-icon"
     ],
@@ -5498,6 +5778,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Ancho del menú ⋮ en px."
       },
       {
+        "nombre": "subtitle",
+        "tipo": "string",
+        "porDefecto": "''",
+        "requerida": false,
+        "descripcion": "Línea de apoyo bajo el título (p. ej. «7 campos»)."
+      },
+      {
         "nombre": "title",
         "tipo": "string",
         "porDefecto": "''",
@@ -5570,6 +5857,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       },
       {
+        "token": "--sys-color-text-neutral-low",
+        "via": [
+          "var()"
+        ]
+      },
+      {
         "token": "--sys-color-text-neutral-medium",
         "via": [
           "var()"
@@ -5611,6 +5904,237 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "usa": [
       "siaf-icon",
       "siaf-icon-dropdown-menu"
+    ],
+    "sinUso": false
+  },
+  {
+    "selector": "siaf-favorites-panel",
+    "clase": "FavoritesPanelComponent",
+    "tipo": "componente",
+    "capa": "components",
+    "importacion": "@siaf/shared/components/favorites-panel/favorites-panel.component",
+    "archivo": "src/app/shared/components/favorites-panel/favorites-panel.component.ts",
+    "descripcion": "Panel lateral «Favoritos» (Figma nodos 5326:72389, 5651:70562, 5735:132055 y 4152:41872): guarda la configuración de\nun reporte (parámetros aplicados, condiciones y agrupado o agregado) con una descripción, para reaplicarla después.\nSin favoritos muestra el aviso y «Agregar favorito»; con favoritos, el listado (la estrella rellena marca el\npredeterminado); «Agregar favorito» abre el formulario con la descripción, «Favorito predeterminado» y dos resúmenes\nplegables, «Parámetros» y «Filtros», con lo que se guardará.\n\nNo guarda nada: emite `added`, `applied`, `removed` y `defaultToggled`, y el padre persiste.",
+    "usaSesion": false,
+    "proyectaContenido": false,
+    "entradas": [
+      {
+        "nombre": "actual",
+        "tipo": "FavoritoActual",
+        "porDefecto": "{ parametros: [], condiciones: [], niveles: [], tipoResulta…",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "favorites",
+        "tipo": "readonly FavoritoResumen[]",
+        "porDefecto": "[]",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "hayConsulta",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Sin consulta aplicada no hay nada que guardar: «Agregar favorito» queda deshabilitado."
+      },
+      {
+        "nombre": "open",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "selectedId",
+        "tipo": "string | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": "Favorito aplicado a la consulta: su fila se ve seleccionada. La estrella no selecciona, solo marca el predeterminado."
+      }
+    ],
+    "eventos": [
+      {
+        "nombre": "added",
+        "tipo": "FavoritoNuevo",
+        "descripcion": null
+      },
+      {
+        "nombre": "applied",
+        "tipo": "string",
+        "descripcion": null
+      },
+      {
+        "nombre": "closed",
+        "tipo": "void",
+        "descripcion": null
+      },
+      {
+        "nombre": "defaultToggled",
+        "tipo": "string",
+        "descripcion": null
+      },
+      {
+        "nombre": "removed",
+        "tipo": "string",
+        "descripcion": null
+      }
+    ],
+    "usar": "- Desde «Favoritos» de `siaf-query-report-page`, que le pasa los favoritos del reporte y la consulta vigente.",
+    "evitar": "- Para guardar datos de un formulario de solicitud: esto solo guarda criterios de consulta.\n- Para elegir entre opciones fijas de un filtro: usar `siaf-filter-pill`.",
+    "teclado": "- **Tab**: recorre la X, cada favorito (estrella, nombre y papelera) y «Agregar favorito»; en el formulario, la\n  descripción, la casilla, cada resumen, «Cancelar» y «Guardar».\n- **Enter / Espacio**: en el nombre de un favorito lo aplica a la consulta y cierra el panel; en la estrella lo marca o desmarca como predeterminado.\n- **Escape**: cierra el panel.",
+    "accesibilidad": "- **4.1.2 Nombre, función y valor (A)**: la estrella es un `button` con `aria-pressed` y nombre «Favorito\n  predeterminado: …»; la papelera se llama «Eliminar favorito …».\n- **1.4.1 Uso del color (A)**: el predeterminado se distingue por la estrella rellena y `aria-pressed`, además del color.\n- **2.5.8 Tamaño del objetivo (AA)**: estrella y papelera miden 40 px.",
+    "figma": [
+      {
+        "nodo": "5326:72389",
+        "nombre": "Favoritos (sin favoritos)"
+      },
+      {
+        "nodo": "5651:70562",
+        "nombre": "Agregar favorito"
+      },
+      {
+        "nodo": "5735:132055",
+        "nombre": "Agregar favorito (resumen desplegado)"
+      },
+      {
+        "nodo": "4152:41872",
+        "nombre": "Favoritos (listado)"
+      }
+    ],
+    "aria": {
+      "roles": [
+        "tooltip"
+      ],
+      "atributos": [
+        "aria-current",
+        "aria-describedby",
+        "aria-label",
+        "aria-pressed"
+      ]
+    },
+    "tokens": [
+      {
+        "token": "--sys-color-bg-states-light-selected",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-surfaces-surface-high",
+        "via": [
+          "bg-surface-muted"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-surfaces-surface-highest",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-surfaces-surface-low",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-border-states-active",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-border-states-focus",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-divider-strong",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-brand-primary",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-high",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-low",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-medium",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-lg",
+        "via": [
+          "left-siaf-lg"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-md",
+        "via": [
+          "gap-siaf-md",
+          "p-siaf-md"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-sm",
+        "via": [
+          "gap-siaf-sm"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-xs",
+        "via": [
+          "gap-siaf-xs",
+          "pr-siaf-xs",
+          "px-siaf-xs",
+          "py-siaf-xs"
+        ]
+      },
+      {
+        "token": "--sys-radius-md",
+        "via": [
+          "rounded-siaf-md"
+        ]
+      },
+      {
+        "token": "--sys-radius-sm",
+        "via": [
+          "rounded-siaf-sm"
+        ]
+      },
+      {
+        "token": "--sys-shadow-elevation-6",
+        "via": [
+          "shadow-siaf-elevation-6"
+        ]
+      }
+    ],
+    "usa": [
+      "[siafTooltip]",
+      "siaf-button",
+      "siaf-expansion-panel",
+      "siaf-icon",
+      "siaf-input",
+      "siaf-side-nav"
     ],
     "sinUso": false
   },
@@ -5753,11 +6277,25 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "filterCount",
+        "tipo": "number",
+        "porDefecto": "0",
+        "requerida": false,
+        "descripcion": "Insignia en Filtrar: cuántas condiciones de «Filtros avanzados» están aplicadas (0 no la muestra)."
+      },
+      {
         "nombre": "filterLabel",
         "tipo": "string",
         "porDefecto": "'Filtrar'",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "minChars",
+        "tipo": "number",
+        "porDefecto": "0",
+        "requerida": false,
+        "descripcion": "Búsqueda en vivo desde N caracteres: sale sola tras una pausa breve al teclear y con menos de N se quita. Con 0, solo Enter o la lupa (Consultas y reportes, traído de Taller-libretas)."
       },
       {
         "nombre": "moreLabel",
@@ -5858,6 +6396,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     },
     "tokens": [
       {
+        "token": "--sys-color-bg-feedback-dark-info",
+        "via": [
+          "var()"
+        ]
+      },
+      {
         "token": "--sys-color-bg-states-dark-pressed",
         "via": [
           "var()"
@@ -5909,6 +6453,213 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "usa": [
       "siaf-icon",
       "siaf-input"
+    ],
+    "sinUso": false
+  },
+  {
+    "selector": "siaf-grouped-report-table",
+    "clase": "GroupedReportTableComponent",
+    "tipo": "componente",
+    "capa": "ui",
+    "importacion": "@siaf/ui/grouped-report-table/grouped-report-table.component",
+    "archivo": "src/app/shared/ui/grouped-report-table/grouped-report-table.component.ts",
+    "descripcion": "Tabla de «Resultado de reporte» en modalidad Agrupado o Agregado (Figma nodos 5960:44051 y 5960:46696): en vez de\nuna fila por registro, uno o más `levels` anidan los registros en grupos colapsables con su cantidad y, en el\núltimo nivel, el saldo inicial/final del grupo junto a su etiqueta; cerrando cada grupo (salvo el más interno) va\n«Subtotal» y, al cerrar el más externo, «TOTAL» — ambos siempre visibles, sin depender de si el grupo está\nexpandido. Las columnas de los `levels` no se repiten en la tabla (ya están en la etiqueta del grupo), pero el resto\nconserva sus grupos de cabecera (Acreditación, Beneficiario…) con la misma columna fija a la derecha (con sombra al\ndesplazar) que `siaf-report-table`.\n\nNo pagina ni ordena: recibe todas las filas que agrupar (ya filtradas y con las condiciones aplicadas).",
+    "usaSesion": false,
+    "proyectaContenido": false,
+    "entradas": [
+      {
+        "nombre": "aggregation",
+        "tipo": "QueryReportGroupAggregation | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "ariaLabel",
+        "tipo": "string",
+        "porDefecto": "'Resultado del reporte agrupado'",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "columns",
+        "tipo": "readonly ReportTableColumn[]",
+        "porDefecto": "[]",
+        "requerida": true,
+        "descripcion": "Todas las columnas del reporte; las de los `levels` se ocultan porque ya están en la etiqueta del grupo."
+      },
+      {
+        "nombre": "emptyMessage",
+        "tipo": "string",
+        "porDefecto": "'Aún no se encontraron resultados.'",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "footerInnermost",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "El nivel más interno también cierra con su pie (el primer nivel es el «TOTAL» y los demás, «Subtotal»): en «Agregado» siempre y en «Agrupado» con uno o dos niveles; con tres o más, el más interno solo lleva su saldo en el título."
+      },
+      {
+        "nombre": "groupTooltips",
+        "tipo": "Record<string, string>",
+        "porDefecto": "{}",
+        "requerida": false,
+        "descripcion": "Nombre completo de cada grupo de cabecera abreviado (`'Imp. m. cuenta'` → «Importe en moneda de la cuenta»)."
+      },
+      {
+        "nombre": "levels",
+        "tipo": "readonly GroupedTableLevel[]",
+        "porDefecto": "[]",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "rows",
+        "tipo": "readonly ReportTableRow[]",
+        "porDefecto": "[]",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "sort",
+        "tipo": "TableSort | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "sortable",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Con `sortable`, cada título es un botón que ordena (asc → desc → sin orden); dentro de cada grupo, las filas de detalle se ordenan por esa columna (los grupos conservan su orden)."
+      }
+    ],
+    "eventos": [
+      {
+        "nombre": "linkClicked",
+        "tipo": "{ row: ReportTableRow; column: ReportTableColumn; }",
+        "descripcion": null
+      },
+      {
+        "nombre": "sortChange",
+        "tipo": "TableSort | null",
+        "descripcion": null
+      }
+    ],
+    "usar": "- Desde `siaf-query-report-page` cuando «Filtros avanzados» aplica uno o más niveles; con «Agregado» el primer nivel\n  se saca a un panel de entidades aparte y esta tabla recibe los niveles restantes.",
+    "evitar": "- Sin niveles: la tabla detallada de siempre, `siaf-report-table`.",
+    "teclado": "- **Tab**: entra en la zona desplazable de la tabla y recorre el botón de cada grupo visible y, en las filas de\n  detalle, cada enlace.\n- **Enter / Espacio**: en el botón de un grupo, lo pliega o despliega.",
+    "accesibilidad": "- **1.3.1 Información y relaciones (A)**: cada grupo es un `role=\"row\"` con `aria-expanded`, dentro de una tabla con\n  `role=\"table\"`, así el lector anuncia el nivel y si está abierto.\n- **4.1.2 Nombre, función y valor (A)**: el botón de cada grupo se llama con su etiqueta y su cantidad de registros.",
+    "figma": [
+      {
+        "nodo": "5960:44051",
+        "nombre": "Resultado agrupado"
+      },
+      {
+        "nodo": "5960:46696",
+        "nombre": "Resultado agregado (bajo la entidad elegida en `siaf-query-report-page`)"
+      }
+    ],
+    "aria": {
+      "roles": [
+        "region",
+        "status"
+      ],
+      "atributos": [
+        "aria-expanded",
+        "aria-label",
+        "aria-sort"
+      ]
+    },
+    "tokens": [
+      {
+        "token": "--sys-color-bg-surfaces-highlight",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-surfaces-surface",
+        "via": [
+          "bg-surface"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-surfaces-surface-low",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-border-states-focus",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-divider-default",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-divider-strong",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-brand-primary",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-high",
+        "via": [
+          "text-text",
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-medium",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-md",
+        "via": [
+          "px-siaf-md"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-sm",
+        "via": [
+          "gap-siaf-sm",
+          "py-siaf-sm"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-xl",
+        "via": [
+          "py-siaf-xl"
+        ]
+      },
+      {
+        "token": "--sys-radius-sm",
+        "via": [
+          "rounded-siaf-sm"
+        ]
+      }
+    ],
+    "usa": [
+      "[siafTooltip]",
+      "siaf-icon"
     ],
     "sinUso": false
   },
@@ -6236,6 +6987,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "''",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "openPlaceholder",
+        "tipo": "string",
+        "porDefecto": "''",
+        "requerida": false,
+        "descripcion": "En `select-multiple`: texto guía mientras la lista está abierta y sin valor («Seleccionar opción...»); por defecto, la etiqueta."
       },
       {
         "nombre": "options",
@@ -8366,6 +9124,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-md",
         "via": [
+          "gap-siaf-md",
           "py-siaf-md"
         ]
       },
@@ -8411,6 +9170,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "'/panel'",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "stickyHeader",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "La cabecera (migas y acciones principales) queda fija bajo la barra superior al desplazar la página."
       }
     ],
     "eventos": [],
@@ -8565,7 +9331,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       }
     ],
     "usar": "- Debajo de toda grilla, con `position=\"Bottom\"` y `[rowPage]=\"true\"`: bandeja, pestañas Documentos / Registros,\n  panel lateral de selección, listados de Admin y tablas de solicitudes y consultas.\n- Con `rowsPerPageOptions` propias si la tabla usa otros tamaños (detalle anual de apertura contable, pedidos de\n  contabilización).",
-    "evitar": "- `position=\"Top\"` suelta sobre la tabla: la barra superior es siempre `siaf-table-controls`, que ya la incluye.\n- Forzar `navigation=\"Inactive\"` cuando todo cabe en una página: `Activate` (por defecto) ya deshabilita las flechas\n  en los bordes.\n- Para avanzar por las etapas de un flujo: `siaf-steps` o `siaf-button`.",
+    "evitar": "- `position=\"Top\"` sobre la tabla: ya no es parte del estándar; la paginación va abajo, con `rowPage`. Solo `siaf-table-controls` con `[showTopPagination]=\"true\"` la usa.\n- Forzar `navigation=\"Inactive\"` cuando todo cabe en una página: `Activate` (por defecto) ya deshabilita las flechas\n  en los bordes.\n- Para avanzar por las etapas de un flujo: `siaf-steps` o `siaf-button`.",
     "teclado": "- **Tab**: recorre el select de filas por página (con `rowPage`) y las flechas; una flecha deshabilitada queda fuera.\n- **Enter / Espacio**: en una flecha, cambian de página (emiten `previous` o `next`).\n- **Flechas arriba / abajo**: en el select nativo eligen otra cantidad de filas (emite `rowsPerPageChange`).",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: es un `<nav aria-label=\"Paginación\">`; en la grilla estándar hay dos con el\n  mismo nombre (el de `siaf-table-controls` arriba y este abajo).\n- **4.1.2 Nombre, función y valor (A)**: las flechas son `<button>` con `aria-label` («Página anterior», «Página\n  siguiente») y `disabled` en los bordes; el select lleva `aria-label` «Filas por página».\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: el contador es un `<span>` sin `role=\"status\"` ni `aria-live`:\n  cambiar de página o de filas por página, o filtrar, no se anuncia.\n- **Pendiente · 2.4.3 Orden del foco (A)**: al llegar a la primera o la última página, la flecha enfocada pasa a\n  `disabled` y el componente no mueve el foco a otro control.\n- **1.4.3 Contraste mínimo (AA)**: contador en `text-neutral-low` (5.01:1 / 8.86:1) y valor del select en\n  `text-neutral-high` (16.29:1 / 16.53:1) sobre la superficie.\n- **Pendiente · 1.4.11 Contraste no textual (AA)**: el borde del select es `border-states-enabled` (2.44:1 /\n  2.59:1). El anillo de foco ya es el azul del kit (`border-states-focus`, 5.35:1 / 10.15:1).\n- **2.4.7 Foco visible (AA)**: el select y las flechas muestran un anillo de 2 px `border-states-focus` separado\n  2 px. El del select antes no se pintaba: con `outline-none`, Tailwind v4 dejaba el estilo del contorno en `none`.\n- **2.5.8 Tamaño del objetivo (AA)**: flechas de 40 px y select de 32 px de alto.",
     "figma": [],
@@ -8656,6 +9422,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "proyectaContenido": false,
     "entradas": [
       {
+        "nombre": "activo",
+        "tipo": "string | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": "Clave de la tarjeta elegida mientras el panel de parámetros está abierto sobre ella; sin ella (panel cerrado), ninguna queda marcada."
+      },
+      {
         "nombre": "parametros",
         "tipo": "readonly ParametroAplicado[]",
         "porDefecto": null,
@@ -8663,9 +9436,15 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "eventos": [],
-    "usar": "- Arriba de los resultados de una consulta, para mostrar con qué parámetros se buscó, cada uno con su ícono.\n- Con muchos parámetros o valores largos: el carril se desplaza y cada valor se corta con tooltip.",
-    "evitar": "- Para elegir o cambiar un parámetro: las tarjetas no son interactivas; la búsqueda se cambia desde la cabecera de\n  la consulta, con `siaf-filter-pill` o con `siaf-custom-filter`.\n- Cuando la pantalla necesita «Quitar filtros»: este bloque no lo tiene (así está en el Figma); las consultas de hoy\n  siguen con `siaf-consultas-filtros-chips`.",
+    "eventos": [
+      {
+        "nombre": "selected",
+        "tipo": "string",
+        "descripcion": null
+      }
+    ],
+    "usar": "- Arriba de los resultados de una consulta, para mostrar con qué parámetros se buscó, cada uno con su ícono.\n- Con muchos parámetros o valores largos: el carril se desplaza y cada valor se corta con tooltip.\n- `selected` para abrir el panel de parámetros posicionado en el parámetro pulsado.",
+    "evitar": "- Para quitar o cambiar un parámetro desde la tarjeta: solo abre el panel; la búsqueda se cambia allí, o con\n  `siaf-filter-pill` o `siaf-custom-filter`.\n- Cuando la pantalla necesita «Quitar filtros»: este bloque no lo tiene (así está en el Figma); las consultas de hoy\n  siguen con `siaf-consultas-filtros-chips`.",
     "teclado": "- **Tab**: cuando las tarjetas no entran, el carril recibe el foco y las flechas izquierda y derecha lo desplazan;\n  después llega a los botones que retroceden y avanzan (los que estén a la vista).\n- **Enter / Espacio**: en un botón, retroceden o avanzan el carril.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: título `<h3>` y las tarjetas como `<ul>` / `<li>` de `siaf-list`; cada una se\n  lee «Nombre, valor».\n- **2.1.1 Teclado (A)**: el carril con desplazamiento es una `region` enfocable con nombre («Parámetros aplicados»),\n  así las tarjetas que no entran se alcanzan sin mouse; los botones hacen lo mismo con un clic.\n- **4.1.2 Nombre, función y valor (A)**: los botones se llaman «Ver parámetros anteriores» y «Ver más parámetros».\n- **2.4.3 Orden del foco (A)**: al llegar a un extremo desaparece el botón de ese lado; si tenía el foco, este pasa al\n  botón del otro lado (o al carril) en vez de perderse.\n- **1.1.1 Contenido no textual (A)**: los íconos son decorativos; el nombre del parámetro va como texto.\n- **2.4.7 Foco visible (AA)**: el carril y el botón muestran el anillo `border-states-focus` (5.35:1 / 10.15:1).\n- **1.4.11 Contraste no textual (AA)**: el borde de las tarjetas es decorativo (`border-states-enabled`); cada tarjeta\n  se distingue también por su espacio y su contenido.",
     "figma": [
@@ -9192,6 +9971,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "focusKey",
+        "tipo": "string | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": "Campo que se abre al mostrar el panel (su lista o su calendario), p. ej. al pulsar su tarjeta de «Parámetros aplicados»."
+      },
+      {
         "nombre": "open",
         "tipo": "boolean",
         "porDefecto": "false",
@@ -9240,6 +10026,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "dialog"
       ],
       "atributos": [
+        "aria-expanded",
         "aria-label",
         "aria-labelledby",
         "aria-modal"
@@ -9337,7 +10124,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "capa": "components",
     "importacion": "@siaf/shared/components/query-report-page/query-report-page.component",
     "archivo": "src/app/shared/components/query-report-page/query-report-page.component.ts",
-    "descripcion": "Plantilla de pantalla «Consultas y reportes» (Guía de Estructura de Pantallas, nodo 9455:107865): la nueva versión de\nlas consultas, armada desde un `QueryReportConfig`. Antes de consultar muestra el estado vacío; «Parámetros» abre\n`siaf-query-parameters-panel` y, al aplicar, emite `queried` para que la pantalla traiga el resultado. Con resultado\npinta «Parámetros aplicados», y en «Resultado de reporte» las pestañas, la card resumen, el buscador (Filtrar y\nColumnas), los filtros predeterminados, la tabla de datos detallada y la paginación. Buscar, filtrar y paginar\nocurren sobre las filas recibidas.\n\nCon `charts` en la configuración, el encabezado del resultado suma el selector «Vista de datos | Vista de gráficas»\n(nodo 22715:21316) y la vista de gráficas (nodo 22402:16766): tarjetas KPI y gráficos calculados con las mismas filas\nque muestra la tabla, es decir, después de buscar y filtrar; un gráfico que se queda sin datos muestra un aviso en vez\nde ejes vacíos. Esa vista se carga con `@defer` al abrirla, así Chart.js\nno pesa en la pantalla hasta que alguien la usa. «Exportar» abre el menú Excel, CSV y PDF y emite `exported` con el\nformato.\n\nNo llama a la API: la pantalla consulta y entrega `result` (con `loading` mientras tanto).",
+    "descripcion": "Plantilla de pantalla «Consultas y reportes» (Guía de Estructura de Pantallas, nodo 9455:107865): la nueva versión de\nlas consultas, armada desde un `QueryReportConfig`. Antes de consultar muestra el estado vacío; «Parámetros» abre\n`siaf-query-parameters-panel` y, al aplicar, emite `queried` para que la pantalla traiga el resultado. Con resultado\npinta «Parámetros aplicados», y en «Resultado de reporte» las pestañas, la card resumen, el buscador (Filtrar y\nColumnas), los filtros predeterminados, la tabla de datos detallada y la paginación. Buscar, filtrar y paginar\nocurren sobre las filas recibidas.\n\nCon `charts` en la configuración, el encabezado del resultado suma el selector «Vista de datos | Vista de gráficas»\n(nodo 22715:21316) y la vista de gráficas (nodo 22402:16766): tarjetas KPI y gráficos calculados con las mismas filas\nque muestra la tabla, es decir, después de buscar y filtrar; un gráfico que se queda sin datos muestra un aviso en vez\nde ejes vacíos. Esa vista se carga con `@defer` al abrirla, así Chart.js\nno pesa en la pantalla hasta que alguien la usa. «Exportar» abre el menú Excel, CSV y PDF (en la vista de gráficas, si la configuración lo pide con `graficas`, ofrece solo «PDF», el de las gráficas) y emite `exported` con el\nformato.\n\nNo llama a la API: la pantalla consulta y entrega `result` (con `loading` mientras tanto).",
     "usaSesion": false,
     "proyectaContenido": false,
     "entradas": [
@@ -9354,6 +10141,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": null,
         "requerida": true,
         "descripcion": null
+      },
+      {
+        "nombre": "favorites",
+        "tipo": "readonly QueryReportFavorite[]",
+        "porDefecto": null,
+        "requerida": false,
+        "descripcion": "Favoritos guardados del reporte. Si uno es el predeterminado y todavía no hay consulta, se aplica solo al entrar. La pantalla los persiste con `favoritesChange`."
       },
       {
         "nombre": "loading",
@@ -9387,6 +10181,11 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Un formato de «Exportar»: la pantalla genera el archivo con las filas recibidas."
       },
       {
+        "nombre": "favoritesChange",
+        "tipo": "QueryReportFavorite[]",
+        "descripcion": "La lista completa de favoritos tras agregar, quitar o cambiar el predeterminado: la pantalla la guarda."
+      },
+      {
         "nombre": "favoritesRequested",
         "tipo": "void",
         "descripcion": null
@@ -9407,7 +10206,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Para una pantalla «Consultas y reportes» de un proceso: título, migas, campos de parámetros, columnas (con grupos y\n  la última fija), pestañas y filtros predeterminados en la configuración.\n- `tabs` cuando el reporte tiene varias vistas del mismo resultado: la pantalla recibe `tabChanged` y entrega el\n  resultado de esa pestaña.\n- `charts` para la vista de gráficas: cada KPI suma una columna (o cuenta filas), con un filtro opcional por valor, y\n  cada gráfico agrupa por una columna (o por mes, con una fecha), en valores, índice respecto de la primera categoría\n  (`index`) o variación respecto de ella (`change`). `width: 'narrow'` pone un gráfico en la columna de 336 px a la\n  derecha del anterior, como en el Figma.\n- `exported` para generar el archivo: trae el formato elegido y las filas que quedaron tras buscar y filtrar.\n- `favoritesRequested`, `advancedFiltersRequested` y `columnsRequested` para lo que la pantalla resuelve por su cuenta\n  mientras la plantilla no traiga esos paneles.",
+    "usar": "- Para una pantalla «Consultas y reportes» de un proceso: título, migas, campos de parámetros, columnas (con grupos y\n  la última fija), pestañas y filtros predeterminados en la configuración.\n- `tabs` cuando el reporte tiene varias vistas del mismo resultado: la pantalla recibe `tabChanged` y entrega el\n  resultado de esa pestaña. Con un solo tab (una sola cuenta bancaria elegida, por ejemplo) no se muestra la fila\n  de pestañas: no aporta nada elegir entre una sola opción.\n- `charts` para la vista de gráficas: cada KPI suma una columna (o cuenta filas), con un filtro opcional por valor, y\n  cada gráfico agrupa por una columna (o por mes, con una fecha), en valores, índice respecto de la primera categoría\n  (`index`) o variación respecto de ella (`change`). `width: 'narrow'` pone un gráfico en la columna de 336 px a la\n  derecha del anterior, como en el Figma.\n- `exported` para generar el archivo: trae el formato elegido y las filas que quedaron tras buscar y filtrar.\n- `favorites` y `favoritesChange` para «Favoritos» (`siaf-favorites-panel`): la pantalla entrega los favoritos guardados\n  y persiste la lista completa que recibe al agregar, quitar o cambiar el predeterminado, que se aplica solo al entrar.\n- `advancedFiltersRequested` y `columnsRequested` para lo que la pantalla resuelve por su cuenta mientras la\n  plantilla no traiga esos paneles.",
     "evitar": "- Para la bandeja de documentos y registros de un proceso: usar `siaf-documents-records-page`.\n- Para una vista de solo lectura que no es un reporte: usar `siaf-page-shell` con `siaf-page-header`.\n- Maquetar otra consulta con estado vacío, panel de búsqueda y tabla a mano: pasar su configuración a esta\n  plantilla.\n- Calcular los KPI o los gráficos en la pantalla y pintarlos aparte: declararlos en `charts`, así siguen a la búsqueda\n  y a los filtros de la tabla.",
     "teclado": "- **Tab**: recorre las migas, «Favoritos» y «Parámetros», las tarjetas de parámetros aplicados, el selector de vista,\n  «Exportar», las pestañas y, en la vista de datos, el buscador y sus botones, los filtros, la tabla y la paginación;\n  en la de gráficas, cada gráfico.\n- **Enter** en el buscador: busca en todas las columnas (sin distinguir mayúsculas ni tildes) y vuelve a la primera\n  página.\n- El panel de parámetros, el selector de vista, el menú «Exportar», las pestañas, las píldoras, la tabla y los\n  gráficos siguen su componente.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: el título de la pantalla es el `h1` de `siaf-page-header`; el de la tarjeta\n  del resultado, un `h2`, y el de cada gráfico, el `h3` de `siaf-chart-section`.\n- **4.1.2 Nombre, función y valor (A)**: el selector de vista es un grupo «Vista del resultado» con `aria-pressed` en\n  cada botón, nombrado como su tooltip; «Exportar» anuncia su menú con `aria-haspopup` y `aria-expanded`.\n- **4.1.3 Mensajes de estado (AA)**: el total de filas tras buscar o filtrar se anuncia en una región\n  `aria-live=\"polite\"` que no se ve.\n- **2.4.3 Orden del foco (A)**: al cerrar el panel de parámetros el foco vuelve a «Parámetros».\n- **3.2.2 Al introducir datos (A)**: escribir en el buscador no cambia la tabla hasta pulsar Enter; elegir un filtro\n  predeterminado sí filtra al momento, y se anuncia.\n- **1.1.1 Contenido no textual (A)**: cada gráfico se llama como su título y lleva su tabla de datos oculta; con una\n  búsqueda o un filtro activos, una nota avisa con cuántas filas se calcularon.\n- **1.4.10 Reajuste del contenido (AA)**: en pantallas angostas las acciones del encabezado bajan, las tarjetas KPI\n  y los gráficos pasan a una columna y la tabla se desplaza dentro de su zona, sin desplazar la página.",
@@ -9428,15 +10227,53 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "aria": {
       "roles": [],
       "atributos": [
+        "aria-label",
         "aria-labelledby",
-        "aria-live"
+        "aria-live",
+        "aria-pressed"
       ]
     },
     "tokens": [
       {
+        "token": "--sys-color-bg-states-light-selected",
+        "via": [
+          "var()"
+        ]
+      },
+      {
         "token": "--sys-color-bg-surfaces-surface",
         "via": [
           "bg-surface"
+        ]
+      },
+      {
+        "token": "--sys-color-border-states-active",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-border-states-enabled",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-border-states-focus",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-divider-default",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-brand-primary",
+        "via": [
+          "var()"
         ]
       },
       {
@@ -9448,6 +10285,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-gap-base-lg",
         "via": [
+          "bottom-siaf-lg",
           "gap-siaf-lg",
           "px-siaf-lg"
         ]
@@ -9456,15 +10294,17 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "token": "--sys-gap-base-md",
         "via": [
           "gap-siaf-md",
-          "p-siaf-md",
           "pb-siaf-md",
-          "pt-siaf-md"
+          "pr-siaf-md",
+          "pt-siaf-md",
+          "px-siaf-md"
         ]
       },
       {
         "token": "--sys-gap-base-sm",
         "via": [
-          "gap-siaf-sm"
+          "gap-siaf-sm",
+          "py-siaf-sm"
         ]
       },
       {
@@ -9474,14 +10314,28 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         ]
       },
       {
+        "token": "--sys-gap-base-xs",
+        "via": [
+          "gap-siaf-xs"
+        ]
+      },
+      {
         "token": "--sys-radius-md",
         "via": [
           "rounded-siaf-md"
         ]
+      },
+      {
+        "token": "--sys-radius-sm",
+        "via": [
+          "rounded-siaf-sm"
+        ]
       }
     ],
     "usa": [
+      "[siafTooltip]",
       "message-box",
+      "siaf-advanced-filters-panel",
       "siaf-bar-chart",
       "siaf-button",
       "siaf-buttons-group",
@@ -9489,8 +10343,10 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-diverging-chart",
       "siaf-donut-chart",
       "siaf-empty-state",
+      "siaf-favorites-panel",
       "siaf-filter-pill",
       "siaf-form-table-search",
+      "siaf-grouped-report-table",
       "siaf-icon-dropdown-menu",
       "siaf-kpi-card",
       "siaf-line-chart",
@@ -9499,10 +10355,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       "siaf-pagination",
       "siaf-parametros-aplicados",
       "siaf-query-parameters-panel",
+      "siaf-report-columns-panel",
       "siaf-report-summary-card",
       "siaf-report-table",
+      "siaf-snackbar",
       "siaf-table-skeleton",
-      "siaf-tabs"
+      "siaf-tabs",
+      "siaf-tag"
     ],
     "sinUso": false
   },
@@ -9878,6 +10737,182 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "sinUso": false
   },
   {
+    "selector": "siaf-report-columns-panel",
+    "clase": "ReportColumnsPanelComponent",
+    "tipo": "componente",
+    "capa": "components",
+    "importacion": "@siaf/shared/components/report-columns-panel/report-columns-panel.component",
+    "archivo": "src/app/shared/components/report-columns-panel/report-columns-panel.component.ts",
+    "descripcion": "Panel lateral «Columnas visibles» de Consultas y reportes (Figma nodos 4397:61240 y 4397:61284): las columnas de la\ntabla en árbol, por grupo de cabecera, con casillas de tres estados (grupo completo, parcial o vacío), «Seleccionar\ntodas» y las flechas que pliegan cada grupo (por defecto abiertos). «Restablecer» vuelve a las columnas visibles de\nfábrica y «Aplicar» emite `applied` con las claves elegidas. Si se ocultan todas, quedan las columnas base\n(`baseKeys`: Acreditación, Beneficiario, Cuenta de registro e Importe en moneda de la cuenta), que van siempre\nmarcadas y con la casilla deshabilitada.\n\nTrabaja sobre un borrador: cerrar sin aplicar no cambia nada.",
+    "usaSesion": false,
+    "proyectaContenido": false,
+    "entradas": [
+      {
+        "nombre": "baseKeys",
+        "tipo": "ReadonlySet<string>",
+        "porDefecto": null,
+        "requerida": false,
+        "descripcion": "Columnas que quedan si se ocultan todas."
+      },
+      {
+        "nombre": "defaults",
+        "tipo": "ReadonlySet<string>",
+        "porDefecto": null,
+        "requerida": false,
+        "descripcion": "Columnas visibles de fábrica, a las que vuelve «Restablecer»."
+      },
+      {
+        "nombre": "grupos",
+        "tipo": "readonly ColumnasPanelGrupo[]",
+        "porDefecto": "[]",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "open",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "selected",
+        "tipo": "ReadonlySet<string>",
+        "porDefecto": null,
+        "requerida": false,
+        "descripcion": "Claves de las columnas visibles ahora; el borrador parte de ellas al abrir."
+      }
+    ],
+    "eventos": [
+      {
+        "nombre": "applied",
+        "tipo": "Set<string>",
+        "descripcion": null
+      },
+      {
+        "nombre": "closed",
+        "tipo": "void",
+        "descripcion": null
+      }
+    ],
+    "usar": "- Desde el botón «Columnas» (`view_column`) del buscador de `siaf-query-report-page`, que le pasa los grupos, lo\n  elegido, lo de fábrica y las columnas base.",
+    "evitar": "- Para las columnas de Documentos y registros: usar `siaf-column-visibility-panel`.",
+    "teclado": "- **Tab**: recorre «Seleccionar todas», la flecha y la casilla de cada grupo, cada columna, «Restablecer» y «Aplicar».\n- **Espacio**: marca o desmarca la casilla; **Enter / Espacio** en una flecha pliega o despliega el grupo.\n- **Escape**: cierra sin aplicar.",
+    "accesibilidad": "- **4.1.2 Nombre, función y valor (A)**: `role=\"dialog\"` con `aria-modal` y `aria-labelledby`; las flechas llevan\n  `aria-expanded` y su nombre, y las casillas de grupo usan el estado mixto (`indeterminate`).\n- **2.4.3 Orden del foco (A)**: con `siafFoco` el foco entra al abrir y vuelve al control que lo abrió.\n- **2.5.8 Tamaño del objetivo (AA)**: cada fila mide al menos 48 px de alto.",
+    "figma": [
+      {
+        "nodo": "4397:61240",
+        "nombre": "Columnas visibles (expandidas)"
+      },
+      {
+        "nodo": "4397:61284",
+        "nombre": "Columnas visibles (colapsadas)"
+      }
+    ],
+    "aria": {
+      "roles": [
+        "dialog"
+      ],
+      "atributos": [
+        "aria-expanded",
+        "aria-label",
+        "aria-labelledby",
+        "aria-modal"
+      ]
+    },
+    "tokens": [
+      {
+        "token": "--sys-color-bg-surfaces-surface",
+        "via": [
+          "bg-surface"
+        ]
+      },
+      {
+        "token": "--sys-color-bg-surfaces-surface-high",
+        "via": [
+          "bg-surface-muted"
+        ]
+      },
+      {
+        "token": "--sys-color-border-states-focus",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-divider-default",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-icon-states-enabled",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-high",
+        "via": [
+          "text-text",
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-color-text-neutral-medium",
+        "via": [
+          "var()"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-md",
+        "via": [
+          "gap-siaf-md",
+          "pb-siaf-md",
+          "px-siaf-md"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-sm",
+        "via": [
+          "gap-siaf-sm",
+          "pt-siaf-sm",
+          "py-siaf-sm"
+        ]
+      },
+      {
+        "token": "--sys-gap-base-xs",
+        "via": [
+          "gap-siaf-xs"
+        ]
+      },
+      {
+        "token": "--sys-radius-md",
+        "via": [
+          "rounded-siaf-md"
+        ]
+      },
+      {
+        "token": "--sys-radius-sm",
+        "via": [
+          "rounded-siaf-sm"
+        ]
+      },
+      {
+        "token": "--sys-shadow-elevation-8",
+        "via": [
+          "shadow-siaf-elevation-8"
+        ]
+      }
+    ],
+    "usa": [
+      "[siafFoco]",
+      "siaf-button",
+      "siaf-icon"
+    ],
+    "sinUso": false
+  },
+  {
     "selector": "siaf-report-summary-card",
     "clase": "ReportSummaryCardComponent",
     "tipo": "componente",
@@ -9922,10 +10957,17 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "''",
         "requerida": true,
         "descripcion": "Nombre del ítem consultado."
+      },
+      {
+        "nombre": "tone",
+        "tipo": "'default' | 'highlight'",
+        "porDefecto": "'default'",
+        "requerida": false,
+        "descripcion": "`highlight` pinta el fondo `bg-surfaces-highlight`, sin borde: para el ítem elegido de un nivel (nivel 1 del «Agregado»)."
       }
     ],
     "eventos": [],
-    "usar": "- En «Resultado de reporte» de `siaf-query-report-page`, entre las pestañas y el buscador, para resumir de qué es el\n  reporte: la entidad, la cuenta o el pliego consultado y sus totales.\n- Con dos o tres `fields` cortos (código, saldo, periodo); la descripción se corta en una línea con tooltip.",
+    "usar": "- `tone=\"highlight\"` para la card del ítem elegido en un nivel de «Agregado», bajo la card de la cuenta.\n- En «Resultado de reporte» de `siaf-query-report-page`, entre las pestañas y el buscador, para resumir de qué es el\n  reporte: la entidad, la cuenta o el pliego consultado y sus totales.\n- Con dos o tres `fields` cortos (código, saldo, periodo); la descripción se corta en una línea con tooltip.",
     "evitar": "- Para el ítem elegido desde un panel lateral en una solicitud: usar `siaf-summary-card`, con indicador y ✕.\n- Para los criterios que el usuario aplicó: van en `siaf-parametros-aplicados`.\n- Para un monto con su avance: usar `siaf-kpi-card`.\n- Con muchos datos: no hace scroll; más de tres campos se apilan en pantallas angostas pero cansan la lectura.",
     "teclado": "- No recibe foco: no es interactiva. Si la descripción está cortada, su texto completo aparece con el puntero.",
     "accesibilidad": "- **1.3.1 Información y relaciones (A)**: es una `section` nombrada con la etiqueta; los datos son una lista de\n  definiciones (`dl`), así cada valor se lee con su etiqueta.\n- **1.1.1 Contenido no textual (A)**: el ícono es decorativo (`aria-hidden`): el título dice qué es.\n- **1.4.3 Contraste mínimo (AA)**: título, descripción y valores `text-neutral-medium` sobre `surface-low` (13.46:1\n  claro / 12.09:1 oscuro) y etiquetas `text-neutral-low` (4.64:1 / 8.32:1), la más justa en claro.\n- **1.4.12 Espaciado del texto (AA)**: los textos no tienen alto fijo; el título y los valores pasan a otra línea si\n  no entran.",
@@ -9943,6 +10985,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       ]
     },
     "tokens": [
+      {
+        "token": "--sys-color-bg-surfaces-highlight",
+        "via": [
+          "var()"
+        ]
+      },
       {
         "token": "--sys-color-bg-surfaces-surface-low",
         "via": [
@@ -10027,6 +11075,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": "Nombre de la tabla y de su zona desplazable."
       },
       {
+        "nombre": "clickableRows",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Con `clickableRows`, pulsar una fila (o Enter con el foco en ella) la emite: abre su detalle. Los enlaces de la fila siguen emitiendo `linkClicked`."
+      },
+      {
         "nombre": "columns",
         "tipo": "readonly ReportTableColumn[]",
         "porDefecto": "[]",
@@ -10036,9 +11091,16 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "nombre": "emptyMessage",
         "tipo": "string",
-        "porDefecto": "'No se encontraron resultados con los filtros aplicados.'",
+        "porDefecto": "'Aún no se encontraron resultados.'",
         "requerida": false,
         "descripcion": null
+      },
+      {
+        "nombre": "groupTooltips",
+        "tipo": "Record<string, string>",
+        "porDefecto": "{}",
+        "requerida": false,
+        "descripcion": "Nombre completo de cada grupo de cabecera abreviado (`'Imp. m. cuenta'` → «Importe en moneda de la cuenta»)."
       },
       {
         "nombre": "rowKey",
@@ -10053,12 +11115,36 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "porDefecto": "[]",
         "requerida": false,
         "descripcion": "Filas de la página visible: cada clave de columna con su texto ya formateado."
+      },
+      {
+        "nombre": "sort",
+        "tipo": "TableSort | null",
+        "porDefecto": "null",
+        "requerida": false,
+        "descripcion": null
+      },
+      {
+        "nombre": "sortable",
+        "tipo": "boolean",
+        "porDefecto": "false",
+        "requerida": false,
+        "descripcion": "Con `sortable`, cada título es un botón que ordena (asc → desc → sin orden); el orden en sí lo aplica quien llena `rows`."
       }
     ],
     "eventos": [
       {
         "nombre": "linkClicked",
         "tipo": "{ row: ReportTableRow; column: ReportTableColumn; }",
+        "descripcion": null
+      },
+      {
+        "nombre": "rowClicked",
+        "tipo": "ReportTableRow",
+        "descripcion": null
+      },
+      {
+        "nombre": "sortChange",
+        "tipo": "TableSort | null",
         "descripcion": null
       }
     ],
@@ -10078,10 +11164,17 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "status"
       ],
       "atributos": [
-        "aria-label"
+        "aria-label",
+        "aria-sort"
       ]
     },
     "tokens": [
+      {
+        "token": "--sys-color-bg-states-light-hover",
+        "via": [
+          "var()"
+        ]
+      },
       {
         "token": "--sys-color-bg-surfaces-surface",
         "via": [
@@ -10115,7 +11208,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
       {
         "token": "--sys-color-text-neutral-high",
         "via": [
-          "var()"
+          "text-text"
         ]
       },
       {
@@ -10147,16 +11240,12 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "via": [
           "rounded-siaf-sm"
         ]
-      },
-      {
-        "token": "--sys-shadow-elevation-6",
-        "via": [
-          "shadow-siaf-elevation-6",
-          "var()"
-        ]
       }
     ],
-    "usa": [],
+    "usa": [
+      "[siafTooltip]",
+      "siaf-icon"
+    ],
     "sinUso": false
   },
   {

@@ -2,6 +2,12 @@ import { Routes } from '@angular/router';
 
 /** Procesos de «Planeación financiera»: Flujos de caja proyectados > Estimación de ingresos. */
 export const PLANEACION_FINANCIERA_ROUTES: Routes = [
+  // «Consultas y reportes de la planeación financiera»: la consulta de Taller-libretas con datos de Estimación de ingresos.
+  {
+    path: 'procesos/consultas-reportes-planeacion-financiera',
+    loadComponent: () =>
+      import('./consultas-reportes/pages/planeacion-financiera-consultas.component').then((m) => m.PlaneacionFinancieraConsultasComponent),
+  },
   {
     path: 'procesos/estimacion-ingresos',
     loadComponent: () =>

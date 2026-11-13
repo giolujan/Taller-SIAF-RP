@@ -59,9 +59,12 @@ let siguienteId = 0;
         >
           <siaf-icon [name]="abierto() ? 'expand_less' : 'expand_more'" [size]="24" />
         </button>
-        <h3 class="m-0 flex min-h-10 min-w-0 flex-1 cursor-pointer items-center text-sm font-medium leading-[normal]" [id]="idTitulo" (click)="alternar()">
-          {{ title }}
-        </h3>
+        <div class="flex min-h-10 min-w-0 flex-1 cursor-pointer flex-col justify-center" (click)="alternar()">
+          <h3 class="m-0 text-sm font-medium leading-[normal]" [id]="idTitulo">{{ title }}</h3>
+          @if (subtitle) {
+            <span class="text-xs leading-[normal] text-[var(--sys-color-text-neutral-low)]">{{ subtitle }}</span>
+          }
+        </div>
         @if (actions.length) {
           <siaf-icon-dropdown-menu
             class="shrink-0"
@@ -88,6 +91,8 @@ let siguienteId = 0;
 })
 export class ExpansionPanelComponent {
   @Input() title = '';
+  /** Línea de apoyo bajo el título (p. ej. «7 campos»). */
+  @Input() subtitle = '';
   /** Opciones del menú ⋮. Sin opciones no se muestra el botón. */
   @Input() actions: IconDropdownMenuItem[] = [];
   /** Ancho del menú ⋮ en px. */

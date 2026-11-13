@@ -20,7 +20,7 @@ const CONFIG: QueryReportConfig = {
   ],
   rowKey: 'secuencia',
   tabs: [{ id: 'movimientos', label: 'Movimientos' }, { id: 'resumen', label: 'Resumen' }],
-  presetFilters: [{ key: 'operacion', label: 'Tipo de operación', options: [{ label: '3 - Devolución', value: '3 - Devolución' }] }],
+  presetFilters: [{ key: 'operacion', label: 'Tipo de operación', options: [{ label: '5 - Devolución', value: '5 - Devolución' }] }],
 };
 
 const beneficiarios = ['MINCETUR - JUEGOS Y APUESTAS', 'IPD', 'FONDO DE COMPENSACIÓN MUNICIPAL'];
@@ -30,7 +30,7 @@ const RESULTADO: QueryReportResult = {
     // Enero, febrero y marzo por turnos; la fecha no es columna de la tabla, solo la usan los gráficos.
     fecha: `10/0${(i % 3) + 1}/2026`,
     beneficiario: beneficiarios[i % 3],
-    operacion: i % 4 === 3 ? '3 - Devolución' : '1 - Saldos Iniciales',
+    operacion: i % 4 === 3 ? '5 - Devolución' : '3 - Saldos Iniciales',
     saldo: `${(i + 1) * 1000}.00`,
   })),
   summary: { label: 'Entidad', icon: 'account_balance_wallet', title: 'MINCETUR', fields: [{ label: 'Código', value: '000360' }] },
@@ -41,7 +41,7 @@ const CONFIG_CON_GRAFICAS: QueryReportConfig = {
   charts: {
     kpis: [
       { title: 'Total', column: 'saldo', prefix: 'S/ ' },
-      { title: 'Devoluciones', column: 'saldo', where: { column: 'operacion', value: '3 - Devolución' }, tone: 'warning', icon: 'arrow_right_alt', prefix: 'S/ ' },
+      { title: 'Devoluciones', column: 'saldo', where: { column: 'operacion', value: '5 - Devolución' }, tone: 'warning', icon: 'arrow_right_alt', prefix: 'S/ ' },
       { title: 'Movimientos', aggregate: 'count' },
       { title: 'IPD', column: 'saldo', where: { column: 'beneficiario', value: 'IPD' }, tone: 'danger', icon: 'article', prefix: 'S/ ' },
     ],
@@ -97,11 +97,37 @@ describe('QueryReportPageComponent', () => {
     expect(consultas).toEqual([{ desde: '2026-06-28', entidades: ['mincetur', 'ipd'], fuente: '2.09' }]);
     expect(pagina.panelAbierto()).toBeFalse();
     expect(pagina.parametrosAplicados()).toEqual([
-      { label: 'Fecha desde', value: '28/06/2026', icon: 'calendar_today' },
-      { label: 'Entidades', value: 'MINCETUR, IPD', icon: 'apartment' },
-      { label: 'Fuente', value: '2.09 Recursos directamente recaudados', icon: 'account_balance_wallet' },
+      { key: 'desde', label: 'Fecha desde', value: '28/06/2026', icon: 'calendar_today' },
+      { key: 'entidades', label: 'Entidades', value: 'MINCETUR, IPD', icon: 'apartment' },
+      { key: 'fuente', label: 'Fuente', value: '2.09 Recursos directamente recaudados', icon: 'account_balance_wallet' },
     ]);
     expect(botonCabecera('Favoritos').disabled).toBeFalse();
+  });
+
+  it('un campo con rangeEnd une desde y hasta en una tarjeta «Fecha», y pulsarla abre el panel en ese campo', () => {
+    pagina.config = {
+      ...CONFIG,
+      parameterFields: [
+        { key: 'desde', label: 'Fecha desde', type: 'date', icon: 'calendar_today', rangeEnd: 'hasta', rangeLabel: 'Fecha' },
+        { key: 'hasta', label: 'Fecha hasta', type: 'date', icon: 'event' },
+      ],
+    };
+    consultar({ desde: '2026-06-28', hasta: '2026-06-29' });
+    expect(pagina.parametrosAplicados()).toEqual([{ key: 'desde', label: 'Fecha', value: '28/06/2026 - 29/06/2026', icon: 'calendar_today' }]);
+
+    pagina.abrirParametros('desde');
+    expect(pagina.campoEnfocado()).toBe('desde');
+    expect(pagina.panelAbierto()).toBeTrue();
+  });
+
+  it('con un favorito aplicado, el subtítulo del header dice «Favorito: …» hasta que se cambian los parámetros', () => {
+    pagina.favorites = [{ id: 'f1', description: 'Operaciones MINCETUR', isDefault: false, parameters: { desde: '2026-06-28' }, advanced: { conditions: [], resultType: 'agrupado', levels: [] } }];
+    pagina.aplicarFavorito('f1');
+    fixture.detectChanges();
+    expect(el().querySelector('siaf-page-header header p')?.textContent?.trim()).toBe('Favorito: Operaciones MINCETUR');
+
+    consultar();
+    expect(el().querySelector('siaf-page-header header p')).toBeNull();
   });
 
   it('con resultado: card resumen, tabla paginada a 25, pestañas y el total anunciado', () => {
@@ -128,7 +154,7 @@ describe('QueryReportPageComponent', () => {
     expect(pagina.pagina()).toBe(1);
     expect(filasTabla()).toEqual(['000003', '000006', '000009', '000012']);
 
-    pagina.filtrar('operacion', '3 - Devolución');
+    pagina.filtrar('operacion', '5 - Devolución');
     fixture.detectChanges();
     expect(filasTabla()).toEqual(['000012']);
     expect(el().querySelector('[data-anuncio-filas]')?.textContent?.trim()).toBe('1 fila en el resultado');
@@ -137,7 +163,7 @@ describe('QueryReportPageComponent', () => {
   it('una consulta nueva limpia la búsqueda y los filtros', () => {
     consultar();
     pagina.buscar('ipd');
-    pagina.filtrar('operacion', '3 - Devolución');
+    pagina.filtrar('operacion', '5 - Devolución');
     consultar({ desde: '2026-07-01' });
     expect(pagina.busqueda()).toBe('');
     expect(pagina.filtros()).toEqual({});
@@ -265,7 +291,7 @@ describe('QueryReportPageComponent', () => {
       expect(el().querySelector('[data-nota-graficas]')?.textContent).toContain('Las gráficas usan las 4 filas que quedaron tras buscar o filtrar');
       expect(pagina.kpis().map((k) => k.amount)).toEqual(['S/ 26,000.00', 'S/ 8,000.00', '4', 'S/ 26,000.00']);
 
-      pagina.filtrar('operacion', '3 - Devolución');
+      pagina.filtrar('operacion', '5 - Devolución');
       fixture.detectChanges();
       expect(el().querySelector('[data-nota-graficas]')?.textContent).toContain('la única fila que quedó');
       // Con un solo mes no hay variación que dibujar: aviso en vez de ejes vacíos; el de barras sí tiene su mes.
@@ -279,6 +305,38 @@ describe('QueryReportPageComponent', () => {
       expect(el().querySelector('[data-vista-graficas] siaf-empty-state')?.textContent).toContain('No hay filas para graficar');
     });
 
+    it('en la vista de gráficas «Exportar» ofrece solo el PDF de las gráficas y emite las gráficas, los KPI y los parámetros', async () => {
+      fixture.componentRef.setInput('config', { ...CONFIG_CON_GRAFICAS, exportFormats: ['pdf', 'graficas'] });
+      fixture.detectChanges();
+      const opciones = (): string[] => Array.from(el().querySelectorAll<HTMLElement>('[data-exportar] [role="menuitem"]')).map((o) => o.textContent!.trim().replace(/^[a-z_]+\s+/, ''));
+      const exportados: QueryReportExportEvent[] = [];
+      pagina.exported.subscribe((e) => exportados.push(e));
+
+      botonExportar().click();
+      fixture.detectChanges();
+      expect(opciones()).toEqual(['PDF']);
+      el().querySelectorAll<HTMLElement>('[data-exportar] [role="menuitem"]')[0].click();
+      expect(exportados.map((e) => e.format)).toEqual(['pdf']);
+      exportados.length = 0;
+
+      await abrirGraficas();
+      botonExportar().click();
+      fixture.detectChanges();
+      expect(opciones()).withContext('en la vista de gráficas solo queda el PDF de las gráficas').toEqual(['PDF']);
+      expect(el().querySelector('[data-exportar] [role="menuitem"]')!.textContent).toContain('picture_as_pdf');
+      el().querySelectorAll<HTMLElement>('[data-exportar] [role="menuitem"]')[0].click();
+      // Recorre las pestañas para capturar las gráficas de cada una: tarda un poco.
+      for (let i = 0; i < 80 && !exportados.length; i++) await new Promise((resolver) => setTimeout(resolver, 100));
+
+      expect(exportados.length).toBe(1);
+      expect(exportados[0].format).toBe('graficas');
+      expect(exportados[0].tabs!.map((t) => t.id)).withContext('una hoja por pestaña').toEqual((CONFIG_CON_GRAFICAS.tabs ?? [{ id: '' }]).map((t) => t.id));
+      expect(pagina.pestana()).withContext('vuelve a la pestaña que estaba').toBe(CONFIG_CON_GRAFICAS.tabs?.[0].id ?? '');
+      expect(exportados[0].tabs![0].kpis.map((k) => k.title)).toEqual(['Total', 'Devoluciones', 'Movimientos', 'IPD']);
+      expect(Array.isArray(exportados[0].tabs![0].charts)).toBeTrue();
+      expect(Array.isArray(exportados[0].appliedParameters)).toBeTrue();
+    });
+
     it('«Exportar» sigue disponible en la vista de gráficas con las mismas filas', async () => {
       const exportados: QueryReportExportEvent[] = [];
       pagina.exported.subscribe((e) => exportados.push(e));
@@ -290,5 +348,84 @@ describe('QueryReportPageComponent', () => {
 
       expect(exportados.map((e) => [e.format, e.rows.length])).toEqual([['pdf', 12]]);
     });
+  });
+});
+
+describe('QueryReportPageComponent — panel de columnas con niveles', () => {
+  const CONFIG_PANEL: QueryReportConfig = {
+    ...CONFIG,
+    columns: [
+      { key: 'secuencia', label: 'Secuencia', group: 'Acreditación' },
+      { key: 'beneficiarioCodigo', label: 'Código', group: 'Beneficiario' },
+      { key: 'beneficiario', label: 'Descripción', group: 'Beneficiario' },
+      { key: 'beneficiarioTipo', label: 'Tipo', group: 'Beneficiario', hiddenByDefault: true },
+      { key: 'saldo', label: 'Saldo final', align: 'right', fixed: true },
+    ],
+    columnsPanel: { baseGroups: ['Acreditación', 'Beneficiario'] },
+    advancedFilterFields: [{ key: 'beneficiario', label: 'Beneficiario', type: 'text', groupable: true, hidesColumns: ['beneficiarioCodigo', 'beneficiario'] }],
+  };
+
+  it('el panel solo ofrece las columnas que los niveles aplicados no ocultan, y conserva el estado de las ocultas', async () => {
+    await TestBed.configureTestingModule({ imports: [QueryReportPageComponent], providers: [provideRouter([])] }).compileComponents();
+    const fixture = TestBed.createComponent(QueryReportPageComponent);
+    fixture.componentRef.setInput('config', CONFIG_PANEL);
+    fixture.detectChanges();
+    const pagina = fixture.componentInstance;
+    const claves = (): string[] => pagina.gruposColumnas().flatMap((g) => g.columnas.map((c) => c.key));
+    expect(claves()).toEqual(['secuencia', 'beneficiarioCodigo', 'beneficiario', 'beneficiarioTipo', 'saldo']);
+
+    pagina.aplicarAvanzados({ conditions: [], resultType: 'agrupado', levels: ['beneficiario'] });
+    expect(claves()).toEqual(['secuencia', 'beneficiarioTipo', 'saldo']);
+
+    pagina.aplicarColumnas(new Set(['secuencia', 'beneficiarioTipo', 'saldo']));
+    expect(pagina.columnasActivas().has('beneficiarioCodigo')).toBeTrue();
+  });
+});
+
+describe('QueryReportPageComponent — aviso al agregar un favorito', () => {
+  it('muestra el snackbar con la descripción y «Ver favoritos» abre el panel', async () => {
+    await TestBed.configureTestingModule({ imports: [QueryReportPageComponent], providers: [provideRouter([])] }).compileComponents();
+    const fixture = TestBed.createComponent(QueryReportPageComponent);
+    fixture.componentRef.setInput('config', CONFIG);
+    fixture.detectChanges();
+    const pagina = fixture.componentInstance;
+
+    pagina.agregarFavorito({ description: 'OPERACIONES MINCETUR', isDefault: false });
+    fixture.detectChanges();
+    const aviso = (fixture.nativeElement as HTMLElement).querySelector('siaf-snackbar')!;
+    expect(aviso.textContent).toContain('OPERACIONES MINCETUR');
+    expect(aviso.textContent).toContain('se agregó.');
+
+    Array.from(aviso.querySelectorAll('button')).find((b) => b.textContent?.includes('Ver favoritos'))!.click();
+    fixture.detectChanges();
+    expect(pagina.panelFavoritosAbierto()).toBeTrue();
+    expect(pagina.avisoFavoritoAbierto()).toBeFalse();
+  });
+});
+
+describe('QueryReportPageComponent — orden por columna', () => {
+  it('ordena todas las filas (no solo la página) y no altera los KPI ni los gráficos; pulsar otra vez invierte y la tercera quita el orden', async () => {
+    await TestBed.configureTestingModule({ imports: [QueryReportPageComponent], providers: [provideRouter([])] }).compileComponents();
+    const fixture = TestBed.createComponent(QueryReportPageComponent);
+    fixture.componentRef.setInput('config', { ...CONFIG, columns: [{ key: 'secuencia', label: 'Secuencia' }, { key: 'saldo', label: 'Saldo final', align: 'right' }] });
+    fixture.componentRef.setInput('result', {
+      rows: [
+        { secuencia: '000001', saldo: '900.00' },
+        { secuencia: '000002', saldo: '20,000.00' },
+        { secuencia: '000003', saldo: '150.00' },
+      ],
+    });
+    fixture.detectChanges();
+    const pagina = fixture.componentInstance;
+    const secuencias = (): string[] => pagina.filasPagina().map((f) => f['secuencia']);
+    expect(secuencias()).toEqual(['000001', '000002', '000003']);
+
+    pagina.cambiarOrden({ key: 'saldo', direction: 'asc' });
+    expect(secuencias()).toEqual(['000003', '000001', '000002']);
+    pagina.cambiarOrden({ key: 'saldo', direction: 'desc' });
+    expect(secuencias()).toEqual(['000002', '000001', '000003']);
+    expect(pagina.filasFiltradas().map((f) => f['secuencia'])).toEqual(['000001', '000002', '000003']);
+    pagina.cambiarOrden(null);
+    expect(secuencias()).toEqual(['000001', '000002', '000003']);
   });
 });

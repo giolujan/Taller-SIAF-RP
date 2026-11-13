@@ -16,6 +16,18 @@ export interface QueryReportParameterField {
   required?: boolean;
   /** Ícono de Material Icons de su tarjeta en «Parámetros aplicados». */
   icon: string;
+  /**
+   * En un campo `date`: la clave del campo que cierra el rango («hasta»). «Parámetros aplicados» los une en una sola
+   * tarjeta con `rangeLabel` («Fecha») y las dos fechas separadas por un guion; el otro campo no tiene tarjeta propia.
+   */
+  rangeEnd?: string;
+  rangeLabel?: string;
+  /** En un campo `date`: bloquea las fechas posteriores a hoy (el selector no las admite). */
+  noFuture?: boolean;
+  /** En un campo `date`: fecha mínima (aaaa-mm-dd); el selector no admite días anteriores. */
+  minDate?: string;
+  /** En un campo `date`: clave de otro campo de fecha que fija además el mínimo (p. ej. «hasta» no antes de «desde»). */
+  minDateFrom?: string;
 }
 
 /** Valores aplicados: la fecha (aaaa-mm-dd, como la entrega `siaf-date-time-picker`), el valor elegido o la lista. */
@@ -41,13 +53,19 @@ export interface QueryReportSummary {
 export interface QueryReportResult {
   rows: ReportTableRow[];
   summary?: QueryReportSummary | null;
+  /**
+   * Valores de los KPI que no dependen de los parámetros ni de los filtros (p. ej. los de toda la cuenta bancaria), por la
+   * `column` del KPI. Un KPI con valor aquí lo muestra tal cual en vez de calcularlo con las filas del resultado.
+   */
+  kpiValues?: Record<string, number>;
 }
 
 export type QueryReportColumn = ReportTableColumn;
 export type QueryReportRow = ReportTableRow;
 
 /** `sum` suma una columna de importes («1,031,200.00»); `count` cuenta filas. */
-export type QueryReportAggregate = 'sum' | 'count';
+/** `first`/`last` toman el valor de la primera o última fila del grupo (p. ej. el saldo inicial o final de un período), sin sumarlas. */
+export type QueryReportAggregate = 'sum' | 'count' | 'first' | 'last';
 
 /** Solo las filas cuya columna tiene exactamente ese valor. */
 export interface QueryReportRowFilter {
@@ -80,6 +98,9 @@ export interface QueryReportChart {
   groupBy: string;
   /** Con una columna de fecha dd/mm/aaaa, agrupa por mes («ENE», «FEB»…) en orden cronológico. */
   byMonth?: boolean;
+  /** Con una columna de fecha dd/mm/aaaa hh:mm:ss, agrupa por hora («18:00», «19:00»…) en orden cronológico: para un
+   *  período de un solo día, donde agrupar por mes dejaría una única categoría. */
+  byHour?: boolean;
   column?: string;
   aggregate?: QueryReportAggregate;
   where?: QueryReportRowFilter;
@@ -95,6 +116,13 @@ export interface QueryReportChart {
   /** Con `diverging`, qué significa cada lado; por defecto «Disminución» y «Aumento». */
   negativeLabel?: string;
   positiveLabel?: string;
+  /**
+   * Con `aggregate: 'last'`: en vez del último valor de cada categoría, suma el último valor de cada grupo de esta columna
+   * (p. ej. cada cuenta de registro) acumulado hasta esa categoría: la evolución del saldo combinando los grupos.
+   */
+  combineBy?: string;
+  /** Con `combineBy`: columna con el valor de cada grupo antes de su primera fila (el saldo inicial). */
+  combineFrom?: string;
   /** `narrow` va en la columna angosta (336 px) a la derecha del `wide` anterior, como en el Figma. */
   width?: 'wide' | 'narrow';
 }
@@ -104,14 +132,58 @@ export interface QueryReportChartsConfig {
   charts: QueryReportChart[];
 }
 
-export type QueryReportExportFormat = 'excel' | 'csv' | 'pdf';
+export type QueryReportExportFormat = 'excel' | 'csv' | 'pdf' | 'graficas';
+
+/** Campo disponible para una condición o un nivel de agrupación de «Filtros avanzados»: una columna de la fila. */
+export interface QueryReportFilterField {
+  key: string;
+  label: string;
+  /** `date` usa el selector de fecha en «Valor»; el resto, texto libre (Figma no trae un select de catálogo real). */
+  type?: 'text' | 'date';
+}
+
+/** Símbolo + etiqueta de cada condición (Figma «Condición», nodo 4663:59398). */
+export type QueryReportConditionOperator = '=' | '!=' | '>' | '>=' | '<' | '<=' | 'between' | 'empty' | 'notEmpty';
+
+/** Una fila de «Condiciones»: compara `field` contra `value` (y `valueTo` con `between`) sobre el resultado ya traído. */
+export interface QueryReportCondition {
+  id: string;
+  field: string;
+  operator: QueryReportConditionOperator;
+  value?: string;
+  valueTo?: string;
+}
+
+export type QueryReportResultType = 'agrupado' | 'agregado';
+
+/** Lo que arma el panel «Filtros avanzados»: condiciones y, con niveles, el tipo de resultado. */
+export interface QueryReportAdvancedFilters {
+  conditions: QueryReportCondition[];
+  resultType: QueryReportResultType;
+  /** Campos a agrupar, en orden (Entidad ▶ UE ▶ Beneficiario); vacío = tabla detallada, sin agrupar. */
+  levels: string[];
+}
+
+/** Configuración guardada de un reporte: sus parámetros y sus filtros avanzados, con una descripción para reaplicarla. */
+export interface QueryReportFavorite {
+  id: string;
+  description: string;
+  /** Se aplica sola la próxima vez que se entra al reporte; solo uno por reporte. */
+  isDefault: boolean;
+  parameters: QueryReportParameters;
+  advanced: QueryReportAdvancedFilters;
+}
 
 /**
  * Configuración de una pantalla «Consultas y reportes» armada con `siaf-query-report-page`: la pantalla solo pasa sus
  * textos, sus parámetros, sus columnas y el resultado de cada consulta.
  */
 export interface QueryReportConfig {
+  /** «Columnas visibles»: sin él, el botón Columnas solo emite `columnsRequested`. */
+  columnsPanel?: QueryReportColumnsConfig;
   title: string;
+  /** Búsqueda en vivo desde N caracteres (RF-07): sin él, solo se busca con Enter o la lupa. */
+  searchMinChars?: number;
   breadcrumbs: BreadcrumbItem[];
   parameterFields: QueryReportParameterField[];
   columns: QueryReportColumn[];
@@ -128,4 +200,80 @@ export interface QueryReportConfig {
   tableLabel?: string;
   emptyTitle?: string;
   emptyDescription?: string;
+  /**
+   * Campos que ofrece «Filtros avanzados»: el «Campo» de cada condición y, los que declaran `groupable`, las
+   * opciones de «Agregar nivel» (Agrupado/Agregado). Sin esta lista, «Filtros avanzados» no aparece.
+   */
+  advancedFilterFields?: QueryReportAdvancedFilterField[];
+  /**
+   * Cómo totalizar cada grupo de Agrupado/Agregado (Figma «Subtotal»/«TOTAL» y el saldo inline del último nivel,
+   * nodo 5960:44051): toma el valor de la primera fila del grupo como inicio y el de la última como fin (Saldo
+   * inicial/Saldo final), como un saldo que se arrastra en vez de sumarse (RN-042 del MFD). Sin esta configuración,
+   * Agrupado/Agregado no calculan totales por grupo.
+   */
+  groupAggregation?: QueryReportGroupAggregation;
+  /** Formatos que ofrece «Exportar»; por defecto los tres (Excel, CSV, PDF). `graficas` (el «PDF» de las gráficas) es opt-in: en la vista de gráficas reemplaza al resto del menú. */
+  exportFormats?: QueryReportExportFormat[];
+}
+
+export interface QueryReportAdvancedFilterField extends QueryReportFilterField {
+  /** Columnas que se ocultan de la tabla cuando el campo es un nivel: su valor pasa a la fila del grupo. */
+  hidesColumns?: string[];
+  /** Grupos de cabecera enteros que se ocultan cuando el campo es un nivel (Beneficiario y Cuenta de registro van asociados). */
+  hidesGroups?: string[];
+  /** Sin él, `groupable` vale para Agrupado y Agregado; con él, solo para los tipos de resultado listados. */
+  groupableIn?: QueryReportResultType[];
+  /**
+   * Posición en la jerarquía del clasificador (Entidad 1, Unidad ejecutora 2): entre los campos con jerarquía, los
+   * niveles deben ir en ese orden y no se pueden intercambiar.
+   */
+  hierarchy?: number;
+  /** Denominación y código de cada valor del campo (por su valor en las filas): los muestra la card del nivel 1 de «Agregado». */
+  valueDetails?: Record<string, { title: string; description?: string }>;
+  /** Puede usarse como nivel de agrupación (Agrupado/Agregado), además de como condición. */
+  groupable?: boolean;
+  /** Abreviatura ante el valor del grupo en su encabezado («Ent.», «UE.», «Benef.»); por defecto, `label`. */
+  groupLabelPrefix?: string;
+  /** En un campo `date`: bloquea las fechas posteriores a hoy al elegir el valor de la condición. */
+  noFuture?: boolean;
+  /** Plural del `label` para el título de la bandeja lateral del Agregado; por defecto, el `label` con «s» o «es». */
+  pluralLabel?: string;
+  /** Nombre completo que muestra el tooltip de la abreviatura del encabezado del grupo; por defecto, `label`. */
+  groupLabelTooltip?: string;
+  /** Columna de la fila que se muestra como segunda línea bajo el encabezado del grupo (Figma: la Cuenta de Registro bajo «Benef.»). */
+  groupSubtitleColumn?: string;
+}
+
+/** Cómo se ofrecen las columnas en «Columnas visibles» de un reporte. */
+export interface QueryReportColumnsConfig {
+  /** Nombre en el panel de un grupo de cabecera cuando difiere (`'Imp. m. cuenta'` → «Importe en moneda de la cuenta»). */
+  groupLabels?: Record<string, string>;
+  /** Grupos que se mantienen si se ocultan todas las columnas. */
+  baseGroups: string[];
+}
+
+export interface QueryReportGroupAggregation {
+  /** Columnas que no se muestran en «Agregado», porque son por movimiento (secuencia, fecha de acreditación). */
+  hiddenColumns?: string[];
+  runningBalance: { startColumn: string; endColumn: string };
+  /** Columna que identifica la cuenta (libreta) de cada fila: el saldo de cada cuenta cuenta una sola vez y se suman entre cuentas. */
+  accountColumn?: string;
+  /** Columna con el crédito del movimiento interno «Saldo inicial» de la fila (0 en las demás): se suma al saldo inicial de su cuenta. */
+  openingCreditColumn?: string;
+  /**
+   * «Agregado» (RN-069): consolida los registros de cada cuenta de registro (`accountColumn`) en una sola fila en vez de
+   * listarlos uno por uno: los importes se suman, el saldo inicial es el del primer registro (más el crédito de «Saldo
+   * inicial») y el saldo final, el del último.
+   */
+  consolidate?: QueryReportConsolidation;
+}
+
+/** Cómo se consolida una cuenta de registro en «Agregado». */
+export interface QueryReportConsolidation {
+  /** Columnas que se suman; `excludeColumn` resta de la suma el crédito de «Saldo inicial», que ya va en el saldo inicial. */
+  sumColumns: { column: string; excludeColumn?: string }[];
+  /** Saldos iniciales: el del primer registro más el crédito de apertura (`openingColumn`) de todos. */
+  startColumns: { column: string; openingColumn: string }[];
+  /** Saldos finales: el del último registro. */
+  endColumns: string[];
 }

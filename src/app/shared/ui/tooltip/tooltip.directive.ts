@@ -29,6 +29,13 @@ export const ESPERA_AL_SALIR_MS = 150;
 /** Un solo globo por control enfocado: un botón con dos textos cortados (usuario y oficina del navbar) no pinta dos. */
 const globoPorControl = new WeakMap<Element, TooltipDirective>();
 
+/**
+ * Un solo globo visible a la vez en toda la página: sin esto, el foco por teclado en una opción de `siaf-menu` y el
+ * mouse pasando por otra pintan dos globos al mismo tiempo (no comparten control, así que `globoPorControl` no los
+ * distingue).
+ */
+let globoVisible: TooltipDirective | null = null;
+
 let siguienteId = 0;
 
 const normalizar = (texto: string): string => texto.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -222,6 +229,7 @@ export class TooltipDirective implements AfterViewInit, OnDestroy {
 
   show(): void {
     if (this.tip) return;
+    if (globoVisible && globoVisible !== this) globoVisible.hide();
 
     const el = this.host.nativeElement;
     const contenido = (this.texto || el.textContent || '').trim();
@@ -230,7 +238,8 @@ export class TooltipDirective implements AfterViewInit, OnDestroy {
     const soloSiTruncado =
       this.tooltipMode === 'truncated' || (this.tooltipMode === 'auto' && !this.texto);
     // +1px de tolerancia: el redondeo subpíxel puede dar diferencias de 0.5
-    if (soloSiTruncado && el.scrollWidth <= el.clientWidth + 1) return;
+    // Truncado en una línea (ancho) o recortado por `line-clamp` (alto).
+    if (soloSiTruncado && el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1) return;
 
     const tip = this.doc.createElement('div');
     tip.setAttribute('role', 'tooltip');
@@ -245,6 +254,7 @@ export class TooltipDirective implements AfterViewInit, OnDestroy {
     tip.addEventListener('mouseleave', () => this.programarOcultar());
     this.doc.body.appendChild(tip);
     this.tip = tip;
+    globoVisible = this;
     this.doc.addEventListener('keydown', this.alPresionarTecla);
 
     this.posicionar(el, tip);
@@ -257,6 +267,7 @@ export class TooltipDirective implements AfterViewInit, OnDestroy {
     this.cancelarOcultar();
     this.doc.removeEventListener('keydown', this.alPresionarTecla);
     if (this.control && globoPorControl.get(this.control) === this) globoPorControl.delete(this.control);
+    if (globoVisible === this) globoVisible = null;
     this.tip?.remove();
     this.tip = null;
   }

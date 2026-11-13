@@ -43,8 +43,12 @@ import { BreadcrumbComponent, BreadcrumbItem } from '../breadcrumb/breadcrumb.co
   standalone: true,
   imports: [BreadcrumbComponent],
   template: `
-    <div class="flex h-[calc(100vh-56px)] min-h-0 w-full flex-col bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text">
-      <div class="border-b border-[var(--sys-color-divider-default)] bg-surface">
+    <div
+      class="flex min-h-0 w-full flex-col bg-[var(--sys-color-bg-surfaces-surface-lowest)] text-text"
+      [class.h-[calc(100vh-56px)]]="!stickyHeader"
+      [class.min-h-[calc(100vh-56px)]]="stickyHeader"
+    >
+      <div class="border-b border-[var(--sys-color-divider-default)] bg-surface" [class.sticky]="stickyHeader" [class.top-14]="stickyHeader" [class.z-20]="stickyHeader">
         <siaf-breadcrumb [items]="breadcrumbs" [homeHref]="homeHref" />
         <ng-content select="[pageHeader]" />
       </div>
@@ -58,4 +62,6 @@ import { BreadcrumbComponent, BreadcrumbItem } from '../breadcrumb/breadcrumb.co
 export class PageShellComponent {
   @Input() breadcrumbs: BreadcrumbItem[] = [];
   @Input() homeHref = '/panel';
+  /** La cabecera (migas y acciones principales) queda fija bajo la barra superior al desplazar la página. */
+  @Input() stickyHeader = false;
 }

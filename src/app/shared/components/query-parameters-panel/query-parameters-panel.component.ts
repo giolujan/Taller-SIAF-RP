@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Injector, Input, OnChanges, Output, SimpleChanges, afterNextRender, computed, inject, signal } from '@angular/core';
 
 import type { QueryReportParameterField, QueryReportParameters } from '../../types/query-report.types';
 import { ButtonComponent } from '../../ui/button/button.component';
@@ -7,6 +7,7 @@ import { FocoDirective } from '../../ui/foco/foco.directive';
 import { IconComponent } from '../../ui/icon/icon.component';
 import { SidePanelAnimacion } from '../../ui/side-panel-animacion';
 import { TextFieldComponent } from '../../ui/text-field/text-field.component';
+import { fechaDeHoy } from '../../utils/fecha.util';
 
 /** ¿El valor cuenta como ingresado? Una lista vacía o un texto vacío no. */
 export function tieneValor(valor: string | string[] | undefined): boolean {
@@ -92,6 +93,11 @@ let siguienteId = 0;
                       [label]="campo.label"
                       [required]="!!campo.required"
                       [defaultToToday]="false"
+                      [minDate]="minimo(campo)"
+                      [maxDate]="campo.noFuture ? hoy : ''"
+                      [maxDateError]="campo.noFuture ? 'Ingrese una fecha igual o anterior a la actual.' : ''"
+                      [minDateError]="errorMinimo(campo)"
+                      [recentKey]="'parametros-' + campo.key"
                       [fullWidth]="true"
                       [value]="texto(campo.key)"
                       (valueChange)="cambiar(campo.key, $event)"
@@ -100,6 +106,7 @@ let siguienteId = 0;
                   @case ('select') {
                     <siaf-input
                       type="select"
+                      openPlaceholder="Seleccionar opción..."
                       [attr.data-parametro]="campo.key"
                       [label]="campo.label"
                       [required]="!!campo.required"
@@ -113,6 +120,7 @@ let siguienteId = 0;
                     <siaf-input
                       type="select-multiple"
                       selectAllLabel="Seleccionar todo"
+                      openPlaceholder="Seleccionar opción..."
                       [attr.data-parametro]="campo.key"
                       [label]="campo.label"
                       [required]="!!campo.required"
@@ -138,16 +146,36 @@ let siguienteId = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QueryParametersPanelComponent implements OnChanges {
+  /** Hoy (aaaa-mm-dd), el tope de los campos de fecha con `noFuture`. */
+  readonly hoy = fechaDeHoy();
+
+  /** Fecha mínima del campo: la suya y, si depende de otro campo de fecha, la que este tenga si es posterior. */
+  minimo(campo: QueryReportParameterField): string {
+    const otra = campo.minDateFrom ? this.texto(campo.minDateFrom) : '';
+    return [campo.minDate ?? '', otra].reduce((mayor, f) => (f > mayor ? f : mayor), '');
+  }
+  /** Error de una fecha escrita anterior al mínimo del campo: el suyo (p. ej. 2020) o el de la fecha «desde» de la que depende. */
+  errorMinimo(campo: QueryReportParameterField): string {
+    const minimo = this.minimo(campo);
+    if (!minimo) return '';
+    if (minimo === campo.minDate) return `Ingresa ${minimo.split('-').reverse().join('/')} o posterior`;
+    return 'Ingrese una fecha igual o posterior a la fecha desde.';
+  }
+
   @Input() open = false;
   @Input() title = 'Parámetros de consulta';
   @Input() fields: readonly QueryReportParameterField[] = [];
   /** Parámetros aplicados: el borrador parte de ellos cada vez que se abre. */
   @Input() values: QueryReportParameters | null = null;
+  /** Campo que se abre al mostrar el panel (su lista o su calendario), p. ej. al pulsar su tarjeta de «Parámetros aplicados». */
+  @Input() focusKey: string | null = null;
 
   @Output() closed = new EventEmitter<void>();
   /** Valores ingresados, sin los campos vacíos. */
   @Output() applied = new EventEmitter<QueryReportParameters>();
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   readonly anim = new SidePanelAnimacion();
   readonly idTitulo = `siaf-parametros-consulta-${++siguienteId}`;
 
@@ -162,7 +190,13 @@ export class QueryParametersPanelComponent implements OnChanges {
     if ('open' in changes) {
       if (this.open) this.borrador.set({ ...(this.values ?? {}) });
       this.anim.actualizar(this.open);
+      if (this.open && this.focusKey) afterNextRender(() => this.abrirCampo(this.focusKey!), { injector: this.injector });
     }
+  }
+
+  private abrirCampo(clave: string): void {
+    const disparador = this.host.nativeElement.querySelector<HTMLElement>(`[data-parametro="${clave}"] button[aria-expanded], [data-parametro="${clave}"] input`);
+    disparador?.click();
   }
 
   texto(clave: string): string {
@@ -177,6 +211,10 @@ export class QueryParametersPanelComponent implements OnChanges {
 
   cambiar(clave: string, valor: string | number | string[]): void {
     this.borrador.update((actual) => ({ ...actual, [clave]: Array.isArray(valor) ? valor : String(valor) }));
+    // Una fecha que depende de esta (hasta ≥ desde) y quedó anterior deja de valer: se vuelve a elegir.
+    this.fields.filter((c) => c.minDateFrom === clave).forEach((c) => {
+      if (this.texto(c.key) && this.texto(c.key) < this.minimo(c)) this.borrador.update((actual) => ({ ...actual, [c.key]: '' }));
+    });
   }
 
   limpiar(): void {

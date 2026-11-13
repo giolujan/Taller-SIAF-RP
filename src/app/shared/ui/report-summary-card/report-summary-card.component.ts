@@ -15,6 +15,7 @@ export interface ReportSummaryField {
  *
  * @figma 22402:16450 Card resumen
  * @usar
+ * - `tone="highlight"` para la card del ítem elegido en un nivel de «Agregado», bajo la card de la cuenta.
  * - En «Resultado de reporte» de `siaf-query-report-page`, entre las pestañas y el buscador, para resumir de qué es el
  *   reporte: la entidad, la cuenta o el pliego consultado y sus totales.
  * - Con dos o tres `fields` cortos (código, saldo, periodo); la descripción se corta en una línea con tooltip.
@@ -41,7 +42,11 @@ export interface ReportSummaryField {
   host: { class: 'block' },
   template: `
     <section
-      class="flex flex-col gap-siaf-xxs rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] bg-[var(--sys-color-bg-surfaces-surface-low)] pb-siaf-xs pt-siaf-md"
+      class="flex flex-col gap-siaf-xxs rounded-siaf-md border pb-siaf-xs pt-siaf-md"
+      [class.border-[var(--sys-color-border-states-enabled)]]="tone === 'default'"
+      [class.bg-[var(--sys-color-bg-surfaces-surface-low)]]="tone === 'default'"
+      [class.border-transparent]="tone === 'highlight'"
+      [class.bg-[var(--sys-color-bg-surfaces-highlight)]]="tone === 'highlight'"
       [attr.aria-label]="label || title"
     >
       @if (label) {
@@ -52,7 +57,7 @@ export interface ReportSummaryField {
       <div class="flex flex-col gap-siaf-xs md:flex-row md:items-end">
         <div class="flex min-h-12 min-w-0 items-center gap-siaf-md px-siaf-md py-siaf-sm md:w-[46%] md:shrink-0">
           @if (icon) {
-            <siaf-icon class="shrink-0 text-[var(--sys-color-text-neutral-medium)]" [name]="icon" [size]="24" />
+            <siaf-icon class="shrink-0 text-[var(--sys-color-text-neutral-medium)]" [name]="icon" variant="filled" [size]="24" />
           }
           <div class="flex min-w-0 flex-1 flex-col gap-siaf-xxs text-[var(--sys-color-text-neutral-medium)]">
             <p class="m-0 break-words text-lg font-bold uppercase leading-normal tracking-[-0.11px]" data-resumen-titulo>{{ title }}</p>
@@ -77,6 +82,8 @@ export interface ReportSummaryField {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReportSummaryCardComponent {
+  /** `highlight` pinta el fondo `bg-surfaces-highlight`, sin borde: para el ítem elegido de un nivel (nivel 1 del «Agregado»). */
+  @Input() tone: 'default' | 'highlight' = 'default';
   /** Qué se resume, en versalitas sobre el ítem («Entidad»); también nombra la sección. */
   @Input() label = '';
   /** Ícono de Material Icons del ítem. */

@@ -1,11 +1,13 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, Input, afterNextRender, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, EventEmitter, Injector, Input, Output, afterNextRender, computed, inject, signal } from '@angular/core';
 
 import { ButtonComponent } from '../../ui/button/button.component';
 import { ListComponent, ListItem } from '../../ui/list/list.component';
 
 /** Un parámetro con el que se hizo la consulta: su nombre, el valor elegido y el ícono que lo identifica. */
 export interface ParametroAplicado {
+  /** Clave del campo de la consulta; con ella `selected` dice cuál tarjeta se pulsó. */
+  key?: string;
   /** Nombre del parámetro, título de la tarjeta (p. ej. «Periodo»). */
   label: string;
   /** Valor elegido, línea de apoyo de la tarjeta (p. ej. «Enero a marzo de 2026»); si no entra, se corta con tooltip. */
@@ -24,9 +26,10 @@ export interface ParametroAplicado {
  * @usar
  * - Arriba de los resultados de una consulta, para mostrar con qué parámetros se buscó, cada uno con su ícono.
  * - Con muchos parámetros o valores largos: el carril se desplaza y cada valor se corta con tooltip.
+ * - `selected` para abrir el panel de parámetros posicionado en el parámetro pulsado.
  * @evitar
- * - Para elegir o cambiar un parámetro: las tarjetas no son interactivas; la búsqueda se cambia desde la cabecera de
- *   la consulta, con `siaf-filter-pill` o con `siaf-custom-filter`.
+ * - Para quitar o cambiar un parámetro desde la tarjeta: solo abre el panel; la búsqueda se cambia allí, o con
+ *   `siaf-filter-pill` o `siaf-custom-filter`.
  * - Cuando la pantalla necesita «Quitar filtros»: este bloque no lo tiene (así está en el Figma); las consultas de hoy
  *   siguen con `siaf-consultas-filtros-chips`.
  * @teclado
@@ -74,7 +77,7 @@ export interface ParametroAplicado {
           [attr.tabindex]="desborda() ? 0 : null"
           (scroll)="medir()"
         >
-          <siaf-list orientation="horizontal" [outlined]="true" [items]="items()" />
+          <siaf-list orientation="horizontal" [outlined]="true" [selectable]="true" [selectedId]="activo" [items]="items()" (selectedIdChange)="selected.emit($event)" />
         </div>
         @if (hayMasALaIzquierda()) {
           <!-- Espejo del de la derecha: retrocede cuando el carril ya avanzó. -->
@@ -108,7 +111,12 @@ export class ParametrosAplicadosComponent {
   }
 
   readonly idTitulo = `siaf-parametros-aplicados-${Math.random().toString(36).slice(2)}`;
-  readonly items = computed<ListItem[]>(() => this._parametros().map((p) => ({ id: p.label, title: p.label, description: p.value, icon: p.icon })));
+  readonly items = computed<ListItem[]>(() => this._parametros().map((p) => ({ id: p.key ?? p.label, title: p.label, description: p.value, icon: p.icon })));
+
+  /** Se pulsó una tarjeta: emite su `key` para abrir ese parámetro en el panel de la consulta. */
+  /** Clave de la tarjeta elegida mientras el panel de parámetros está abierto sobre ella; sin ella (panel cerrado), ninguna queda marcada. */
+  @Input() activo: string | null = null;
+  @Output() selected = new EventEmitter<string>();
 
   /** Las tarjetas no entran en el ancho disponible: el carril se desplaza y se puede enfocar. */
   readonly desborda = signal(false);

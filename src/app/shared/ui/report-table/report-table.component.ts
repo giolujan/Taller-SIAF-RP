@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
+
+import { TableSort, ariaSortDe, siguienteOrden } from '../../utils/table-sort.util';
+import { IconComponent } from '../icon/icon.component';
+import { ANCHO_COLUMNA_POR_DEFECTO, anchoDeColumna, medirSombras, observarSombras, SOMBRA_DER } from '../tabla-scroll';
+import { TooltipDirective } from '../tooltip/tooltip.directive';
 
 export interface ReportTableColumn {
   key: string;
@@ -11,6 +17,12 @@ export interface ReportTableColumn {
   width?: number;
   /** Queda fija a la derecha al desplazar la tabla (Figma «Fixed»). Solo la última columna. */
   fixed?: boolean;
+  /** No se ve hasta que se marque en «Columnas visibles» (p. ej. las de moneda nacional, que son para cuentas en dólares). */
+  hiddenByDefault?: boolean;
+  /** Nombre en el panel «Columnas visibles» cuando difiere del de la cabecera («Secuencia» por «Sec.»). */
+  panelLabel?: string;
+  /** Si su grupo de cabecera se oculta por un nivel de agrupación, la columna sigue visible, sin grupo (con su propio título). */
+  ungroupWhenGroupHidden?: boolean;
   /** `link` pinta el valor como enlace y emite `linkClicked` al pulsarlo. */
   kind?: 'text' | 'link';
 }
@@ -20,12 +32,16 @@ export type ReportTableRow = Record<string, string>;
 /** Celda de la primera fila de la cabecera: un grupo que abarca varias columnas o una columna sin grupo. */
 interface CeldaCabecera {
   label: string;
+  /** Clave de la columna cuando la celda es una sola columna (la que se puede ordenar); los grupos no la llevan. */
+  key?: string;
   colspan: number;
   /** 2 para una columna sin grupo: ocupa las dos filas de la cabecera. */
   rowspan: 1 | 2;
   align: 'left' | 'right' | 'center';
   width: number | null;
   fixed: boolean;
+  /** Nombre completo de la abreviatura (Sec. → Secuencia), en un globo al pasar el puntero. */
+  tooltip?: string | null;
 }
 
 /**
@@ -67,47 +83,75 @@ interface CeldaCabecera {
 @Component({
   selector: 'siaf-report-table',
   standalone: true,
+  imports: [IconComponent, NgTemplateOutlet, TooltipDirective],
   host: { class: 'block min-w-0' },
   template: `
+      <!-- Título de una columna: texto, o botón que ordena (flecha en la columna ordenada, a la izquierda del título en las de montos) cuando la tabla es sortable. -->
+      <ng-template #titulo let-label="label" let-key="key" let-tooltip="tooltip" let-derecha="derecha">
+        @if (sortable && key) {
+          <button class="group inline-flex items-center bg-transparent p-0 font-[inherit] uppercase text-inherit" [class.-mr-4]="!derecha" [class.max-w-[calc(100%+1rem)]]="!derecha" [class.max-w-full]="derecha" [class.flex-row-reverse]="derecha" type="button" title="Ordenar" [attr.aria-label]="'Ordenar por ' + label" (click)="ordenar(key)">
+            <span class="truncate" [siafTooltip]="tooltip ?? null">{{ label }}</span>
+            <siaf-icon class="shrink-0 transition-opacity" [class]="claseFlecha(key)" [name]="sort?.key === key && sort?.direction === 'desc' ? 'arrow_downward' : 'arrow_upward'" [size]="16" />
+          </button>
+        } @else {
+          <span class="block truncate" [siafTooltip]="tooltip ?? null">{{ label }}</span>
+        }
+      </ng-template>
+
     <div
-      class="siaf-table-scroll rounded-siaf-sm outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+      #scroll
+      class="siaf-table-scroll group/tabla rounded-siaf-sm outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
       role="region"
       tabindex="0"
       [attr.aria-label]="ariaLabel"
+      (scroll)="medirScroll()"
     >
-      <table class="w-full min-w-full border-collapse text-left text-sm" [attr.aria-label]="ariaLabel">
-        <thead>
+      <!-- Bordes separados y ancho fijo por columna (como Documentos y registros): ordenar, paginar o cambiar de pestaña no mueve los anchos. -->
+      <table class="w-full min-w-full table-fixed border-separate border-spacing-0 text-left text-sm" [style.width.px]="anchoTabla" [attr.aria-label]="ariaLabel">
+        <colgroup>
+          @for (columna of columns; track columna.key) {
+            <col [style.width.px]="anchoColumna(columna)" />
+          }
+        </colgroup>
+        <!-- Sin borde propio en el thead: cada celda de la cabecera ya trae su línea inferior y el del thead sumaba 1 px a la última fila. -->
+        <thead class="border-b-0">
           <tr>
-            @for (celda of filaSuperior; track $index) {
+            @for (celda of filaSuperior; track $index; let ultimo = $last) {
               <th
-                class="h-10 px-siaf-md py-siaf-sm text-xs font-bold uppercase leading-normal text-[var(--sys-color-text-neutral-high)]"
+                class="h-10 px-siaf-md py-0 text-xs font-bold uppercase leading-4 text-text"
                 [class.text-center]="celda.align === 'center'"
                 [class.text-right]="celda.align === 'right'"
+                [class.border-r]="!ultimo && !celda.fixed"
+                [class.border-[var(--sys-color-divider-strong)]]="!ultimo && !celda.fixed"
                 [class]="celda.fixed ? claseFijaCabecera : ''"
                 [attr.colspan]="celda.colspan > 1 ? celda.colspan : null"
                 [attr.rowspan]="celda.rowspan > 1 ? celda.rowspan : null"
                 [attr.scope]="celda.rowspan === 2 ? 'col' : 'colgroup'"
+                [attr.aria-sort]="ariaSort(celda.key)"
                 [style.width.px]="celda.width"
                 [style.min-width.px]="celda.width"
                 data-cabecera-superior
               >
-                <span class="block truncate">{{ celda.label }}</span>
+                <ng-container *ngTemplateOutlet="titulo; context: { label: celda.label, key: celda.key, tooltip: celda.tooltip, derecha: celda.align === 'right' }" />
               </th>
             }
           </tr>
           @if (hayGrupos) {
             <tr>
-              @for (columna of columnasAgrupadas; track columna.key) {
+              @for (columna of columnasAgrupadas; track columna.key; let i = $index) {
                 <th
-                  class="h-10 px-siaf-md py-siaf-sm text-xs font-bold uppercase leading-normal text-[var(--sys-color-text-neutral-high)]"
+                  class="h-10 px-siaf-md py-0 text-xs font-bold uppercase leading-4 text-text"
                   [class.text-right]="columna.align === 'right'"
+                  [class.border-r]="finDeGrupo(i) && !columna.fixed"
+                  [class.border-[var(--sys-color-divider-strong)]]="finDeGrupo(i) && !columna.fixed"
                   [class]="columna.fixed ? claseFijaCabecera : ''"
                   scope="col"
+                  [attr.aria-sort]="ariaSort(columna.key)"
                   [style.width.px]="columna.width ?? null"
                   [style.min-width.px]="columna.width ?? null"
                   data-cabecera-columna
                 >
-                  <span class="block truncate">{{ columna.label }}</span>
+                  <ng-container *ngTemplateOutlet="titulo; context: { label: columna.label, key: columna.key, tooltip: tooltipColumna(columna), derecha: columna.align === 'right' }" />
                 </th>
               }
             </tr>
@@ -115,10 +159,17 @@ interface CeldaCabecera {
         </thead>
         <tbody>
           @for (fila of rows; track trackBy(fila, $index)) {
-            <tr class="border-b border-[var(--sys-color-divider-default)] bg-surface">
+            <tr
+              class="bg-surface [&>td]:border-b [&>td]:border-[var(--sys-color-divider-default)]"
+              [class.cursor-pointer]="clickableRows"
+              [class.hover:bg-[var(--sys-color-bg-states-light-hover)]]="clickableRows"
+              [attr.tabindex]="clickableRows ? 0 : null"
+              (click)="clickableRows && rowClicked.emit(fila)"
+              (keydown.enter)="clickableRows && rowClicked.emit(fila)"
+            >
               @for (columna of columns; track columna.key) {
                 <td
-                  class="h-12 px-siaf-md py-siaf-sm align-middle text-sm leading-normal tracking-[0.0249px] text-[var(--sys-color-text-neutral-medium)]"
+                  class="h-12 px-siaf-md py-siaf-sm align-middle text-sm text-text"
                   [class.text-right]="columna.align === 'right'"
                   [class.whitespace-nowrap]="columna.align === 'right'"
                   [class]="columna.fixed ? claseFija + ' z-[1] bg-surface' : ''"
@@ -129,12 +180,12 @@ interface CeldaCabecera {
                     <button
                       class="rounded-siaf-sm text-left font-medium text-[var(--sys-color-text-brand-primary)] underline-offset-2 hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
                       type="button"
-                      (click)="linkClicked.emit({ row: fila, column: columna })"
+                      (click)="$event.stopPropagation(); linkClicked.emit({ row: fila, column: columna })"
                     >
                       {{ fila[columna.key] }}
                     </button>
                   } @else {
-                    {{ fila[columna.key] }}
+                    <span class="line-clamp-3 break-words" siafTooltip>{{ fila[columna.key] }}</span>
                   }
                 </td>
               }
@@ -152,7 +203,7 @@ interface CeldaCabecera {
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ReportTableComponent {
+export class ReportTableComponent implements AfterViewInit, OnDestroy {
   @Input({ required: true }) columns: readonly ReportTableColumn[] = [];
   /** Filas de la página visible: cada clave de columna con su texto ya formateado. */
   @Input() rows: readonly ReportTableRow[] = [];
@@ -160,22 +211,82 @@ export class ReportTableComponent {
   @Input() rowKey = '';
   /** Nombre de la tabla y de su zona desplazable. */
   @Input() ariaLabel = 'Resultado del reporte';
-  @Input() emptyMessage = 'No se encontraron resultados con los filtros aplicados.';
+  @Input() emptyMessage = 'Aún no se encontraron resultados.';
 
   @Output() linkClicked = new EventEmitter<{ row: ReportTableRow; column: ReportTableColumn }>();
+  /** Con `clickableRows`, pulsar una fila (o Enter con el foco en ella) la emite: abre su detalle. Los enlaces de la fila siguen emitiendo `linkClicked`. */
+  @Input() clickableRows = false;
+  @Output() rowClicked = new EventEmitter<ReportTableRow>();
 
   /**
    * Columna fija a la derecha: sticky con la sombra de elevación 6 del Figma recortada a su borde izquierdo, para que no
    * oscurezca las filas de arriba y de abajo.
    */
-  readonly claseFija = 'sticky right-0 shadow-siaf-elevation-6 [clip-path:inset(0_0_0_-16px)]';
+  readonly claseFija = `sticky right-0 ${SOMBRA_DER}`;
+  readonly anchoPorDefecto = ANCHO_COLUMNA_POR_DEFECTO;
+
+  /** Con `sortable`, cada título es un botón que ordena (asc → desc → sin orden); el orden en sí lo aplica quien llena `rows`. */
+  @Input() sortable = false;
+  @Input() sort: TableSort | null = null;
+  @Output() sortChange = new EventEmitter<TableSort | null>();
+
+  ariaSort(key: string | undefined): 'ascending' | 'descending' | 'none' | null {
+    return this.sortable && key ? ariaSortDe(this.sort, key) : null;
+  }
+
+  /** La flecha de la columna ordenada se ve siempre; en las demás aparece tenue al pasar el cursor o enfocar el título. */
+  claseFlecha(key: string): string {
+    return this.sort?.key === key ? 'opacity-100' : 'opacity-0 group-hover:opacity-60 group-focus-visible:opacity-60';
+  }
+
+  ordenar(key: string): void {
+    this.sortChange.emit(siguienteOrden(this.sort, key));
+  }
+
+
+  @ViewChild('scroll') private scroll?: ElementRef<HTMLElement>;
+  private observador: ResizeObserver | null = null;
+
+  ngAfterViewInit(): void {
+    this.observador = observarSombras(this.scroll?.nativeElement);
+  }
+
+  ngOnDestroy(): void {
+    this.observador?.disconnect();
+  }
+
+  medirScroll(): void {
+    if (this.scroll) medirSombras(this.scroll.nativeElement);
+  }
+
+  /** Suma de los anchos de las columnas: con `table-fixed` la tabla mide exactamente eso y el sobrante no ensancha ninguna. */
+  get anchoTabla(): number {
+    return this.columns.reduce((suma, c) => suma + this.anchoColumna(c), 0);
+  }
+
+  /** Ancho de la columna: el configurado, o el que necesita su título (con la flecha de orden) si es mayor. */
+  anchoColumna(c: ReportTableColumn): number {
+    return anchoDeColumna(c.label, c.width);
+  }
 
   /**
    * En la cabecera, la línea inferior va como sombra interior sobre el fondo opaco: el borde de la tabla es translúcido
    * y dejaba ver, en esa línea, el título de una columna de dos filas que pasa por debajo.
    */
-  readonly claseFijaCabecera =
-    'sticky right-0 z-[3] border-b-0 shadow-[inset_0_-1px_0_var(--sys-color-divider-strong),var(--sys-shadow-elevation-6)] [clip-path:inset(0_0_0_-16px)]';
+  readonly claseFijaCabecera = `sticky right-0 z-[3] !overflow-visible ${SOMBRA_DER}`;
+
+  /** Nombre completo de cada grupo de cabecera abreviado (`'Imp. m. cuenta'` → «Importe en moneda de la cuenta»). */
+  @Input() groupTooltips: Record<string, string> = {};
+
+  /** El nombre completo de una columna cuya etiqueta va abreviada (`panelLabel`), o nada si ya se lee completa. */
+  tooltipColumna(c: ReportTableColumn): string | null {
+    return c.panelLabel && c.panelLabel !== c.label ? c.panelLabel : null;
+  }
+
+  tooltipGrupo(grupo: string): string | null {
+    const completo = this.groupTooltips[grupo];
+    return completo && completo !== grupo ? completo : null;
+  }
 
   get hayGrupos(): boolean {
     return this.columns.some((c) => !!c.group);
@@ -184,17 +295,18 @@ export class ReportTableComponent {
   /** Grupos contiguos en una celda; con grupos, las columnas sueltas ocupan las dos filas. */
   get filaSuperior(): CeldaCabecera[] {
     if (!this.hayGrupos) {
-      return this.columns.map((c) => ({ label: c.label, colspan: 1, rowspan: 1, align: c.align ?? 'left', width: c.width ?? null, fixed: !!c.fixed }));
+      return this.columns.map((c) => ({ label: c.label, key: c.key, colspan: 1, rowspan: 1, align: c.align ?? 'left', width: c.width ?? null, fixed: !!c.fixed, tooltip: this.tooltipColumna(c) }));
     }
     const celdas: CeldaCabecera[] = [];
     for (let i = 0; i < this.columns.length; i++) {
       const columna = this.columns[i];
       if (!columna.group) {
-        celdas.push({ label: columna.label, colspan: 1, rowspan: 2, align: columna.align ?? 'left', width: columna.width ?? null, fixed: !!columna.fixed });
+        celdas.push({ label: columna.label, key: columna.key, colspan: 1, rowspan: 2, align: columna.align ?? 'left', width: columna.width ?? null, fixed: !!columna.fixed, tooltip: this.tooltipColumna(columna) });
         continue;
       }
       let fin = i;
-      while (fin + 1 < this.columns.length && this.columns[fin + 1].group === columna.group) fin++;
+      // La columna fija lleva su propia celda de grupo: si compartiera la del grupo, esa celda entera quedaría fija y taparía las columnas que se desplazan.
+      while (fin + 1 < this.columns.length && this.columns[fin + 1].group === columna.group && !this.columns[fin + 1].fixed && !columna.fixed) fin++;
       const grupo = this.columns.slice(i, fin + 1);
       const anchos = grupo.map((c) => c.width);
       celdas.push({
@@ -204,6 +316,7 @@ export class ReportTableComponent {
         align: 'center',
         width: anchos.every((a) => typeof a === 'number') ? anchos.reduce((s, a) => s + (a as number), 0) : null,
         fixed: grupo.some((c) => c.fixed),
+        tooltip: this.tooltipGrupo(columna.group),
       });
       i = fin;
     }
@@ -212,6 +325,12 @@ export class ReportTableComponent {
 
   get columnasAgrupadas(): ReportTableColumn[] {
     return this.columns.filter((c) => !!c.group);
+  }
+
+  /** La columna en `indice` es la última de su grupo (o no hay otra después): ahí va el divisor, no entre subcolumnas de un mismo grupo. */
+  finDeGrupo(indice: number): boolean {
+    const columnas = this.columnasAgrupadas;
+    return indice === columnas.length - 1 || columnas[indice].group !== columnas[indice + 1].group;
   }
 
   trackBy(fila: ReportTableRow, indice: number): string | number {

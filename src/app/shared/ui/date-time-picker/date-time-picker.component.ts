@@ -14,16 +14,19 @@ type CalendarDay = {
   disabled?: boolean;
 };
 
+/** El error de una fecha incompleta, que no existe o fuera de rango de año. */
+const MENSAJE_FECHA_NO_VALIDA = 'Fecha no válida';
+
 /**
  * Selector de fecha (y opcionalmente hora) con calendario propio, label flotante,
- * estados de error/éxito y `[minDate]` para deshabilitar días anteriores.
+ * estados de error/éxito, `[minDate]` para deshabilitar días anteriores y `[maxDate]` para los posteriores (no se aceptan tampoco al escribirlos; con `[maxDateError]` y `[minDateError]`, la fecha fuera de rango escrita y confirmada se conserva con ese mensaje de error).
  *
  * Es el control canónico de fecha del design system: úsalo en vez de un `input type="date"`
  * nativo para que el campo respete tokens, textos en español y el formato dd/mm/aaaa.
  *
  * En la cabecera del calendario, el mes y el año son botones: el mes abre los 12 meses y el año una
  * grilla de 12 años (las flechas dobles pasan de página). Al elegir, vuelve a los días de ese mes o año.
- * Con `minDate`, los meses y años que terminan antes quedan deshabilitados.
+ * Con `minDate`, los meses y años que terminan antes quedan deshabilitados; con `maxDate`, los que empiezan después.
  *
  * @usar
  * - Para las fechas de vigencia de una solicitud («Fecha inicio desde» y «Fecha fin hasta» en clase de ajuste, tipo de
@@ -35,26 +38,34 @@ type CalendarDay = {
  *   formulario de cuenta contable): usar este componente.
  * - Dejar `defaultToToday` en `true` en filtros o fechas opcionales: pinta la fecha de hoy sin emitirla, así que el
  *   padre sigue vacío. Pasar `[defaultToToday]="false"`.
- * - `variant="datetime"` para capturar una hora: los campos de hora no están conectados; emite solo la fecha y la
- *   muestra con 00:00:00.
+ * - `variant="datetime"` esperando solo la fecha: emite `aaaa-mm-ddThh:mm:ss` (con la hora, minutos y segundos del panel) y
+ *   acepta ese mismo formato en `value`.
  * - Para mostrar una fecha que no se edita: en modo lectura va `readonly-field`, no el selector `[disabled]`.
  * @teclado
- * - **Tab**: enfoca el campo. Al abrir el calendario el foco entra en el día elegido (o en hoy); desde ahí recorre
+ * - **Escribir**: al enfocar, el campo muestra la plantilla dd/mm/aaaa (y hh:mm:ss en `datetime`) y se llena por secciones:
+ *   cada dígito ocupa su lugar y, al completar una sección, pasa a la siguiente (un 5 en el mes se vuelve 05). Con clic, flechas
+ *   izquierda/derecha o Tab se elige una sección (día, mes o año) y lo que se teclee la reemplaza; Retroceso/Supr la vacía
+ *   o quita su último dígito, y «/» cierra la sección. La fecha se elige al completarla si es válida y respeta `minDate`;
+ *   una fecha completa que no existe (00/00/0000, 31/02) o fuera de rango se queda en rojo con su mensaje, y al salir del campo una incompleta vuelve a la elegida.
+ *   Con `defaultToToday` en `false`, vaciar el campo borra la fecha.
+ * - **Recientes**: con `recentKey`, al enfocar el campo vacío aparece, como el tooltip nativo del navegador (globo oscuro con una X por fecha para quitarla), la lista de las últimas 5 fechas elegidas en él
+ *   (se guardan en `localStorage`, respetan `minDate` y `maxDate`); se elige con clic o con flecha abajo/arriba y Enter, y Escape
+ *   o empezar a escribir la cierra.
+ * - **Tab**: enfoca el campo y luego el botón del calendario (Alt + flecha abajo también lo abre). Al abrir el calendario el foco entra en el día elegido (o en hoy); desde ahí recorre
  *   las flechas de la cabecera, el mes, el año y cada día habilitado, y salir con Tab cierra el calendario.
- * - **Enter / Espacio**: en el campo abren o cierran el calendario; dentro, activan la flecha o eligen el día, mes o
+ * - **Enter / Espacio**: en el botón abren o cierran el calendario (Enter en el campo confirma lo escrito); dentro, activan la flecha o eligen el día, mes o
  *   año enfocado (botones nativos). Cancelar y Aceptar de `datetime` siguen `siaf-button`.
  * - **Escape**: cierra el calendario y el foco vuelve al campo.
  * - **Flechas**: no están implementadas entre los días; el calendario también se cierra al elegir un día (variante
  *   `date`) o con Cancelar o Aceptar.
  * @accesibilidad
- * - **Pendiente · 1.3.1 Información y relaciones (A)**: la etiqueta no se une al botón del campo con `aria-labelledby`
- *   ni `aria-label`: un único `<label>` envuelve etiqueta flotante, botón, ayuda, error y calendario, y con fecha
- *   elegida el botón muestra solo la fecha. En `datetime`, los tres campos de hora no tienen etiqueta.
+ * - **1.3.1 Información y relaciones (A)**: el campo de texto y los tres de la hora llevan `aria-label` (la etiqueta del
+ *   campo y «Hora», «Minutos», «Segundos»); el botón del calendario se llama «Abrir calendario».
  * - **Pendiente · 3.3.1 Identificación de errores (A)**: el texto de `error` se ve bajo el campo, pero no se asocia con
  *   `aria-describedby` ni se anuncia al aparecer; con `state="error"` y sin `error`, el aviso es solo el borde rojo.
- * - **Pendiente · 3.3.2 Etiquetas o instrucciones (A)**: el obligatorio es solo el asterisco rojo: `aria-required` va
- *   en un `<button>`, rol que no admite ese atributo en ARIA 1.2.
- * - **4.1.2 Nombre, función y valor (A)**: el campo publica `aria-haspopup="dialog"` y `aria-expanded`; el calendario
+ * - **3.3.2 Etiquetas o instrucciones (A)**: el campo de texto publica `aria-required` y `aria-invalid`; el obligatorio se
+ *   ve además con el asterisco rojo y el formato dd/mm/aaaa queda como plantilla en el campo al enfocar y se va llenando por secciones.
+ * - **4.1.2 Nombre, función y valor (A)**: el botón del calendario publica `aria-haspopup="dialog"` y `aria-expanded`; el calendario
  *   es `role="dialog"` con `aria-label`, y las grillas de meses y años, `role="listbox"` con `aria-selected`.
  * - **Pendiente · 4.1.2 Nombre, función y valor (A)**: cada día se lee solo como número («05») y el día elegido no
  *   publica estado (`aria-selected` o `aria-pressed`); las grillas `listbox` no responden a flechas.
@@ -84,21 +95,84 @@ type CalendarDay = {
           </span>
         }
 
-        <button
-          class="flex h-10 w-full items-center rounded-siaf-md border bg-surface px-siaf-md text-left text-sm text-text outline-none transition disabled:cursor-not-allowed disabled:border-[var(--sys-color-border-states-disabled)] disabled:bg-[var(--sys-color-bg-surfaces-disabled)] disabled:text-[var(--sys-color-text-neutral-disabled)]"
-          type="button"
+        <!-- El campo se escribe (dd/mm/aaaa, y hh:mm:ss con datetime) o se elige en el calendario del botón. -->
+        <span
+          class="flex h-10 w-full items-center rounded-siaf-md border bg-surface text-sm text-text outline-none transition"
           [class]="controlClass"
-          [disabled]="disabled"
-          [attr.aria-expanded]="pickerOpen"
-          [attr.aria-required]="required"
-          aria-haspopup="dialog"
-          (click)="togglePicker()"
+          [class.cursor-not-allowed]="disabled"
+          [class.border-[var(--sys-color-border-states-disabled)]]="disabled"
+          [class.bg-[var(--sys-color-bg-surfaces-disabled)]]="disabled"
+          [class.text-[var(--sys-color-text-neutral-disabled)]]="disabled"
         >
-          <span class="min-w-0 flex-1 truncate" siafTooltip [class.text-[var(--sys-color-text-neutral-low)]]="!hasValue">
-            {{ displayValue || labelText }}@if (!hasValue && required) { <span class="text-[var(--sys-color-text-feedback-danger)]">*</span> }
-          </span>
-          <siaf-icon class="shrink-0 text-text-muted" name="calendar_today" [size]="20" />
-        </button>
+          <input
+            class="h-full min-w-0 flex-1 bg-transparent pl-siaf-md pr-siaf-xs text-sm text-text outline-none placeholder:text-[var(--sys-color-text-neutral-low)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)]"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            [value]="texto"
+            [placeholder]="placeholderCampo"
+            [disabled]="disabled"
+            [attr.maxlength]="variant === 'datetime' ? 19 : 10"
+            [attr.aria-label]="labelText"
+            [attr.aria-required]="required"
+            [attr.aria-invalid]="effectiveState === 'error'"
+            (focus)="alEnfocar($any($event.target))"
+            (click)="elegirSeccionBajoCursor($any($event.target))"
+            (keydown)="teclear($event)"
+            (input)="escribir($any($event.target))"
+            (blur)="enfocado = false; mostrarRecientes = false; confirmarTexto()"
+            (keydown.enter)="confirmarTexto($event)"
+            (keydown.alt.arrowdown)="abrirCalendario($event)"
+          />
+          <button
+            class="mr-siaf-xs inline-flex size-7 shrink-0 items-center justify-center rounded-siaf-sm text-text-muted outline-none transition hover:bg-surface-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--sys-color-border-states-focus)] disabled:cursor-not-allowed"
+            type="button"
+            [disabled]="disabled"
+            [attr.aria-expanded]="pickerOpen"
+            aria-label="Abrir calendario"
+            aria-haspopup="dialog"
+            (click)="togglePicker()"
+          >
+            <siaf-icon name="calendar_today" [size]="20" />
+          </button>
+        </span>
+
+        @if (recientesVisibles.length && mostrarRecientes && !pickerOpen) {
+          <!-- Sugerencias como el tooltip nativo del navegador: globo oscuro con punta hacia el campo y una X para quitar cada fecha. -->
+          <div class="absolute left-3 top-[calc(100%+10px)] z-40 min-w-[200px] max-w-full">
+            <span class="absolute -top-1 left-6 size-3 rotate-45 bg-[var(--sys-color-bg-snackbar,var(--sys-color-bg-feedback-dark-default))]" aria-hidden="true"></span>
+            <ul
+              class="relative m-0 flex list-none flex-col gap-siaf-xxs rounded-siaf-md bg-[var(--sys-color-bg-snackbar,var(--sys-color-bg-feedback-dark-default))] p-siaf-xs text-[var(--sys-color-text-brand-white)] shadow-siaf-elevation-2"
+              role="listbox"
+              aria-label="Fechas recientes"
+              data-recientes
+            >
+              @for (fecha of recientesVisibles; track fecha; let i = $index) {
+                <li class="flex items-center rounded-siaf-sm" role="option" [attr.aria-selected]="i === recienteActiva" [class.bg-white/15]="i === recienteActiva">
+                  <button
+                    class="min-w-0 flex-1 rounded-siaf-sm px-siaf-sm py-siaf-xs text-left text-base font-medium outline-none hover:bg-white/10"
+                    type="button"
+                    tabindex="-1"
+                    data-reciente
+                    (mousedown)="$event.preventDefault()"
+                    (click)="elegirReciente(fecha)"
+                  >{{ formatearFecha(fecha) }}</button>
+                  <button
+                    class="mr-siaf-xxs inline-flex size-7 shrink-0 items-center justify-center rounded-full outline-none hover:bg-white/10"
+                    type="button"
+                    tabindex="-1"
+                    [attr.aria-label]="'Quitar ' + formatearFecha(fecha) + ' de recientes'"
+                    data-quitar-reciente
+                    (mousedown)="$event.preventDefault()"
+                    (click)="quitarReciente(fecha)"
+                  >
+                    <siaf-icon name="close" [size]="18" />
+                  </button>
+                </li>
+              }
+            </ul>
+          </div>
+        }
 
         @if (pickerOpen) {
           <button class="fixed inset-0 z-30 cursor-default bg-transparent" type="button" data-capa-cierre tabindex="-1" aria-hidden="true" (mousedown)="$event.preventDefault()" (click)="closePicker()"></button>
@@ -114,11 +188,11 @@ type CalendarDay = {
           >
             <header class="flex w-full items-center justify-between py-siaf-xs">
               <div class="flex w-11 items-center gap-siaf-xxs">
-                <button class="inline-flex size-5 items-center justify-center rounded-siaf-sm hover:bg-surface-muted" type="button" [attr.aria-label]="vista === 'anios' ? 'Años anteriores' : 'Año anterior'" (click)="moveYear(vista === 'anios' ? -12 : -1, $event)">
+                <button class="inline-flex size-5 items-center justify-center rounded-siaf-sm hover:bg-surface-muted disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent" type="button" [disabled]="irAnteriorDeshabilitado('anio')" [attr.aria-label]="vista === 'anios' ? 'Años anteriores' : 'Año anterior'" (click)="moveYear(vista === 'anios' ? -12 : -1, $event)">
                   <siaf-icon name="keyboard_double_arrow_left" [size]="20" />
                 </button>
                 @if (vista === 'dias') {
-                  <button class="inline-flex size-5 items-center justify-center rounded-siaf-sm hover:bg-surface-muted" type="button" aria-label="Mes anterior" (click)="moveMonth(-1, $event)">
+                  <button class="inline-flex size-5 items-center justify-center rounded-siaf-sm hover:bg-surface-muted disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent" type="button" [disabled]="irAnteriorDeshabilitado('mes')" aria-label="Mes anterior" (click)="moveMonth(-1, $event)">
                     <siaf-icon name="keyboard_arrow_left" [size]="20" />
                   </button>
                 }
@@ -158,11 +232,11 @@ type CalendarDay = {
 
               <div class="flex w-11 items-center justify-end gap-siaf-xxs">
                 @if (vista === 'dias') {
-                  <button class="inline-flex size-5 items-center justify-center rounded-siaf-sm hover:bg-surface-muted" type="button" aria-label="Mes siguiente" (click)="moveMonth(1, $event)">
+                  <button class="inline-flex size-5 items-center justify-center rounded-siaf-sm hover:bg-surface-muted disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent" type="button" [disabled]="irSiguienteDeshabilitado('mes')" aria-label="Mes siguiente" (click)="moveMonth(1, $event)">
                     <siaf-icon name="keyboard_arrow_right" [size]="20" />
                   </button>
                 }
-                <button class="inline-flex size-5 items-center justify-center rounded-siaf-sm hover:bg-surface-muted" type="button" [attr.aria-label]="vista === 'anios' ? 'Años siguientes' : 'Año siguiente'" (click)="moveYear(vista === 'anios' ? 12 : 1, $event)">
+                <button class="inline-flex size-5 items-center justify-center rounded-siaf-sm hover:bg-surface-muted disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent" type="button" [disabled]="irSiguienteDeshabilitado('anio')" [attr.aria-label]="vista === 'anios' ? 'Años siguientes' : 'Año siguiente'" (click)="moveYear(vista === 'anios' ? 12 : 1, $event)">
                   <siaf-icon name="keyboard_double_arrow_right" [size]="20" />
                 </button>
               </div>
@@ -233,11 +307,11 @@ type CalendarDay = {
               <div class="mt-siaf-xs border-t border-[var(--sys-color-divider-default)] pt-siaf-xs">
                 <div class="flex items-center gap-siaf-xs py-siaf-xs">
                   <span class="text-xs font-medium text-text">Hora</span>
-                  <input class="h-8 w-[50px] rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] bg-surface px-siaf-md text-center text-sm outline-none focus:border-2 focus:border-[var(--sys-color-border-states-focus)]" maxlength="2" value="00" />
+                  <input class="h-8 w-[50px] rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] bg-surface px-siaf-md text-center text-sm outline-none focus:border-2 focus:border-[var(--sys-color-border-states-focus)]" maxlength="2" inputmode="numeric" [value]="hora" aria-label="Hora" (input)="cambiarHora('hora', $any($event.target).value, $event)" (blur)="normalizarHora()" (click)="$event.stopPropagation()" />
                   <span class="text-xs font-medium text-text">:</span>
-                  <input class="h-8 w-[50px] rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] bg-surface px-siaf-md text-center text-sm outline-none focus:border-2 focus:border-[var(--sys-color-border-states-focus)]" maxlength="2" value="00" />
+                  <input class="h-8 w-[50px] rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] bg-surface px-siaf-md text-center text-sm outline-none focus:border-2 focus:border-[var(--sys-color-border-states-focus)]" maxlength="2" inputmode="numeric" [value]="minuto" aria-label="Minutos" (input)="cambiarHora('minuto', $any($event.target).value, $event)" (blur)="normalizarHora()" (click)="$event.stopPropagation()" />
                   <span class="text-xs font-medium text-text">:</span>
-                  <input class="h-8 w-[50px] rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] bg-surface px-siaf-md text-center text-sm outline-none focus:border-2 focus:border-[var(--sys-color-border-states-focus)]" maxlength="2" value="00" />
+                  <input class="h-8 w-[50px] rounded-siaf-md border border-[var(--sys-color-border-states-enabled)] bg-surface px-siaf-md text-center text-sm outline-none focus:border-2 focus:border-[var(--sys-color-border-states-focus)]" maxlength="2" inputmode="numeric" [value]="segundo" aria-label="Segundos" (input)="cambiarHora('segundo', $any($event.target).value, $event)" (blur)="normalizarHora()" (click)="$event.stopPropagation()" />
                 </div>
 
                 <div class="flex justify-end gap-siaf-xs py-siaf-xs">
@@ -250,12 +324,12 @@ type CalendarDay = {
         }
       </span>
 
-      @if (hint && !error) {
+      @if (hint && !mensajeError) {
         <span class="text-xs" [class]="supportingClass">{{ hint }}</span>
       }
 
-      @if (error) {
-        <span class="text-xs text-[var(--sys-color-text-feedback-danger)]">{{ error }}</span>
+      @if (mensajeError) {
+        <span class="text-xs text-[var(--sys-color-text-feedback-danger)]">{{ mensajeError }}</span>
       }
     </label>
   `,
@@ -275,13 +349,34 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
   @Input() fullWidth = false;
   /** Fecha mínima seleccionable en formato ISO (YYYY-MM-DD). Los días anteriores quedan deshabilitados. */
   @Input() minDate = '';
+  /** Fecha máxima seleccionable (ISO, YYYY-MM-DD): los días posteriores quedan deshabilitados y no se aceptan al escribirlos. */
+  @Input() maxDate = '';
+  /** Con `maxDate`: texto de error cuando se escribe y confirma una fecha posterior; el campo la conserva en rojo hasta que se corrija. */
+  @Input() maxDateError = '';
+  /** Con `minDate`: texto de error cuando se escribe y confirma una fecha anterior; se conserva igual que con `maxDateError`. */
+  @Input() minDateError = '';
+  /** Clave para recordar las últimas fechas elegidas en este campo (`localStorage`): al enfocar el campo vacío se ofrecen como «Recientes». Vacío, sin sugerencias. */
+  @Input() recentKey = '';
+  /** Recientes guardados (aaaa-mm-dd, la más nueva primero) y estado de la lista que se ofrece bajo el campo. */
+  private recientes: string[] = [];
+  mostrarRecientes = false;
+  recienteActiva = -1;
+  /** Mensaje por una fecha escrita fuera de `minDate` o `maxDate` (ver `minDateError` y `maxDateError`); vacío si no hay. */
+  private errorRango = '';
 
   @Output() valueChange = new EventEmitter<string>();
 
   pickerOpen = false;
+  /** Texto del campo mientras se escribe (con la máscara dd/mm/aaaa); se vuelve a armar al elegir una fecha. */
+  texto = '';
+  enfocado = false;
   /** Qué muestra el calendario: los días del mes, la grilla de meses o la de años. */
   vista: 'dias' | 'meses' | 'anios' = 'dias';
   selectedDate = '';
+  /** Hora elegida (solo en `datetime`), en dos dígitos. */
+  hora = '00';
+  minuto = '00';
+  segundo = '00';
   viewYear = this.currentDate.getFullYear();
   viewMonth = this.currentDate.getMonth();
 
@@ -289,6 +384,7 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
   readonly monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
   ngOnInit(): void {
+    this.leerRecientes();
     this.setSelectedDate(this.value || (this.defaultToToday ? this.todayValue : ''));
   }
 
@@ -307,7 +403,13 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
   }
 
   get floatingLabel(): boolean {
-    return this.pickerOpen || this.hasValue;
+    return this.pickerOpen || this.hasValue || this.enfocado || this.texto !== '';
+  }
+
+  /** Con la etiqueta flotando, el campo guía el formato; vacío y sin foco, la etiqueta hace de texto de ayuda. */
+  get placeholderCampo(): string {
+    if (this.floatingLabel) return this.variant === 'datetime' ? 'dd/mm/aaaa hh:mm:ss' : 'dd/mm/aaaa';
+    return `${this.labelText}${this.required ? ' *' : ''}`;
   }
 
   get displayValue(): string {
@@ -316,7 +418,7 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
     }
 
     const [year, month, day] = this.selectedDate.split('-');
-    return this.variant === 'datetime' ? `${day}/${month}/${year} 00:00:00` : `${day}/${month}/${year}`;
+    return this.variant === 'datetime' ? `${day}/${month}/${year} ${this.pad(Number(this.hora) || 0)}:${this.pad(Number(this.minuto) || 0)}:${this.pad(Number(this.segundo) || 0)}` : `${day}/${month}/${year}`;
   }
 
   get monthName(): string {
@@ -345,11 +447,11 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
 
     for (let day = 1; day <= daysInMonth; day += 1) {
       const dateValue = this.toDateValue(this.viewYear, this.viewMonth, day);
-      const isBeforeMin = this.minDate ? dateValue < this.minDate : false;
+      const fueraDeRango = (this.minDate && dateValue < this.minDate) || (this.maxDate && dateValue > this.maxDate);
       calendarDays.push({
         label: this.pad(day),
         value: dateValue,
-        ...(isBeforeMin ? { disabled: true } : {})
+        ...(fueraDeRango ? { disabled: true } : {})
       });
     }
 
@@ -365,8 +467,13 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
     return calendarDays;
   }
 
+  /** Error mostrado bajo el campo: el de `error` o, si se confirmó una fecha posterior a `maxDate`, `maxDateError`. */
+  get mensajeError(): string {
+    return this.error || this.errorRango;
+  }
+
   get effectiveState(): DatePickerState {
-    if (this.error) {
+    if (this.mensajeError) {
       return 'error';
     }
 
@@ -384,16 +491,16 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
 
     // Con error, el borde sigue rojo al enfocar y el foco se ve en un contorno azul por fuera (WCAG 2.4.7).
     if (this.effectiveState === 'error') {
-      return 'border-2 border-[var(--sys-color-border-feedback-danger)] hover:border-[var(--sys-color-border-feedback-danger)] focus:outline-solid focus:outline-2 focus:outline-offset-2 focus:outline-[var(--sys-color-border-states-focus)]';
+      return 'border-2 border-[var(--sys-color-border-feedback-danger)] hover:border-[var(--sys-color-border-feedback-danger)] focus-within:outline-solid focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--sys-color-border-states-focus)]';
     }
 
     if (this.effectiveState === 'success') {
-      return 'border-2 border-[var(--sys-color-border-feedback-success)] hover:border-[var(--sys-color-border-feedback-success)] focus:border-[var(--sys-color-border-states-focus)]';
+      return 'border-2 border-[var(--sys-color-border-feedback-success)] hover:border-[var(--sys-color-border-feedback-success)] focus-within:border-[var(--sys-color-border-states-focus)]';
     }
 
     return this.pickerOpen
-      ? 'border-2 border-[var(--sys-color-border-states-focus)]'
-      : 'border-[var(--sys-color-border-states-enabled)] hover:border-2 hover:border-[var(--sys-color-border-states-hover)] focus:border-2 focus:border-[var(--sys-color-border-states-focus)]';
+      ? 'border-[var(--sys-color-border-states-focus)] shadow-[inset_0_0_0_1px_var(--sys-color-border-states-focus)]'
+      : 'border-[var(--sys-color-border-states-enabled)] hover:border-[var(--sys-color-border-states-hover)] hover:shadow-[inset_0_0_0_1px_var(--sys-color-border-states-hover)] focus-within:border-[var(--sys-color-border-states-focus)] focus-within:shadow-[inset_0_0_0_1px_var(--sys-color-border-states-focus)]';
   }
 
   get labelClass(): string {
@@ -426,8 +533,29 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
 
   /** Doce años con el que se está viendo en la segunda fila: 2026 → 2022…2033. */
   get rangoAnios(): number[] {
-    const inicio = this.viewYear - 4;
-    return Array.from({ length: 12 }, (_, i) => inicio + i);
+    // Con `minDate` o `maxDate` la grilla no ofrece años fuera del rango (ni siquiera deshabilitados).
+    const minimo = this.minDate ? Number(this.minDate.slice(0, 4)) : -Infinity;
+    const maximo = this.maxDate ? Number(this.maxDate.slice(0, 4)) : Infinity;
+    const inicio = Math.max(this.viewYear - 4, minimo);
+    const fin = Math.min(inicio + 11, maximo);
+    return Array.from({ length: Math.max(fin - inicio + 1, 0) }, (_, i) => inicio + i);
+  }
+
+  /** Las flechas de la cabecera no llevan fuera del rango permitido por `minDate` y `maxDate`. */
+  irAnteriorDeshabilitado(que: 'anio' | 'mes'): boolean {
+    if (!this.minDate) return false;
+    const minAnio = Number(this.minDate.slice(0, 4));
+    if (this.vista === 'anios') return this.rangoAnios[0] <= minAnio;
+    if (que === 'anio') return this.viewYear - 1 < minAnio;
+    return this.toDateValue(this.viewYear, this.viewMonth, 0) < this.minDate;
+  }
+
+  irSiguienteDeshabilitado(que: 'anio' | 'mes'): boolean {
+    if (!this.maxDate) return false;
+    const maxAnio = Number(this.maxDate.slice(0, 4));
+    if (this.vista === 'anios') return this.rangoAnios[this.rangoAnios.length - 1] >= maxAnio;
+    if (que === 'anio') return this.viewYear + 1 > maxAnio;
+    return this.toDateValue(this.viewYear, this.viewMonth + 1, 1) > this.maxDate;
   }
 
   get anioActual(): number {
@@ -441,13 +569,13 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
 
   /** Un mes queda deshabilitado si termina antes de `minDate`. */
   mesDeshabilitado(mes: number): boolean {
-    if (!this.minDate) return false;
-    return this.toDateValue(this.viewYear, mes + 1, 0) < this.minDate;
+    if (this.minDate && this.toDateValue(this.viewYear, mes + 1, 0) < this.minDate) return true;
+    return Boolean(this.maxDate) && this.toDateValue(this.viewYear, mes, 1) > this.maxDate;
   }
 
   /** Un año queda deshabilitado si termina antes de `minDate`. */
   anioDeshabilitado(anio: number): boolean {
-    return this.minDate ? `${anio}-12-31` < this.minDate : false;
+    return Boolean(this.minDate && `${anio}-12-31` < this.minDate) || Boolean(this.maxDate && `${anio}-01-01` > this.maxDate);
   }
 
   /** El mes o el año de la cabecera abren su grilla; pulsarlos otra vez vuelve a los días. */
@@ -465,12 +593,299 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
   elegirAnio(anio: number, event?: Event): void {
     event?.stopPropagation();
     this.viewYear = anio;
+    this.ajustarVista();
     this.vista = 'dias';
   }
 
   /** Día que recibe el foco al abrir el calendario: el elegido o, si no hay, hoy. */
   get diaInicial(): string {
     return this.selectedDate || this.todayDate;
+  }
+
+  abrirCalendario(event?: Event): void {
+    event?.preventDefault();
+    if (!this.pickerOpen) this.togglePicker();
+  }
+
+  /** Plantilla del campo: sus letras (dd, mm, aaaa, hh, mm, ss) son las posiciones aún sin escribir. */
+  private get plantilla(): string {
+    return this.variant === 'datetime' ? 'dd/mm/aaaa hh:mm:ss' : 'dd/mm/aaaa';
+  }
+
+  /** Secciones del campo (día, mes, año y, con `datetime`, hora, minuto y segundo) con su posición en el texto. */
+  private get secciones(): { ini: number; fin: number; ph: string; tope: number }[] {
+    const fecha = [
+      { ini: 0, fin: 2, ph: 'dd', tope: 3 },
+      { ini: 3, fin: 5, ph: 'mm', tope: 1 },
+      { ini: 6, fin: 10, ph: 'aaaa', tope: 9 },
+    ];
+    return this.variant === 'datetime'
+      ? [...fecha, { ini: 11, fin: 13, ph: 'hh', tope: 2 }, { ini: 14, fin: 16, ph: 'mm', tope: 5 }, { ini: 17, fin: 19, ph: 'ss', tope: 5 }]
+      : fecha;
+  }
+
+  /** Sección en edición y si lo que se teclee reemplaza la sección entera (recién elegida) o continúa lo ya escrito. */
+  private seccionActiva = 0;
+  private reemplazaSeccion = true;
+
+  private get claveRecientes(): string {
+    return `taller-siaf-rp:fechas-recientes:${this.recentKey}`;
+  }
+
+  private leerRecientes(): void {
+    this.recientes = [];
+    if (!this.recentKey) return;
+    try {
+      const guardado = JSON.parse(localStorage.getItem(this.claveRecientes) ?? '[]') as unknown;
+      if (Array.isArray(guardado)) this.recientes = guardado.filter((f): f is string => typeof f === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f)).slice(0, 5);
+    } catch {
+      // Sin almacenamiento disponible: no hay recientes.
+    }
+  }
+
+  /** Recuerda una fecha elegida: la más nueva primero, sin repetirse y hasta 5. */
+  private registrarReciente(iso: string): void {
+    if (!this.recentKey || !iso) return;
+    this.recientes = [iso, ...this.recientes.filter((f) => f !== iso)].slice(0, 5);
+    try {
+      localStorage.setItem(this.claveRecientes, JSON.stringify(this.recientes));
+    } catch {
+      // Sin almacenamiento disponible: se recuerdan solo mientras dura la pantalla.
+    }
+  }
+
+  /** Recientes que respetan `minDate` y `maxDate`. */
+  get recientesVisibles(): string[] {
+    return this.recientes.filter((f) => (!this.minDate || f >= this.minDate) && (!this.maxDate || f <= this.maxDate));
+  }
+
+  formatearFecha(iso: string): string {
+    return iso.split('-').reverse().join('/');
+  }
+
+  /** Quita una fecha de los recientes (la X de la sugerencia). */
+  quitarReciente(iso: string): void {
+    this.recientes = this.recientes.filter((f) => f !== iso);
+    this.recienteActiva = -1;
+    try {
+      localStorage.setItem(this.claveRecientes, JSON.stringify(this.recientes));
+    } catch {
+      // Sin almacenamiento disponible: se quita solo mientras dura la pantalla.
+    }
+  }
+
+  /** Elige una fecha reciente de la lista: igual que escribirla completa. */
+  elegirReciente(iso: string): void {
+    this.mostrarRecientes = false;
+    this.recienteActiva = -1;
+    this.errorRango = '';
+    this.selectedDate = iso;
+    this.texto = this.displayValue;
+    this.syncViewToSelection();
+    this.registrarReciente(iso);
+    this.valueChange.emit(this.salida(iso));
+  }
+
+  /** Al enfocar, el campo muestra la plantilla dd/mm/aaaa y deja elegida una sección. */
+  alEnfocar(campo: HTMLInputElement): void {
+    this.enfocado = true;
+    const vacio = this.texto === '';
+    this.mostrarRecientes = !/\d/.test(this.texto);
+    this.recienteActiva = -1;
+    if (vacio) {
+      this.texto = this.plantilla;
+      campo.value = this.texto;
+    }
+    setTimeout(() => {
+      if (document.activeElement !== campo) return;
+      const todo = campo.selectionStart === 0 && campo.selectionEnd === campo.value.length;
+      this.elegirSeccion(campo, vacio || todo ? 0 : this.seccionEnPosicion(campo.selectionStart ?? 0));
+    });
+  }
+
+  /** Al hacer clic se elige la sección (día, mes o año…) bajo el cursor para corregirla sola. */
+  elegirSeccionBajoCursor(campo: HTMLInputElement): void {
+    if (this.texto === '') {
+      this.texto = this.plantilla;
+      campo.value = this.texto;
+    }
+    this.elegirSeccion(campo, this.seccionEnPosicion(campo.selectionStart ?? 0));
+  }
+
+  private seccionEnPosicion(posicion: number): number {
+    const indice = this.secciones.findIndex((sec) => posicion <= sec.fin);
+    return indice < 0 ? this.secciones.length - 1 : indice;
+  }
+
+  private elegirSeccion(campo: HTMLInputElement, indice: number): void {
+    const sec = this.secciones[indice];
+    this.seccionActiva = indice;
+    this.reemplazaSeccion = true;
+    campo.setSelectionRange(sec.ini, sec.fin);
+  }
+
+  private ponerSeccion(campo: HTMLInputElement, indice: number, valor: string): void {
+    const sec = this.secciones[indice];
+    this.texto = this.texto.slice(0, sec.ini) + valor + this.texto.slice(sec.fin);
+    campo.value = this.texto;
+    this.errorRango = '';
+  }
+
+  /** Teclado del campo: dígitos por sección, flechas y Tab entre secciones, Retroceso/Supr para corregir, «/» para pasar a la siguiente. */
+  teclear(event: KeyboardEvent): void {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const campo = event.target as HTMLInputElement;
+    const ultima = this.secciones.length - 1;
+    const lista = this.mostrarRecientes ? this.recientesVisibles : [];
+    if (lista.length && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      event.preventDefault();
+      this.recienteActiva = Math.max(-1, Math.min(lista.length - 1, this.recienteActiva + (event.key === 'ArrowDown' ? 1 : -1)));
+    } else if (lista.length && event.key === 'Enter' && this.recienteActiva >= 0) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.elegirReciente(lista[this.recienteActiva]);
+    } else if (this.mostrarRecientes && event.key === 'Escape') {
+      this.mostrarRecientes = false;
+    } else if (/^\d$/.test(event.key)) {
+      this.mostrarRecientes = false;
+      event.preventDefault();
+      this.escribirDigito(event.key, campo);
+    } else if (event.key === 'Backspace' || event.key === 'Delete') {
+      event.preventDefault();
+      this.borrar(campo);
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      const destino = this.seccionActiva + (event.key === 'ArrowLeft' ? -1 : 1);
+      if (destino >= 0 && destino <= ultima) this.elegirSeccion(campo, destino);
+    } else if (event.key === 'Tab') {
+      const destino = this.seccionActiva + (event.shiftKey ? -1 : 1);
+      if (this.texto !== '' && destino >= 0 && destino <= ultima) {
+        event.preventDefault();
+        this.elegirSeccion(campo, destino);
+      }
+    } else if (['/', '-', '.', ':'].includes(event.key)) {
+      event.preventDefault();
+      this.completarSeccionYAvanzar(campo);
+    } else if (event.key.length === 1) {
+      event.preventDefault();
+    }
+  }
+
+  /** Escribe un dígito en la sección activa: la completa y salta a la siguiente; un primer dígito que no cabe (p. ej. 5 en el mes) antepone 0. */
+  private escribirDigito(digito: string, campo: HTMLInputElement): void {
+    if (this.texto === '') this.texto = this.plantilla;
+    const indice = this.seccionActiva;
+    const sec = this.secciones[indice];
+    let actual = this.texto.slice(sec.ini, sec.fin);
+    if (this.reemplazaSeccion || !/\D/.test(actual)) actual = sec.ph;
+    const pos = actual.search(/\D/);
+    let nuevo = actual.slice(0, pos) + digito + actual.slice(pos + 1);
+    if (pos === 0 && sec.ph.length === 2 && Number(digito) > sec.tope) nuevo = `0${digito}`;
+    this.reemplazaSeccion = false;
+    this.ponerSeccion(campo, indice, nuevo);
+    if (/\D/.test(nuevo)) {
+      const cursor = sec.ini + nuevo.search(/\D/);
+      campo.setSelectionRange(cursor, cursor);
+      return;
+    }
+    if (indice < this.secciones.length - 1) this.elegirSeccion(campo, indice + 1);
+    else campo.setSelectionRange(sec.ini, sec.fin);
+    if (!/[a-z]/.test(this.texto)) this.aplicarTexto();
+  }
+
+  /** «/» (o «-», «.», «:») cierra la sección activa —anteponiendo 0 a un solo dígito— y pasa a la siguiente. */
+  private completarSeccionYAvanzar(campo: HTMLInputElement): void {
+    const indice = this.seccionActiva;
+    const sec = this.secciones[indice];
+    const actual = this.texto.slice(sec.ini, sec.fin);
+    const digitos = actual.replace(/\D/g, '');
+    if (digitos === '' || this.reemplazaSeccion) return;
+    if (sec.ph.length === 2 && digitos.length === 1) this.ponerSeccion(campo, indice, `0${digitos}`);
+    if (indice < this.secciones.length - 1) this.elegirSeccion(campo, indice + 1);
+  }
+
+  /**
+   * Retroceso/Supr: con la sección elegida entera la vacía; si no, quita su último dígito (y, sin dígitos, pasa a la sección
+   * anterior). Al mantener la tecla pulsada sigue de sección en sección hasta vaciar toda la fecha.
+   */
+  private borrar(campo: HTMLInputElement): void {
+    if (this.texto === '') return;
+    const indice = this.seccionActiva;
+    const sec = this.secciones[indice];
+    const actual = this.texto.slice(sec.ini, sec.fin);
+    if (this.reemplazaSeccion) {
+      this.ponerSeccion(campo, indice, sec.ph);
+      campo.setSelectionRange(sec.ini, sec.fin);
+      // Ya vacía: la siguiente pulsación (también la repetida al mantener la tecla) sigue con la sección anterior.
+      this.reemplazaSeccion = false;
+      return;
+    }
+    const ultimo = [...actual].map((c) => /\d/.test(c)).lastIndexOf(true);
+    if (ultimo < 0) {
+      if (indice > 0) this.elegirSeccion(campo, indice - 1);
+      return;
+    }
+    this.ponerSeccion(campo, indice, actual.slice(0, ultimo) + sec.ph[ultimo] + actual.slice(ultimo + 1));
+    campo.setSelectionRange(sec.ini + ultimo, sec.ini + ultimo);
+  }
+
+  /** Pega o escribe sin teclado (móvil, autocompletar): los dígitos llenan las secciones en orden; al completarse una fecha válida se elige y se emite. */
+  escribir(campo: HTMLInputElement): void {
+    const total = this.variant === 'datetime' ? 14 : 8;
+    const digitos = campo.value.replace(/\D/g, '').slice(0, total);
+    let restantes = digitos;
+    this.texto = digitos === '' && !this.enfocado ? '' : this.secciones.reduce((texto, sec) => {
+      const tomados = restantes.slice(0, sec.ph.length);
+      restantes = restantes.slice(tomados.length);
+      return texto.slice(0, sec.ini) + tomados + sec.ph.slice(tomados.length) + texto.slice(sec.fin);
+    }, this.plantilla);
+    campo.value = this.texto;
+    this.errorRango = '';
+    this.mostrarRecientes = false;
+    const faltante = this.texto.search(/[a-z]/);
+    if (faltante >= 0) campo.setSelectionRange(faltante, faltante);
+    else this.aplicarTexto();
+  }
+
+  /** Al salir del campo o con Enter: aplica lo escrito si es una fecha válida; si está incompleta o no existe, queda en rojo con «Fecha no válida». */
+  confirmarTexto(event?: Event): void {
+    event?.preventDefault();
+    if (!/\d/.test(this.texto)) this.texto = '';
+    if (this.texto === '' && this.selectedDate && !this.defaultToToday) {
+      this.selectedDate = '';
+      this.valueChange.emit('');
+      return;
+    }
+    // Fechas a medio escribir que no se aplicaron: se queda lo escrito y se avisa, en vez de volver en silencio a la anterior.
+    if (/[a-z]/.test(this.texto)) {
+      this.errorRango = MENSAJE_FECHA_NO_VALIDA;
+      return;
+    }
+    if (!this.aplicarTexto() && !this.errorRango) this.texto = this.displayValue;
+  }
+
+  /** Aplica el texto del campo; devuelve si era una fecha (y hora) válida y permitida por `minDate`. */
+  private aplicarTexto(): boolean {
+    const coincidencia = this.texto.match(/^(\d{2})\/(\d{2})\/(\d{4})(?: (\d{2}):(\d{2}):(\d{2}))?$/);
+    if (!coincidencia) return false;
+    const [, dia, mes, anio, hora, minuto, segundo] = coincidencia;
+    const fecha = new Date(Number(anio), Number(mes) - 1, Number(dia));
+    const existe = fecha.getFullYear() === Number(anio) && fecha.getMonth() === Number(mes) - 1 && fecha.getDate() === Number(dia);
+    const iso = `${anio}-${mes}-${dia}`;
+    const horaValida = this.variant !== 'datetime' || (Number(hora) <= 23 && Number(minuto) <= 59 && Number(segundo) <= 59);
+    const antes = Boolean(this.minDate && iso < this.minDate);
+    const despues = Boolean(this.maxDate && iso > this.maxDate);
+    if (!existe || !horaValida || (Number(anio) < 1900 && !(antes && this.minDateError))) this.errorRango = MENSAJE_FECHA_NO_VALIDA;
+    else if (despues && this.maxDateError) this.errorRango = this.maxDateError;
+    else if (antes && this.minDateError) this.errorRango = this.minDateError;
+    else this.errorRango = '';
+    if (this.errorRango || antes || despues) return false;
+    if (this.variant === 'datetime') [this.hora, this.minuto, this.segundo] = [hora, minuto, segundo];
+    this.selectedDate = iso;
+    this.syncViewToSelection();
+    this.registrarReciente(iso);
+    this.valueChange.emit(this.salida(iso));
+    return true;
   }
 
   closePicker(event?: Event): void {
@@ -481,7 +896,10 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
   selectDate(value: string, event?: Event): void {
     event?.stopPropagation();
     this.selectedDate = value;
-    this.valueChange.emit(value);
+    this.errorRango = '';
+    this.texto = this.displayValue;
+    this.registrarReciente(value);
+    this.valueChange.emit(this.salida(value));
 
     if (this.variant === 'date') {
       this.closePicker();
@@ -492,7 +910,11 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
     event?.stopPropagation();
     if (!this.selectedDate) {
       this.selectedDate = this.toDateValue(this.viewYear, this.viewMonth, 1);
-      this.valueChange.emit(this.selectedDate);
+      this.texto = this.displayValue;
+      this.valueChange.emit(this.salida(this.selectedDate));
+    } else if (this.variant === 'datetime') {
+      this.registrarReciente(this.selectedDate);
+      this.valueChange.emit(this.salida(this.selectedDate));
     }
 
     this.closePicker();
@@ -508,10 +930,54 @@ export class DateTimePickerComponent implements OnChanges, OnInit {
   moveYear(offset: number, event?: Event): void {
     event?.stopPropagation();
     this.viewYear += offset;
+    this.ajustarVista();
+  }
+
+  /** Lleva el mes y el año a la vista al rango permitido por `minDate` y `maxDate` (p. ej. al saltar de año). */
+  private ajustarVista(): void {
+    const actual = this.viewYear * 12 + this.viewMonth;
+    const minimo = this.minDate ? Number(this.minDate.slice(0, 4)) * 12 + Number(this.minDate.slice(5, 7)) - 1 : -Infinity;
+    const maximo = this.maxDate ? Number(this.maxDate.slice(0, 4)) * 12 + Number(this.maxDate.slice(5, 7)) - 1 : Infinity;
+    const ajustado = Math.min(Math.max(actual, minimo), maximo);
+    if (ajustado !== actual) {
+      this.viewYear = Math.floor(ajustado / 12);
+      this.viewMonth = ajustado % 12;
+    }
+  }
+
+  /** Una hora, minuto o segundo: solo dígitos y dentro de su rango; mientras se escribe se respeta el texto y, si ya hay fecha, se vuelve a emitir. */
+  cambiarHora(campo: 'hora' | 'minuto' | 'segundo', texto: string, event?: Event): void {
+    event?.stopPropagation();
+    const digitos = texto.replace(/\D/g, '').slice(0, 2);
+    const maximo = campo === 'hora' ? 23 : 59;
+    this[campo] = digitos === '' ? '' : String(Math.min(maximo, Number(digitos)));
+    this.texto = this.displayValue;
+    if (this.selectedDate) {
+      this.valueChange.emit(this.salida(this.selectedDate));
+    }
+  }
+
+  /** Al salir del campo, la hora vuelve a dos dígitos (vacío es 00). */
+  normalizarHora(): void {
+    this.hora = this.pad(Number(this.hora) || 0);
+    this.minuto = this.pad(Number(this.minuto) || 0);
+    this.segundo = this.pad(Number(this.segundo) || 0);
+    this.texto = this.displayValue;
+  }
+
+  /** Lo que se emite: la fecha (aaaa-mm-dd) o, en `datetime`, fecha y hora (aaaa-mm-ddThh:mm:ss). */
+  private salida(fecha: string): string {
+    const dos = (v: string): string => this.pad(Number(v) || 0);
+    return this.variant === 'datetime' ? `${fecha}T${dos(this.hora)}:${dos(this.minuto)}:${dos(this.segundo)}` : fecha;
   }
 
   private setSelectedDate(value: string): void {
-    this.selectedDate = value;
+    const hora = value.match(/T(\d{2}):(\d{2}):(\d{2})/);
+    if (hora) {
+      [, this.hora, this.minuto, this.segundo] = hora;
+    }
+    this.selectedDate = value.slice(0, 10);
+    this.texto = this.displayValue;
     this.syncViewToSelection();
   }
 

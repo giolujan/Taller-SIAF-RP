@@ -54,15 +54,21 @@ const cumple = (fila: QueryReportRow, filtro?: QueryReportRowFilter): boolean =>
 
 function agregar(filas: readonly QueryReportRow[], columna: string | undefined, agregado: QueryReportAggregate): number {
   if (agregado === 'count' || !columna) return filas.length;
+  if (agregado === 'first') return numeroDe(filas[0]?.[columna]);
+  if (agregado === 'last') return numeroDe(filas[filas.length - 1]?.[columna]);
   return filas.reduce((suma, fila) => suma + numeroDe(fila[columna]), 0);
 }
 
-export function calcularKpis(filas: readonly QueryReportRow[], kpis: readonly QueryReportKpi[]): KpiCalculado[] {
+export function calcularKpis(filas: readonly QueryReportRow[], kpis: readonly QueryReportKpi[], valoresFijos?: Record<string, number>): KpiCalculado[] {
   return kpis.map((kpi) => {
     const agregado = kpi.aggregate ?? 'sum';
-    const valor = agregar(filas.filter((f) => cumple(f, kpi.where)), kpi.column, agregado);
-    const total = agregar(filas, kpi.column, agregado);
-    const progreso = total > 0 ? Math.round((valor / total) * 100) : 0;
+    const fijo = kpi.column ? valoresFijos?.[kpi.column] : undefined;
+    const valor = fijo ?? agregar(filas.filter((f) => cumple(f, kpi.where)), kpi.column, agregado);
+    // «first»/«last» son un saldo puntual, no una parte de un total: la barra queda llena.
+    const progreso = fijo !== undefined || agregado === 'first' || agregado === 'last' ? 100 : (() => {
+      const total = agregar(filas, kpi.column, agregado);
+      return total > 0 ? Math.round((valor / total) * 100) : 0;
+    })();
     const monto = agregado === 'count' ? String(valor) : formatearMonto(valor);
     return {
       title: kpi.title,
@@ -74,9 +80,15 @@ export function calcularKpis(filas: readonly QueryReportRow[], kpis: readonly Qu
   });
 }
 
-/** Clave y etiqueta de la categoría de una fila; por mes, con la fecha dd/mm/aaaa. */
+/** Clave y etiqueta de la categoría de una fila; por mes o por hora, con la fecha dd/mm/aaaa (hh:mm:ss). */
 function categoriaDe(fila: QueryReportRow, grafico: QueryReportChart): { clave: string; etiqueta: string; anio: string } | null {
   const valor = fila[grafico.groupBy] ?? '';
+  if (grafico.byHour) {
+    const fechaHora = /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):/.exec(valor);
+    if (!fechaHora) return null;
+    const [, dia, mes, anio, hora] = fechaHora;
+    return { clave: `${anio}-${mes}-${dia}-${hora}`, etiqueta: `${hora}:00`, anio: `${dia}/${mes}/${anio}` };
+  }
   if (!grafico.byMonth) return { clave: valor, etiqueta: valor, anio: '' };
   const fecha = /(\d{2})\/(\d{2})\/(\d{4})/.exec(valor);
   if (!fecha) return null;
@@ -85,6 +97,26 @@ function categoriaDe(fila: QueryReportRow, grafico: QueryReportChart): { clave: 
 }
 
 const redondear = (valor: number): number => Math.round(valor * 10) / 10;
+
+/**
+ * Valor combinado de los grupos (p. ej. el saldo de la cuenta bancaria sumando sus cuentas de registro) en cada categoría:
+ * suma, de cada grupo, el último valor que tuvo hasta esa categoría; mientras un grupo no tiene filas aporta su valor inicial.
+ */
+function combinarGrupos(filasPorCategoria: readonly (readonly QueryReportRow[])[], grupoDe: string, columna: string, inicial?: string): number[] {
+  const ultimo = new Map<string, number>();
+  if (inicial) {
+    for (const filas of filasPorCategoria) {
+      for (const fila of filas) {
+        const grupo = fila[grupoDe] ?? '';
+        if (!ultimo.has(grupo)) ultimo.set(grupo, numeroDe(fila[inicial]));
+      }
+    }
+  }
+  return filasPorCategoria.map((filas) => {
+    for (const fila of filas) ultimo.set(fila[grupoDe] ?? '', numeroDe(fila[columna]));
+    return [...ultimo.values()].reduce((suma, v) => suma + v, 0);
+  });
+}
 
 export function calcularGrafico(filas: readonly QueryReportRow[], grafico: QueryReportChart): GraficoCalculado {
   const grupos = new Map<string, { etiqueta: string; anio: string; filas: QueryReportRow[] }>();
@@ -98,10 +130,19 @@ export function calcularGrafico(filas: readonly QueryReportRow[], grafico: Query
   }
 
   let claves = [...grupos.keys()];
-  if (grafico.byMonth) claves = claves.sort();
+  if (grafico.byMonth || grafico.byHour) claves = claves.sort();
+  // Por hora, el año no distingue nada (siempre es el mismo día en el ejemplo); el día sí, si el período cruza más de uno.
   const variosAnios = grafico.byMonth && new Set(claves.map((c) => grupos.get(c)!.anio)).size > 1;
-  let categorias = claves.map((c) => (variosAnios ? `${grupos.get(c)!.etiqueta} ${grupos.get(c)!.anio}` : grupos.get(c)!.etiqueta));
+  const variosDias = grafico.byHour && new Set(claves.map((c) => grupos.get(c)!.anio)).size > 1;
+  // Por mes, la etiqueta ya lleva el año detrás («ENE 2026»); por hora, respeta el orden fecha-hora de la data («28/06/2026 18:02:00»).
+  let categorias = claves.map((c) => {
+    const grupo = grupos.get(c)!;
+    if (variosAnios) return `${grupo.etiqueta} ${grupo.anio}`;
+    if (variosDias) return `${grupo.anio} ${grupo.etiqueta}`;
+    return grupo.etiqueta;
+  });
   let valores = claves.map((c) => agregar(grupos.get(c)!.filas, grafico.column, grafico.aggregate ?? 'sum'));
+  if (grafico.combineBy && grafico.column) valores = combinarGrupos(claves.map((c) => grupos.get(c)!.filas), grafico.combineBy, grafico.column, grafico.combineFrom);
 
   const base = valores[0] ?? 0;
   if (grafico.transform === 'index') {
@@ -118,7 +159,7 @@ export function calcularGrafico(filas: readonly QueryReportRow[], grafico: Query
     categories: categorias,
     values: valores,
     seriesName: grafico.seriesName ?? grafico.title,
-    categoryLabel: grafico.categoryLabel ?? (grafico.byMonth ? 'Mes' : 'Categoría'),
+    categoryLabel: grafico.categoryLabel ?? (grafico.byHour ? 'Hora' : grafico.byMonth ? 'Mes' : 'Categoría'),
     valueSuffix: grafico.transform ? '%' : '',
     negativeLabel: grafico.negativeLabel ?? 'Disminución',
     positiveLabel: grafico.positiveLabel ?? 'Aumento',

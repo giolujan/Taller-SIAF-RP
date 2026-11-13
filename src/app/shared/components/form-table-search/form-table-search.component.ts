@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
 
 import { IconComponent } from '../../ui/icon/icon.component';
 import { TextFieldComponent } from '../../ui/text-field/text-field.component';
@@ -91,13 +91,16 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
         }
         @if (showFilter) {
           <button
-            class="inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+            class="relative inline-flex size-10 items-center justify-center rounded-siaf-md text-text transition hover:bg-surface-muted active:bg-[var(--sys-color-bg-states-dark-pressed)] disabled:cursor-not-allowed disabled:text-[var(--sys-color-text-neutral-disabled)] disabled:hover:bg-transparent focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
             type="button"
-            [attr.aria-label]="filterLabel"
+            [attr.aria-label]="filterCount ? filterLabel + ' (' + filterCount + ' aplicados)' : filterLabel"
             [disabled]="disabled"
             (click)="filter.emit()"
           >
             <siaf-icon name="filter_list" [size]="24" />
+            @if (filterCount > 0) {
+              <span class="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--sys-color-bg-feedback-dark-info)] px-1 text-[10px] font-bold leading-none text-white">{{ filterCount }}</span>
+            }
           </button>
         }
         <!-- Segundo botón según la variante: Más opciones o, en Consultas y reportes, Columnas. -->
@@ -116,7 +119,7 @@ import { TextFieldComponent } from '../../ui/text-field/text-field.component';
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class FormTableSearchComponent implements OnChanges {
+export class FormTableSearchComponent implements OnChanges, OnDestroy {
   ngOnChanges(changes: SimpleChanges): void {
     // Si el padre reescribe `value` (p. ej. quitar la búsqueda desde el chip),
     // lo tecleado pendiente deja de valer: un Enter posterior no debe
@@ -142,6 +145,11 @@ export class FormTableSearchComponent implements OnChanges {
   /** En false quita el botón Filtrar y deja solo Más opciones (o Columnas): la tabla de genéricas de gasto de
    *  «Agregar genérica de gasto» (Figma CEL-005, nodo 7202:123276). */
   @Input() showFilter = true;
+  /** Búsqueda en vivo desde N caracteres: sale sola tras una pausa breve al teclear y con menos de N se quita. Con 0,
+   *  solo Enter o la lupa (Consultas y reportes, traído de Taller-libretas). */
+  @Input() minChars = 0;
+  /** Insignia en Filtrar: cuántas condiciones de «Filtros avanzados» están aplicadas (0 no la muestra). */
+  @Input() filterCount = 0;
 
   @Output() valueChange = new EventEmitter<string>();
   @Output() filter = new EventEmitter<void>();
@@ -154,9 +162,29 @@ export class FormTableSearchComponent implements OnChanges {
   /** Último texto tecleado; se emite recién al confirmar (Enter o lupa). */
   private lastTyped: string | null = null;
 
-  /** El siaf-input interno emite al tipear; aquí solo se registra el texto. */
+  /** El siaf-input interno emite al tipear; aquí solo se registra el texto (con `minChars`, además busca en vivo). */
   onTyped(value: string | number | string[]): void {
     this.lastTyped = String(value ?? '');
+    if (this.minChars <= 0) return;
+    clearTimeout(this.temporizador);
+    this.temporizador = setTimeout(() => {
+      const texto = this.efectivo(this.lastTyped ?? '');
+      if (texto === (this.ultimoEmitido ?? this.value)) return;
+      this.ultimoEmitido = texto;
+      this.valueChange.emit(texto);
+    }, 250);
+  }
+
+  private temporizador?: ReturnType<typeof setTimeout>;
+  private ultimoEmitido: string | null = null;
+
+  /** Con búsqueda en vivo, el texto de menos de `minChars` caracteres no busca nada. */
+  private efectivo(texto: string): string {
+    return this.minChars > 0 && texto.trim().length < this.minChars ? '' : texto;
+  }
+
+  ngOnDestroy(): void {
+    clearTimeout(this.temporizador);
   }
 
   onSubmit(event: Event): void {

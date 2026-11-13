@@ -129,6 +129,12 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
           },
         ],
       },
+      {
+        // Hoja sin desglose: al hacer clic abre directo la consulta (no tiene «Documentos y registros»).
+        id: 'consultas-reportes-planeacion-financiera',
+        label: 'Consultas y reportes de la planeación financiera',
+        moduleRoute: '/procesos/consultas-reportes-planeacion-financiera',
+      },
     ],
   },
   {
