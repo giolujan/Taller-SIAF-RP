@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 
 import { PermissionService } from '../../../../../core/auth/permission.service';
 
@@ -7,8 +8,9 @@ import type { DocumentHistoryRow } from '../../../../../shared/components/docume
 import type { DocumentsRecordsConfig, DocumentsRecordsRow } from '../../../../../shared/types/documents-records.types';
 import { AlertComponent } from '../../../../../shared/ui/alert/alert.component';
 import { EstimacionIngresosApiService } from '../../api/estimacion-ingresos-api.service';
-import { CONSOLIDADO_PLIEGO_DOCUMENTS_CONFIG } from '../../config/consolidado-pliego-documents.config';
-import { consolidadoPliegoRoute } from '../../config/estimacion-ingresos.rutas';
+import { bandejaRevisor } from '../../config/bandeja-revisor.config';
+import { consolidadoDocumentsConfig } from '../../config/consolidado-pliego-documents.config';
+import { AMBITOS_CONSOLIDADO, AmbitoConsolidado } from '../../config/estimacion-ingresos.rutas';
 import { ConsolidadoPliegoRegistro } from '../../models/consolidado-pliego.model';
 
 /** ISO → "dd/mm/aaaa", como lo muestra el Figma. */
@@ -44,6 +46,9 @@ function historialDe(d: ConsolidadoPliegoRegistro): DocumentHistoryRow[] {
  * «Documentos de consolidado pliego de estimación de ingresos» (Figma CEL-005.01.01.01.01, node 4938:92579), vista
  * del creador del pliego: la bandeja estándar con el aviso «Consolidado disponible» encima de la tarjeta cuando todas
  * las unidades ejecutoras del pliego validaron su solicitud de estimación de ingresos.
+ *
+ * Con `data: { ambito: 'dgtp' }` es la bandeja «Documentos de consolidado DGTP de estimación de ingresos» (Figma
+ * node 4938:253880): la misma, sin el aviso.
  */
 @Component({
   selector: 'siaf-consolidado-pliego-documents',
@@ -51,7 +56,7 @@ function historialDe(d: ConsolidadoPliegoRegistro): DocumentHistoryRow[] {
   imports: [AlertComponent, DocumentsRecordsPageComponent],
   template: `
     <siaf-documents-records-page [config]="pageConfig()" [loading]="cargando()">
-      @if (esCreador() && consolidadoDisponible() && !avisoCerrado()) {
+      @if (ambito === 'pliego' && esCreador() && consolidadoDisponible() && !avisoCerrado()) {
         <siaf-alert
           page-alert
           tone="info"
@@ -68,6 +73,8 @@ function historialDe(d: ConsolidadoPliegoRegistro): DocumentHistoryRow[] {
 export class ConsolidadoPliegoDocumentsComponent implements OnInit {
   private readonly api = inject(EstimacionIngresosApiService);
   private readonly permissions = inject(PermissionService);
+  readonly ambito: AmbitoConsolidado = inject(ActivatedRoute).snapshot.data['ambito'] ?? 'pliego';
+  private readonly config = consolidadoDocumentsConfig(this.ambito);
 
   private readonly documentos = signal<ConsolidadoPliegoRegistro[]>([]);
   private readonly unidadesValidadas = signal(0);
@@ -84,7 +91,7 @@ export class ConsolidadoPliegoDocumentsComponent implements OnInit {
   );
 
   ngOnInit(): void {
-    this.api.listarConsolidadosPliego().subscribe({
+    this.api.listarConsolidadosPliego(this.ambito).subscribe({
       next: (bandeja) => {
         this.documentos.set(bandeja.documentos);
         this.unidadesValidadas.set(bandeja.unidadesValidadas);
@@ -99,7 +106,7 @@ export class ConsolidadoPliegoDocumentsComponent implements OnInit {
     const documentRows: DocumentsRecordsRow[] = this.documentos().map((d) => ({
       documentId: d.id,
       document: d.documento,
-      linkRoute: consolidadoPliegoRoute(d.id),
+      linkRoute: AMBITOS_CONSOLIDADO[this.ambito].detalle(d.id),
       number: d.numero,
       actionType: d.tipoAccion,
       status: d.estado,
@@ -113,13 +120,22 @@ export class ConsolidadoPliegoDocumentsComponent implements OnInit {
     };
     // Aprobador: modo aprobador de la bandeja (sin «Crear documento», solo Verificado, Aprobado, Observado y
     // Rechazado) con «Aprobar» deshabilitado: se aprueba desde el consolidado, como la solicitud.
-    // Revisor / Evaluador: modo solo lectura de la bandeja (sin «Crear documento» ni acción principal, todos los estados).
+    // Revisor / Evaluador, consolidado pliego: la misma bandeja que en las solicitudes de estimación de ingresos
+    // (Figma node 14751:191854): solo los Aprobados, con expediente, estado del expediente y evaluador.
+    if (this.permissions.currentRole() === 'reviewer' && this.ambito === 'pliego') {
+      const documentoDe = (r: DocumentsRecordsRow) => {
+        const d = this.documentos().find((x) => x.id === r['documentId']);
+        return d && { ...d, registros: d.registrosPersonalizados };
+      };
+      return { ...bandejaRevisor(this.config, documentRows, documentoDe), buildDocumentHistory };
+    }
+    // Revisor / Evaluador, consolidado DGTP: modo solo lectura de la bandeja (sin «Crear documento» ni acción principal).
     if (this.permissions.currentRole() === 'reviewer') {
-      return { ...CONSOLIDADO_PLIEGO_DOCUMENTS_CONFIG, documentRows, buildDocumentHistory, modoConsulta: false };
+      return { ...this.config, documentRows, buildDocumentHistory, modoConsulta: false };
     }
     if (this.permissions.currentRole() === 'approver') {
-      return { ...CONSOLIDADO_PLIEGO_DOCUMENTS_CONFIG, documentRows, buildDocumentHistory, modoConsulta: false, accionPrincipalDeshabilitada: true };
+      return { ...this.config, documentRows, buildDocumentHistory, modoConsulta: false, accionPrincipalDeshabilitada: true };
     }
-    return { ...CONSOLIDADO_PLIEGO_DOCUMENTS_CONFIG, documentRows, buildDocumentHistory };
+    return { ...this.config, documentRows, buildDocumentHistory };
   });
 }

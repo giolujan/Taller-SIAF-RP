@@ -32,6 +32,15 @@ import { EstimacionIngresosApiService } from '../../api/estimacion-ingresos-api.
 import { PROCESS_ID, PROCESS_ROUTE, registroRoute, solicitudRoute } from '../../config/estimacion-ingresos.rutas';
 import { EstimacionIngresosEditarClasificadorComponent } from './editar-clasificador/estimacion-ingresos-editar-clasificador.component';
 import { EstimacionIngresosDetalleBaseLegalComponent } from './detalles/estimacion-ingresos-detalle-base-legal.component';
+import {
+  accionesRegistroEstimacion,
+  accionesRevisorRegistro,
+  descargarSustentoRegistro,
+  historialRegistro,
+  textoEstadoEvaluacion,
+} from './detalles/acciones-registro';
+import { AccionEvaluarRegistro, EstimacionIngresosEvaluarRegistroComponent } from './detalles/estimacion-ingresos-evaluar-registro.component';
+import { DocumentHistoryPanelComponent, DocumentHistorySummary } from '../../../../../shared/components/document-history-panel/document-history-panel.component';
 import { EstimacionIngresosDetalleRecaudacionComponent } from './detalles/estimacion-ingresos-detalle-recaudacion.component';
 import {
   ClasificadorEstimacionIngresos,
@@ -92,6 +101,8 @@ function aFechaHoraPe(iso: string): string {
     RouterLink,
     DocumentSummaryCardComponent,
     EstimacionIngresosDetalleBaseLegalComponent,
+    EstimacionIngresosEvaluarRegistroComponent,
+    DocumentHistoryPanelComponent,
     EstimacionIngresosDetalleRecaudacionComponent,
     EstimacionIngresosEditarClasificadorComponent,
     FormTableSearchComponent,
@@ -202,13 +213,9 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
    * registros faltan evaluar, cuántos validó y cuántos observó, y cuántos pasan el umbral.
    */
   readonly mostrarAvisoEvaluacion = computed(() => this.esEvaluador() && !!this.detalle() && !this.avisoUmbralCerrado());
-  readonly textoAvisoEvaluacion = computed(() => {
-    const registros = this.detalle()?.clasificadores ?? [];
-    const contar = (estado: string) => registros.filter((r) => (r.estadoEvaluacion ?? 'Pendiente') === estado).length;
-    const n = this.registrosFueraDelUmbral();
-    const umbral = n === 1 ? '1 registro supera' : `${n} registros superan`;
-    return `Tiene ${contar('Pendiente')} registros pendientes de evaluación, ${contar('Validado')} validados y ${contar('Observado')} observados. Además, ${umbral} el umbral de variación (±${this.umbralVariacion} %). Revise cada registro desde su detalle o desde Más acciones (⋮).`;
-  });
+  readonly textoAvisoEvaluacion = computed(() =>
+    textoEstadoEvaluacion(this.detalle()?.clasificadores ?? [], this.registrosFueraDelUmbral(), this.umbralVariacion),
+  );
 
   /** Estado del expediente: «Creado» hasta que se evalúa un registro; luego «En trámite». */
   readonly estadoExpediente = computed(() => estadoExpedienteEstimacion(this.detalle()?.clasificadores));
@@ -505,17 +512,32 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
     ];
   }
 
-  /** Menú «Más acciones» (⋮) de cada registro en solo lectura; sin base legal, su detalle queda deshabilitado. */
-  private readonly accionesConBaseLegal: IconDropdownMenuItem[] = [
-    { label: 'Ver detalle recaudación histórica', value: 'recaudacion-historica', icon: 'calculate' },
-    { label: 'Ver detalle base legal de uso específico', value: 'base-legal', icon: 'balance' },
-  ];
-  private readonly accionesSinBaseLegal: IconDropdownMenuItem[] = this.accionesConBaseLegal.map((a) =>
-    a.value === 'base-legal' ? { ...a, disabled: true } : a,
-  );
-
+  /** Menú «Más acciones» (⋮) de cada registro en solo lectura: el mismo que en el consolidado (`acciones-registro.ts`). */
   accionesDe(fila: ClasificadorEstimacionIngresos): IconDropdownMenuItem[] {
-    return fila.baseLegal === 'SI' ? this.accionesConBaseLegal : this.accionesSinBaseLegal;
+    if (this.esEvaluador()) return accionesRevisorRegistro(fila);
+    return accionesRegistroEstimacion(fila);
+  }
+
+  /** Validar (modal) u Observar (panel) del menú ⋮, en `siaf-estimacion-ingresos-evaluar-registro`. */
+  readonly filaEvaluar = signal<ClasificadorEstimacionIngresos | null>(null);
+  readonly accionEvaluar = signal<AccionEvaluarRegistro | null>(null);
+
+  /** Tras evaluar: el registro cambia en el detalle (columna Estado, aviso y estado del expediente). */
+  onRegistroEvaluado(fila: ClasificadorEstimacionIngresos): void {
+    this.detalle.update((d) =>
+      d ? { ...d, clasificadores: d.clasificadores.map((c) => (c.clasificador === fila.clasificador ? fila : c)) } : d,
+    );
+  }
+
+  /** Historial del registro: los pasos de la solicitud y la evaluación del registro, en el panel estándar. */
+  readonly historialRegistroAbierto = signal(false);
+  readonly resumenHistorialRegistro = signal<DocumentHistorySummary>({ solicitudId: '', document: '', number: '', actionType: '' });
+
+  private abrirHistorialRegistro(fila: ClasificadorEstimacionIngresos): void {
+    const d = this.detalle();
+    if (!d) return;
+    this.resumenHistorialRegistro.set(historialRegistro(d, fila));
+    this.historialRegistroAbierto.set(true);
   }
 
   /** Registro cuyo detalle está abierto en su panel lateral (Figma nodes 4674:99530 y 4107:282169). */
@@ -538,6 +560,12 @@ export class EstimacionIngresosSolicitudComponent implements OnInit {
   onAccionRegistro(fila: ClasificadorEstimacionIngresos, accion: string): void {
     if (accion === 'recaudacion-historica') this.filaRecaudacion.set(fila);
     if (accion === 'base-legal') this.filaBaseLegal.set(fila);
+    if (accion === 'validar' || accion === 'observar') {
+      this.filaEvaluar.set(fila);
+      this.accionEvaluar.set(accion);
+    }
+    if (accion === 'descargar-sustento') descargarSustentoRegistro(fila);
+    if (accion === 'historial') this.abrirHistorialRegistro(fila);
   }
 
   /** Fila TOTAL de la tabla de clasificadores: suma de la columna indicada. */

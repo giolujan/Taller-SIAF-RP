@@ -5,22 +5,28 @@
     [showButtonGroup]="!esEvaluador()"
     [state]="headerState()"
     [loading]="cargando()"
-    heading="Consolidado pliego de estimación de ingresos"
+    [heading]="titulo"
     secondaryText="Creación"
     [showReturn]="true"
-    [showTag]="esNuevo()"
     [verifyDisabled]="false"
     [deleteDisabled]="true"
     [editDisabled]="true"
     [rejectDisabled]="true"
-    [observeDisabled]="true"
+    [observeDisabled]="!esProyeccion"
+    [customActions]="accionesRecalculo()"
+    [showTag]="false"
     (returned)="regresar()"
     (canceled)="regresar()"
-    (saved)="modalGrabar.set(true)"
     (verified)="modalVerificar.set(true)"
     (approved)="modalAprobar.set(true)"
     (observed)="abrirObservar()"
   >
+    <!-- Proyección DGTP observada (creador): solo «Recalcular»; al recalcular vuelve a Elaborado con su botonera. -->
+    <ng-container ngProjectAs="[actions]">
+      @if (accionesRecalculo()) {
+        <siaf-button size="md" icon="refresh" [loading]="saving()" (click)="recalcular()">Recalcular</siaf-button>
+      }
+    </ng-container>
     @if (cargando()) {
       <div class="rounded-siaf-md bg-surface p-siaf-xl">
         <div class="grid grid-cols-3 gap-siaf-md">
@@ -29,11 +35,20 @@
           }
         </div>
       </div>
-    } @else if (!precarga() && !detalle()) {
+    } @else if (!detalle()) {
       <div class="rounded-siaf-md bg-surface p-siaf-xl text-center text-sm text-[var(--sys-color-text-neutral-medium)]">
         No se encontró el consolidado.
       </div>
     } @else {
+      @if (mostrarAvisoEvaluacion()) {
+        <siaf-alert
+          tone="info"
+          title="Estado de la estimación"
+          [description]="textoAvisoEvaluacion()"
+          [showClose]="true"
+          (closed)="avisoUmbralCerrado.set(true)"
+        />
+      }
       @if (mostrarAvisoUmbral()) {
         <siaf-alert
           tone="info"
@@ -44,45 +59,104 @@
         />
       }
 
-      <!-- «Nuevo» aún no tiene número ni estado: la ficha ocupa todo el ancho, como en la solicitud. -->
       @if (detalle(); as d) {
         <section class="grid gap-siaf-md lg:grid-cols-[1fr_360px]">
           <siaf-solicitude-info-card [fields]="campos()" />
-          <siaf-document-summary-card [documentNumber]="d.numero" [status]="d.estado" />
+          <!-- Revisor / Evaluador: N° expediente, N° documento en cinco cifras y el estado del expediente. -->
+          <siaf-document-summary-card
+            [documentNumber]="modoRevisor() ? d.numero.padStart(5, '0') : d.numero"
+            [status]="d.estado"
+            [expedienteNumber]="modoRevisor() ? numeroExpediente() : null"
+            [expedienteStatus]="modoRevisor() ? estadoExpediente() : null"
+          />
         </section>
-      } @else {
-        <siaf-solicitude-info-card [fields]="campos()" />
       }
 
-      <siaf-solicitude-form-card title="Relación de pliegos consolidados">
-        <!-- Grabado: agrupación Fuente de financiamiento | Clasificador de ingresos | Entidad (Figma node 7606:466323). -->
-        @if (!esNuevo()) {
-          <siaf-buttons-group
-            card-actions
-            ariaLabel="Agrupar la relación de pliegos por"
-            [items]="opcionesVista"
-            [value]="vista()"
-            (valueChange)="vista.set($any($event))"
-          />
-        }
+      <siaf-solicitude-form-card [title]="tituloSeccion">
+        <!-- Agrupación Fuente de financiamiento | Clasificador de ingresos | Entidad (Figma node 7606:466323). -->
+        <siaf-buttons-group
+          card-actions
+          ariaLabel="Agrupar la relación de pliegos por"
+          [items]="opcionesVista"
+          [value]="vista()"
+          (valueChange)="vista.set($any($event))"
+        />
 
-        <siaf-form-table-search [showVariations]="true" [value]="busqueda()" (valueChange)="busqueda.set($event)" />
+        <siaf-form-table-search [showVariations]="!esProyeccion" [value]="busqueda()" (valueChange)="busqueda.set($event)" />
 
-        <!-- «Nuevo»: la selección se ve, pero toda deshabilitada (el consolidado toma todos los registros). -->
-        @if (esNuevo()) {
-          <siaf-table-controls [showSelection]="true" [showPagination]="false" [disabled]="true" />
-        }
-
-        <!-- «Consolidados» (Figma nodes 7606:466337 y 7606:466323): variación fija a la derecha; en «Nuevo» con la
-             columna de selección y sin acciones, grabado con el menú ⋮ de cada clasificador. -->
+        @if (esProyeccion) {
+        <!-- Proyección DGTP (Figma node 4760:328500): «Universo consolidado» fijo a la izquierda y la recaudación
+             estimada de 2027 a 2036; sin histórico, variación, leyenda ni menú ⋮. -->
         <div class="siaf-table-shell">
           <table class="siaf-table">
             <thead>
               <tr class="siaf-table-head-row">
-                @if (esNuevo()) {
-                  <th class="siaf-table-th w-12" rowspan="2"><span class="sr-only">Seleccionar</span></th>
+                <th
+                  class="siaf-table-th siaf-table-cell-fill-high sticky left-0 z-[2] min-w-[436px] border-r border-[var(--sys-color-divider-strong)]"
+                  rowspan="2"
+                >Universo consolidado</th>
+                <th class="siaf-table-th text-center" [attr.colspan]="aniosProyeccion.length">Recaudación estimada</th>
+              </tr>
+              <tr class="siaf-table-head-row">
+                @for (anio of aniosProyeccion; track anio) {
+                  <th class="siaf-table-th min-w-[170px] text-right">Año {{ anio }}</th>
                 }
+              </tr>
+            </thead>
+            <tbody>
+              @for (fila of filas(); track fila.nodo.id) {
+                <tr class="siaf-table-row" [class.cursor-pointer]="tieneDetalle(fila.nodo)" (click)="abrirRegistro(fila.nodo)">
+                  <td class="siaf-table-td sticky left-0 z-[1] border-r border-[var(--sys-color-divider-strong)] bg-surface">
+                    <span class="flex items-center gap-siaf-md" [style.padding-left.px]="fila.nivel * 20">
+                      @if (fila.nodo.seleccionable || fila.nodo.hoja) {
+                        <span class="inline-block size-8 shrink-0" aria-hidden="true"></span>
+                      } @else {
+                        <button
+                          type="button"
+                          class="inline-flex size-8 shrink-0 items-center justify-center rounded-siaf-md text-[var(--sys-color-text-neutral-medium)] enabled:hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-[var(--sys-color-border-states-focus)]"
+                          [disabled]="!fila.desplegable"
+                          [attr.aria-expanded]="fila.desplegable ? fila.abierta : null"
+                          [attr.aria-label]="(fila.abierta ? 'Contraer ' : 'Expandir ') + fila.nodo.etiqueta"
+                          [attr.title]="fila.desplegable ? null : 'Sin detalle en la demo'"
+                          (click)="$event.stopPropagation(); toggleRama(fila.nodo.id)"
+                        >
+                          <siaf-icon [name]="fila.abierta ? 'expand_less' : 'expand_more'" [size]="24" />
+                        </button>
+                      }
+                      <span>{{ fila.nodo.etiqueta }}</span>
+                    </span>
+                  </td>
+                  @for (anio of aniosProyeccion; track anio) {
+                    <td class="siaf-table-td text-right">{{ montoProyectado(fila.nodo, anio) | number }}</td>
+                  }
+                </tr>
+              } @empty {
+                <tr class="siaf-table-row">
+                  <td class="siaf-table-td text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="aniosProyeccion.length + 1">
+                    No hay registros que coincidan con la búsqueda.
+                  </td>
+                </tr>
+              }
+              <tr class="siaf-table-row siaf-table-cell-fill-high font-bold">
+                <td class="siaf-table-td siaf-table-cell-fill-high sticky left-0 z-[1] border-r border-[var(--sys-color-divider-strong)]">TOTAL</td>
+                @for (monto of totalProyeccion(); track $index) {
+                  <td class="siaf-table-td text-right">S/ {{ monto | number }}</td>
+                }
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        } @else {
+        <!-- «Consolidados» (Figma node 7606:466323): variación fija a la derecha y el menú ⋮ de cada clasificador. -->
+        <div class="siaf-table-shell">
+          <table class="siaf-table">
+            <thead>
+              <tr class="siaf-table-head-row">
                 <th class="siaf-table-th min-w-[420px] border-r border-[var(--sys-color-divider-strong)]" rowspan="2">Universo consolidado</th>
+                <!-- Revisor / Evaluador: estado de la evaluación, solo en las filas de registro (Figma node 14733:117688). -->
+                @if (modoRevisor()) {
+                  <th class="siaf-table-th w-[150px] min-w-[150px] border-r border-[var(--sys-color-divider-strong)]" rowspan="2">Estado</th>
+                }
                 <th class="siaf-table-th text-center">Rec. histórica</th>
                 <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center" colspan="3">Recaudación estimada</th>
                 <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center">Participación en pliego</th>
@@ -90,15 +164,13 @@
                 <th
                   class="siaf-table-th siaf-table-cell-fill-high sticky z-[2] min-w-[200px] border-l border-[var(--sys-color-divider-strong)] text-center"
                   colspan="2"
-                  [style.right.px]="esNuevo() ? 0 : 56"
+                  style="right: 56px"
                 >
                   Variación <span class="font-normal normal-case text-[var(--sys-color-text-neutral-low)]">(b) vs (a)</span>
                 </th>
-                @if (!esNuevo()) {
-                  <th class="siaf-table-th siaf-table-cell-fill-high sticky right-0 z-[2] w-14 border-l border-[var(--sys-color-divider-strong)]" rowspan="2">
-                    <span class="sr-only">Acciones</span>
-                  </th>
-                }
+                <th class="siaf-table-th siaf-table-cell-fill-high sticky right-0 z-[2] w-14 border-l border-[var(--sys-color-divider-strong)]" rowspan="2">
+                  <span class="sr-only">Acciones</span>
+                </th>
               </tr>
               <tr class="siaf-table-head-row">
                 <th class="siaf-table-th text-right">Promedio anual <sup class="normal-case">(a)</sup></th>
@@ -109,28 +181,17 @@
                 <th class="siaf-table-th border-l border-[var(--sys-color-divider-default)] text-center">SI/NO</th>
                 <th
                   class="siaf-table-th siaf-table-cell-fill-high sticky z-[2] min-w-[110px] border-l border-[var(--sys-color-divider-strong)] text-right"
-                  [style.right.px]="esNuevo() ? 90 : 146"
+                  style="right: 146px"
                 >Monto <sup class="normal-case">(e)</sup></th>
-                <th class="siaf-table-th siaf-table-cell-fill-high sticky z-[2] min-w-[90px] text-right" [style.right.px]="esNuevo() ? 0 : 56">
+                <th class="siaf-table-th siaf-table-cell-fill-high sticky z-[2] min-w-[90px] text-right" style="right: 56px">
                   (%) <sup class="normal-case">(f)</sup>
                 </th>
               </tr>
             </thead>
             <tbody>
               @for (fila of filas(); track fila.nodo.id) {
-                <tr class="siaf-table-row">
-                  @if (esNuevo()) {
-                    <td class="siaf-table-td">
-                      <label class="inline-flex h-10 w-10 items-center">
-                        <input
-                          type="checkbox"
-                          class="size-4 accent-[var(--sys-color-icon-states-enabled)] disabled:cursor-not-allowed"
-                          [attr.aria-label]="'Seleccionar ' + fila.nodo.etiqueta"
-                          [disabled]="true"
-                        />
-                      </label>
-                    </td>
-                  }
+                <!-- Como en la solicitud: clic en un clasificador abre el detalle de su registro. -->
+                <tr class="siaf-table-row" [class.cursor-pointer]="tieneDetalle(fila.nodo)" (click)="abrirRegistro(fila.nodo)">
                   <td class="siaf-table-td border-r border-[var(--sys-color-divider-strong)]">
                     <span class="flex items-center gap-siaf-md" [style.padding-left.px]="fila.nivel * 20">
                       @if (fila.nodo.seleccionable || fila.nodo.hoja) {
@@ -144,7 +205,7 @@
                           [attr.aria-expanded]="fila.desplegable ? fila.abierta : null"
                           [attr.aria-label]="(fila.abierta ? 'Contraer ' : 'Expandir ') + fila.nodo.etiqueta"
                           [attr.title]="fila.desplegable ? null : 'Sin detalle en la demo'"
-                          (click)="toggleRama(fila.nodo.id)"
+                          (click)="$event.stopPropagation(); toggleRama(fila.nodo.id)"
                         >
                           <siaf-icon [name]="fila.abierta ? 'expand_less' : 'expand_more'" [size]="24" />
                         </button>
@@ -152,6 +213,13 @@
                       <span>{{ fila.nodo.etiqueta }}</span>
                     </span>
                   </td>
+                  @if (modoRevisor()) {
+                    <td class="siaf-table-td border-r border-[var(--sys-color-divider-strong)]">
+                      @if (estadoEvaluacionDe(fila.nodo); as estado) {
+                        <siaf-record-status-tag [status]="$any(estado)" />
+                      }
+                    </td>
+                  }
                   <td class="siaf-table-td text-right">{{ fila.nodo.promedioAnual | number }}</td>
                   <td class="siaf-table-td border-l border-[var(--sys-color-divider-default)] text-right">{{ fila.nodo.anio2027 | number }}</td>
                   <td class="siaf-table-td text-right">{{ fila.nodo.anio2028 | number }}</td>
@@ -160,9 +228,9 @@
                   <td class="siaf-table-td border-l border-[var(--sys-color-divider-default)] text-center">{{ fila.nodo.baseLegal ?? '' }}</td>
                   <td
                     class="siaf-table-td sticky z-[1] border-l border-[var(--sys-color-divider-strong)] bg-surface text-right"
-                    [style.right.px]="esNuevo() ? 90 : 146"
+                    style="right: 146px"
                   >{{ fila.variacionMonto | number }}</td>
-                  <td class="siaf-table-td sticky z-[1] bg-surface text-right" [style.right.px]="esNuevo() ? 0 : 56">
+                  <td class="siaf-table-td sticky z-[1] bg-surface text-right" style="right: 56px">
                     <span class="inline-flex items-center justify-end gap-siaf-xs">
                       @if (fila.variacionPorcentaje > umbralVariacion) {
                         <siaf-icon name="trending_up" [size]="20" label="Variación fuera del umbral" [decorative]="false" />
@@ -170,31 +238,29 @@
                       {{ fila.variacionPorcentaje | number: '1.1-1' }}
                     </span>
                   </td>
-                  @if (!esNuevo()) {
-                    <td class="siaf-table-td sticky right-0 z-[1] border-l border-[var(--sys-color-divider-strong)] bg-surface text-center">
-                      @if (fila.nodo.clasificador) {
-                        <siaf-icon-dropdown-menu
-                          icon="more_vert"
-                          [ariaLabel]="'Más acciones de ' + fila.nodo.etiqueta"
-                          [items]="accionesDe(fila.nodo)"
-                          [menuWidth]="360"
-                          [floating]="true"
-                          (selected)="onAccion(fila.nodo, $event)"
-                        />
-                      }
-                    </td>
-                  }
+                  <td class="siaf-table-td sticky right-0 z-[1] border-l border-[var(--sys-color-divider-strong)] bg-surface text-center" (click)="$event.stopPropagation()">
+                    @if (fila.nodo.clasificador) {
+                      <siaf-icon-dropdown-menu
+                        icon="more_vert"
+                        [ariaLabel]="'Más acciones de ' + fila.nodo.etiqueta"
+                        [items]="accionesDe(fila.nodo)"
+                        [menuWidth]="360"
+                        [floating]="true"
+                        (selected)="onAccion(fila.nodo, $event)"
+                      />
+                    }
+                  </td>
                 </tr>
               } @empty {
                 <tr class="siaf-table-row">
-                  <td class="siaf-table-td text-center text-[var(--sys-color-text-neutral-medium)]" colspan="11">No hay registros que coincidan con la búsqueda.</td>
+                  <td class="siaf-table-td text-center text-[var(--sys-color-text-neutral-medium)]" [attr.colspan]="modoRevisor() ? 11 : 10">No hay registros que coincidan con la búsqueda.</td>
                 </tr>
               }
               <tr class="siaf-table-row siaf-table-cell-fill-high font-bold">
-                @if (esNuevo()) {
-                  <td class="siaf-table-td"></td>
-                }
                 <td class="siaf-table-td border-r border-[var(--sys-color-divider-strong)]">TOTAL</td>
+                @if (modoRevisor()) {
+                  <td class="siaf-table-td border-r border-[var(--sys-color-divider-strong)]"></td>
+                }
                 <td class="siaf-table-td text-right">S/ {{ total().promedioAnual | number }}</td>
                 <td class="siaf-table-td border-l border-[var(--sys-color-divider-default)] text-right">S/ {{ total().anio2027 | number }}</td>
                 <td class="siaf-table-td text-right">S/ {{ total().anio2028 | number }}</td>
@@ -203,14 +269,12 @@
                 <td class="siaf-table-td border-l border-[var(--sys-color-divider-default)]"></td>
                 <td
                   class="siaf-table-td siaf-table-cell-fill-high sticky z-[1] border-l border-[var(--sys-color-divider-strong)] text-right"
-                  [style.right.px]="esNuevo() ? 90 : 146"
+                  style="right: 146px"
                 >S/ {{ total().variacionMonto | number }}</td>
-                <td class="siaf-table-td siaf-table-cell-fill-high sticky z-[1] text-right" [style.right.px]="esNuevo() ? 0 : 56">
+                <td class="siaf-table-td siaf-table-cell-fill-high sticky z-[1] text-right" style="right: 56px">
                   {{ total().variacionPorcentaje | number: '1.1-1' }}
                 </td>
-                @if (!esNuevo()) {
-                  <td class="siaf-table-td siaf-table-cell-fill-high sticky right-0 z-[1] border-l border-[var(--sys-color-divider-strong)]"></td>
-                }
+                <td class="siaf-table-td siaf-table-cell-fill-high sticky right-0 z-[1] border-l border-[var(--sys-color-divider-strong)]"></td>
               </tr>
             </tbody>
           </table>
@@ -228,6 +292,7 @@
             e = b − a &nbsp;&nbsp; f = (e / a) x 100
           </p>
         </div>
+        }
       </siaf-solicitude-form-card>
 
       <!-- Observado: pestañas Detalle (comentario de observación) e Historial, como la solicitud. -->
@@ -235,7 +300,8 @@
         <siaf-detail-history-tabs [comentario]="comentario" [entries]="historialComentarios()" />
       }
 
-      @if (detalle()) {
+      <!-- El revisor no ve la trazabilidad, como en la solicitud. -->
+      @if (detalle() && !modoRevisor()) {
         <siaf-action-tracker [showSummaryCards]="true" [showTabs]="false" [summaryItems]="trazabilidad()" />
       }
     }
@@ -249,10 +315,26 @@
   />
   <siaf-estimacion-ingresos-detalle-base-legal [fila]="filaBaseLegal()" (closed)="filaBaseLegal.set(null)" />
 
+  <!-- Revisor / Evaluador: Validar (modal), Observar (panel) e historial desde el menú ⋮ de cada registro. -->
+  @if (modoRevisor()) {
+    <siaf-estimacion-ingresos-evaluar-registro
+      [solicitudId]="detalle()?.documentoId ?? ''"
+      [ambito]="ambitoConsolidado"
+      [fila]="filaEvaluar()"
+      [accion]="accionEvaluar()"
+      (cerrado)="accionEvaluar.set(null)"
+      (evaluado)="onRegistroEvaluado($event)"
+    />
+    <siaf-document-history-panel
+      [open]="historialRegistroAbierto()"
+      [summary]="resumenHistorialRegistro()"
+      (closed)="historialRegistroAbierto.set(false)"
+    />
+  }
+
   <!-- Prototipo: doble clic en «Comentario de la observación» lo completa con el texto del Figma. -->
   <siaf-request-approval-modals
     (dblclick)="completarObservacionDemo($event)"
-    [saveOpen]="modalGrabar()"
     [verifyOpen]="modalVerificar()"
     [deleteOpen]="modalEliminar()"
     [approveOpen]="modalAprobar()"
@@ -263,14 +345,12 @@
     [snackbarOpen]="snackbarAbierto()"
     requestType="Creación"
     [requestNumber]="detalle()?.numero ?? ''"
-    (saveConfirmed)="onConfirmarGrabar()"
     (verifyConfirmed)="onConfirmarVerificar()"
     (deleteConfirmed)="onConfirmarEliminar()"
     (approveConfirmed)="onConfirmarAprobar()"
     (observeConfirmed)="onConfirmarObservar()"
     (reasonChange)="motivoObservacion.set($event)"
     (approvalClosed)="cerrarModalesAprobador()"
-    (saveClosed)="modalGrabar.set(false)"
     (verifyClosed)="modalVerificar.set(false)"
     (deleteClosed)="modalEliminar.set(false)"
     (snackbarClosed)="snackbarAbierto.set(false)"

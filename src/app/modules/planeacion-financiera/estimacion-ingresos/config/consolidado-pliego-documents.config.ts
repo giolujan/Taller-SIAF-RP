@@ -6,17 +6,20 @@ import type {
   DocumentsRecordsMenuOption,
 } from '../../../../shared/types/documents-records.types';
 import { buildProcessBreadcrumbs } from '../../../../shared/utils/breadcrumbs.util';
-import { CONSOLIDADO_PLIEGO_ID, CONSOLIDADO_PLIEGO_NUEVO_ROUTE, CONSOLIDADO_PLIEGO_ROUTE } from './estimacion-ingresos.rutas';
+import { AMBITOS_CONSOLIDADO, AmbitoConsolidado, CONSOLIDADO_PLIEGO_ID, CONSOLIDADO_PLIEGO_NUEVO_ROUTE, CONSOLIDADO_PLIEGO_ROUTE } from './estimacion-ingresos.rutas';
 
 /**
  * Bandeja «Documentos de consolidado pliego de estimación de ingresos» (Figma CEL-005.01.01.01.01, node 4938:92579),
  * vista del creador del pliego. La pinta `siaf-documents-records-page` con `modoConsulta: true`, como la bandeja de
  * las solicitudes: muestra todos los estados y tiene «Crear documento». La tab Registros todavía no está diseñada.
+ *
+ * La bandeja «Documentos de consolidado DGTP de estimación de ingresos» (Figma node 4938:253880) es la misma con otro
+ * título, documento y rutas: `consolidadoDocumentsConfig('dgtp')`.
  */
 
 export const DOCUMENTO_CONSOLIDADO_PLIEGO = 'Consolidado pliego de estimación de ingresos';
 
-/** «Crear documento»: Aceptar abre el consolidado «Nuevo» (relación de pliegos consolidados). */
+/** «Crear documento»: Aceptar crea el consolidado en Elaborado y lo abre. */
 const createDocumentOptions: DocumentsRecordsCreateProcessOption[] = [
   {
     id: CONSOLIDADO_PLIEGO_ID,
@@ -88,3 +91,44 @@ export const CONSOLIDADO_PLIEGO_DOCUMENTS_CONFIG: DocumentsRecordsConfig = {
   filterValorOptions,
   fieldsMenuOptions,
 };
+
+/** El consolidado DGTP se crea por Creación o por Modificación; el del pliego y la proyección DGTP solo por Creación. */
+const TIPOS_ACCION: Record<AmbitoConsolidado, string[]> = {
+  pliego: ['Creación'],
+  dgtp: ['Creación', 'Modificación'],
+  proyeccion: ['Creación'],
+};
+
+/** La bandeja del consolidado (pliego o DGTP) o de la proyección DGTP: misma tabla, filtros y campos; cambian textos y rutas. */
+export function consolidadoDocumentsConfig(ambito: AmbitoConsolidado): DocumentsRecordsConfig {
+  if (ambito === 'pliego') return CONSOLIDADO_PLIEGO_DOCUMENTS_CONFIG;
+  const a = AMBITOS_CONSOLIDADO[ambito];
+  const tipos = TIPOS_ACCION[ambito];
+  return {
+    ...CONSOLIDADO_PLIEGO_DOCUMENTS_CONFIG,
+    title: `Documentos de ${a.documento.charAt(0).toLowerCase()}${a.documento.slice(1)}`,
+    processId: a.procesoId,
+    defaultRequestRoute: a.bandeja,
+    breadcrumbs: buildProcessBreadcrumbs(a.procesoId, a.bandeja),
+    recordHistoryDocumentLabel: a.documento,
+    createDocumentOptions: [
+      {
+        id: a.procesoId,
+        label: 'Estimación de ingresos',
+        route: a.nuevo,
+        documents: [a.documento],
+        documentOptions: [{ label: a.documento, route: a.nuevo, actionTypes: tipos }],
+        actionTypes: tipos,
+        numberFieldLabel: 'Número',
+      },
+    ],
+    actionTypeFilterOptions: tipos,
+    // La proyección DGTP se puede observar: su bandeja también filtra por Observado.
+    ...(ambito === 'proyeccion'
+      ? { statusFilterOptions: ['Elaborado', 'Verificado', 'Observado', 'Aprobado'] }
+      : {}),
+    filterValorOptions: tipos.includes('Modificación')
+      ? [...filterValorOptions, { label: 'Modificación', value: 'Modificación' }]
+      : filterValorOptions,
+  };
+}

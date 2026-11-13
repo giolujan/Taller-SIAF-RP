@@ -10,12 +10,19 @@ import type { CuentaBancariaDatos } from '../modules/tesoreria/cuentas-bancarias
 import type { SaldoInicialDatos } from '../modules/tesoreria/saldos-iniciales/models/saldo-inicial.model';
 import {
   CLASIFICADORES_ESTIMACION_INGRESOS,
+  CONSOLIDADO_DGTP_SEMILLA,
+  PROYECCION_DGTP_SEMILLA,
+  CONSOLIDADO_PLIEGO_APROBADOS_SEMILLA,
   CONSOLIDADO_PLIEGO_SEMILLA,
+  REGISTROS_CONSOLIDADO_ESTIMACION,
   ESTIMACION_INGRESOS_APROBADAS_SEMILLA,
   RELACION_PLIEGOS_CONSOLIDADOS,
   RELACION_PLIEGOS_POR_CLASIFICADOR,
   RELACION_PLIEGOS_POR_ENTIDAD,
   UNIDADES_EJECUTORAS_PLIEGO,
+  UNIVERSO_DGTP_POR_CLASIFICADOR,
+  UNIVERSO_DGTP_POR_ENTIDAD,
+  UNIVERSO_DGTP_POR_FUENTE,
   DatosTaller,
   DETALLES_DOCUMENTOS_INGRESOS_TRIBUTARIOS,
   detalleIngresoTributarioVivo,
@@ -34,6 +41,7 @@ import {
   numeroDocumento,
 } from './mock-db';
 import { CONTRASENA_DEMO, USUARIOS_DEMO, UsuarioDemo, buscarUsuarioPorPerfil } from './usuarios-demo';
+import type { ConsolidadoPliegoRegistro } from '../modules/planeacion-financiera/estimacion-ingresos/models/consolidado-pliego.model';
 
 /**
  * Backend simulado del taller.
@@ -498,6 +506,15 @@ function sembrarAprobadas(datos: DatosTaller): void {
       Object.assign(d, { fecha: s.fecha, fechaVerificado: s.fechaVerificado, fechaAprobado: s.fechaAprobado });
       cambio = true;
     }
+    // Las ya evaluadas por el Revisor guardan sus registros: se les agrega el sustento que les faltaba.
+    for (const fila of d?.clasificadoresPersonalizados ?? []) {
+      if (fila.sustento) continue;
+      const sustento = REGISTROS_CONSOLIDADO_ESTIMACION.find((r) => r.clasificador === fila.clasificador)?.sustento;
+      if (sustento) {
+        fila.sustento = sustento;
+        cambio = true;
+      }
+    }
   }
   const faltan = ESTIMACION_INGRESOS_APROBADAS_SEMILLA.filter((s) => !datos.estimacionIngresos.some((d) => d.id === s.id));
   if (!faltan.length) {
@@ -515,42 +532,81 @@ const estimacionIngresos: Manejador = ({ datos }) => {
   return ok(datos.estimacionIngresos.map((d) => ({ ...d, elaboradoPor: d.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]) })));
 };
 
-// Bandeja del consolidado pliego: sus documentos y cuántas unidades ejecutoras validaron su solicitud. Si los datos
-// guardados son de antes de esta bandeja, la siembra aquí.
-const consolidadosPliegoEstimacion: Manejador = ({ datos }) => {
-  if (!datos.consolidadosPliegoEstimacion) {
-    datos.consolidadosPliegoEstimacion = CONSOLIDADO_PLIEGO_SEMILLA.map((d) => ({ ...d }));
-    guardarDatos(datos);
-  }
-  return ok({
-    documentos: datos.consolidadosPliegoEstimacion.map((d) => ({ ...d, elaboradoPor: d.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]) })),
-    unidadesValidadas: UNIDADES_EJECUTORAS_PLIEGO,
-    unidadesTotal: UNIDADES_EJECUTORAS_PLIEGO,
-  });
-};
-
-// Consolidado «Nuevo»: cabecera y relación de pliegos, sin número ni estado hasta Grabar.
-const consolidadoPliegoPrecarga: Manejador = ({ sesion }) => {
-  if (!sesion) return error(401, 'Sesión expirada.');
-  return ok({
-    fecha: new Date().toISOString(),
-    enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
-    entidad: '009 Ministerio de Economía y Finanzas',
-    unidadEjecutora: UNIDAD_CREADORA.nombre,
-    pliegos: RELACION_PLIEGOS_CONSOLIDADOS,
-  });
-};
-
-// Grabar un consolidado «Nuevo»: queda «Elaborado» con el siguiente correlativo.
-const consolidadoPliegoCrear: Manejador = ({ req, datos, sesion }) => {
-  if (!sesion) return error(401, 'Sesión expirada.');
-  const registros = ((req.body ?? {}) as { registros?: string[] }).registros ?? [];
-  if (!registros.length) return error(400, 'Seleccione al menos un registro para el consolidado.');
-  const lista = (datos.consolidadosPliegoEstimacion ??= CONSOLIDADO_PLIEGO_SEMILLA.map((d) => ({ ...d })));
-  const nuevo = {
-    id: nuevoId(datos, 'cpe'),
+// ── Consolidados de estimación de ingresos: el del pliego y el de la DGTP comparten bandeja, detalle y flujo ──
+// Las rutas llevan el ámbito (`/consolidado-pliego-…` o `/consolidado-dgtp-…`): `params[0]` es el ámbito y
+// `params[1]` el id del documento.
+type AmbitoConsolidado = 'pliego' | 'dgtp' | 'proyeccion';
+const CONSOLIDADOS = {
+  pliego: {
+    clave: 'consolidadosPliegoEstimacion',
+    semilla: CONSOLIDADO_PLIEGO_SEMILLA,
     documento: 'Consolidado pliego de estimación de ingresos',
-    numero: String(lista.length + 1).padStart(4, '0'),
+    prefijo: 'cpe',
+    entidad: 'PRESIDENCIA DEL CONSEJO DE MINISTROS',
+    arboles: [RELACION_PLIEGOS_CONSOLIDADOS, RELACION_PLIEGOS_POR_CLASIFICADOR, RELACION_PLIEGOS_POR_ENTIDAD],
+  },
+  // La DGTP consolida los pliegos: su ficha no lleva entidad (Figma node 4760:174853).
+  dgtp: {
+    clave: 'consolidadosDgtpEstimacion',
+    semilla: CONSOLIDADO_DGTP_SEMILLA,
+    documento: 'Consolidado DGTP de estimación de ingresos',
+    prefijo: 'cde',
+    entidad: '',
+    arboles: [UNIVERSO_DGTP_POR_FUENTE, UNIVERSO_DGTP_POR_CLASIFICADOR, UNIVERSO_DGTP_POR_ENTIDAD],
+  },
+  // La proyección DGTP replica el consolidado DGTP: mismo universo y ficha sin entidad.
+  proyeccion: {
+    clave: 'proyeccionesDgtpIngresos',
+    semilla: PROYECCION_DGTP_SEMILLA,
+    documento: 'Proyección DGTP de ingresos',
+    prefijo: 'pdi',
+    entidad: '',
+    arboles: [UNIVERSO_DGTP_POR_FUENTE, UNIVERSO_DGTP_POR_CLASIFICADOR, UNIVERSO_DGTP_POR_ENTIDAD],
+  },
+} as const;
+
+/** Documentos del consolidado; si los datos guardados son de antes de esta bandeja, la siembra (sin guardar). */
+const consolidadosDe = (datos: DatosTaller, ambito: AmbitoConsolidado): ConsolidadoPliegoRegistro[] => {
+  const { clave, semilla } = CONSOLIDADOS[ambito];
+  const lista = (datos[clave] ??= semilla.map((d) => ({ ...d })));
+  // Pliego: siembra una sola vez los aprobados de ejemplo (bandeja del revisor), con el siguiente correlativo.
+  if (ambito === 'pliego') {
+    for (const s of CONSOLIDADO_PLIEGO_APROBADOS_SEMILLA) {
+      if (lista.some((d) => d.id === s.id)) continue;
+      const numero = Math.max(0, ...lista.map((d) => Number(d.numero) || 0)) + 1;
+      lista.unshift({ ...s, numero: String(numero).padStart(4, '0') });
+    }
+  }
+  return lista;
+};
+const ambitoDe = (params: string[]): AmbitoConsolidado =>
+  params[0] === 'dgtp' || params[0] === 'proyeccion' ? params[0] : 'pliego';
+const consolidadoDe = (datos: DatosTaller, params: string[]) => consolidadosDe(datos, ambitoDe(params)).find((d) => d.id === params[1]);
+
+// Bandeja del consolidado: sus documentos y, en el pliego, cuántas unidades ejecutoras validaron su solicitud.
+const consolidadosPliegoEstimacion: Manejador = ({ datos, params }) => {
+  const ambito = ambitoDe(params);
+  const antes = datos[CONSOLIDADOS[ambito].clave]?.length;
+  const lista = consolidadosDe(datos, ambito);
+  if (antes !== lista.length) guardarDatos(datos);
+  const unidades = ambito === 'pliego' ? UNIDADES_EJECUTORAS_PLIEGO : 0;
+  return ok({
+    documentos: lista.map((d) => ({ ...d, elaboradoPor: d.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]) })),
+    unidadesValidadas: unidades,
+    unidadesTotal: unidades,
+  });
+};
+
+// «Crear documento» (pliego o DGTP): el consolidado queda «Elaborado» con el siguiente correlativo.
+const consolidadoPliegoCrear: Manejador = ({ datos, sesion, params }) => {
+  if (!sesion) return error(401, 'Sesión expirada.');
+  const ambito = ambitoDe(params);
+  const lista = consolidadosDe(datos, ambito);
+  const numero = Math.max(0, ...lista.map((d) => Number(d.numero) || 0)) + 1;
+  const nuevo = {
+    id: nuevoId(datos, CONSOLIDADOS[ambito].prefijo),
+    documento: CONSOLIDADOS[ambito].documento,
+    numero: String(numero).padStart(4, '0'),
     tipoAccion: 'Creación',
     estado: 'Elaborado' as const,
     sistema: 'Tesorería',
@@ -562,12 +618,11 @@ const consolidadoPliegoCrear: Manejador = ({ req, datos, sesion }) => {
   return ok(nuevo, 201);
 };
 
-const consolidadoDe = (datos: { consolidadosPliegoEstimacion?: { id: string }[] }, id: string) =>
-  (datos.consolidadosPliegoEstimacion ?? []).find((d) => d.id === id);
-
 // Detalle de un consolidado grabado (Figma node 7606:466323): la relación de pliegos es la misma de la demo.
 const consolidadoPliegoDetalle: Manejador = ({ datos, params }) => {
-  const doc = (datos.consolidadosPliegoEstimacion ?? []).find((d) => d.id === params[0]);
+  const antes = datos[CONSOLIDADOS[ambitoDe(params)].clave]?.length;
+  if (consolidadosDe(datos, ambitoDe(params)).length !== antes) guardarDatos(datos);
+  const doc = consolidadoDe(datos, params);
   if (!doc) return error(404, 'El documento no existe.');
   return ok({
     documentoId: doc.id,
@@ -576,10 +631,11 @@ const consolidadoPliegoDetalle: Manejador = ({ datos, params }) => {
     tipoAccion: doc.tipoAccion,
     fecha: doc.fecha,
     enteRector: 'DIRECCIÓN GENERAL DEL TESORO PÚBLICO',
-    entidad: 'PRESIDENCIA DEL CONSEJO DE MINISTROS',
-    pliegos: RELACION_PLIEGOS_CONSOLIDADOS,
-    pliegosPorClasificador: RELACION_PLIEGOS_POR_CLASIFICADOR,
-    pliegosPorEntidad: RELACION_PLIEGOS_POR_ENTIDAD,
+    entidad: CONSOLIDADOS[ambitoDe(params)].entidad,
+    pliegos: CONSOLIDADOS[ambitoDe(params)].arboles[0],
+    pliegosPorClasificador: CONSOLIDADOS[ambitoDe(params)].arboles[1],
+    pliegosPorEntidad: CONSOLIDADOS[ambitoDe(params)].arboles[2],
+    registros: doc.registrosPersonalizados ?? REGISTROS_DEL_CONSOLIDADO,
     elaboradoPor: doc.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]),
     fechaElaborado: doc.fecha,
     verificadoPor: doc.verificadoPor ?? (doc.estado === 'Elaborado' ? undefined : nombreCompleto(USUARIOS_DEMO[0])),
@@ -592,9 +648,23 @@ const consolidadoPliegoDetalle: Manejador = ({ datos, params }) => {
   });
 };
 
+// Recalcular la proyección DGTP observada (creador): vuelve a Elaborado, como recién creada, y la trazabilidad pierde
+// el verificador. La observación (comentario e historial) se conserva.
+const consolidadoPliegoRecalcular: Manejador = ({ datos, params }) => {
+  const doc = consolidadoDe(datos, params);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (ambitoDe(params) !== 'proyeccion') return error(409, 'Solo la proyección DGTP se recalcula.');
+  if (doc.estado !== 'Observado') return error(409, `No se puede recalcular un documento en estado ${doc.estado}.`);
+  doc.estado = 'Elaborado';
+  doc.verificadoPor = undefined;
+  doc.fechaVerificado = undefined;
+  guardarDatos(datos);
+  return ok(doc);
+};
+
 // Aprobar un consolidado (aprobador): Verificado → Aprobado, estado final.
 const consolidadoPliegoAprobar: Manejador = ({ datos, params, sesion }) => {
-  const doc = (datos.consolidadosPliegoEstimacion ?? []).find((d) => d.id === params[0]);
+  const doc = consolidadoDe(datos, params);
   if (!doc) return error(404, 'El documento no existe.');
   if (doc.estado !== 'Verificado') return error(409, `No se puede aprobar un documento en estado ${doc.estado}.`);
   doc.estado = 'Aprobado';
@@ -606,7 +676,7 @@ const consolidadoPliegoAprobar: Manejador = ({ datos, params, sesion }) => {
 
 // Observar un consolidado (aprobador): Verificado → Observado, con el comentario. En este producto no hay Rechazar.
 const consolidadoPliegoObservar: Manejador = ({ req, datos, params, sesion }) => {
-  const doc = (datos.consolidadosPliegoEstimacion ?? []).find((d) => d.id === params[0]);
+  const doc = consolidadoDe(datos, params);
   if (!doc) return error(404, 'El documento no existe.');
   if (doc.estado !== 'Verificado') return error(409, `No se puede observar un documento en estado ${doc.estado}.`);
   const motivo = String((req.body as { motivo?: string } | null)?.motivo ?? '').trim();
@@ -621,7 +691,7 @@ const consolidadoPliegoObservar: Manejador = ({ req, datos, params, sesion }) =>
 
 // Verificar un consolidado: Elaborado → Verificado.
 const consolidadoPliegoVerificar: Manejador = ({ datos, params, sesion }) => {
-  const doc = (datos.consolidadosPliegoEstimacion ?? []).find((d) => d.id === params[0]);
+  const doc = consolidadoDe(datos, params);
   if (!doc) return error(404, 'El documento no existe.');
   if (doc.estado !== 'Elaborado') return error(409, `No se puede verificar un documento en estado ${doc.estado}.`);
   doc.estado = 'Verificado';
@@ -631,11 +701,37 @@ const consolidadoPliegoVerificar: Manejador = ({ datos, params, sesion }) => {
   return ok(doc);
 };
 
+// Registros que el consolidado muestra como filas (los de la fuente 2 RDR de la «003 Secretaría General - PCM»): el
+// 9.1.1.1 no tiene fila propia, así que no se evalúa y no impide que el expediente quede Archivado.
+const REGISTROS_DEL_CONSOLIDADO = REGISTROS_CONSOLIDADO_ESTIMACION.filter((r) => r.ff.startsWith('2.'));
+
+// Revisor / Evaluador: valida u observa un registro de un consolidado aprobado, como en la solicitud. El consolidado
+// copia sus registros antes, para no cambiarlos en todos.
+const consolidadoEvaluarRegistro: Manejador = ({ req, datos, params, sesion }) => {
+  if (sesion?.perfil.rolCodigo !== 'REVISOR') return error(403, 'Solo el Revisor / Evaluador evalúa los registros.');
+  const doc = consolidadoDe(datos, params);
+  if (!doc) return error(404, 'El documento no existe.');
+  if (doc.estado !== 'Aprobado') return error(409, 'Solo se evalúan los registros de un consolidado aprobado.');
+  const dto = (req.body ?? {}) as { estado?: 'Validado' | 'Observado'; comentario?: string };
+  if (dto.estado !== 'Validado' && dto.estado !== 'Observado') return error(400, 'Estado de evaluación no válido.');
+  if (dto.estado === 'Observado' && !dto.comentario?.trim()) return error(400, 'Escriba el comentario de la observación.');
+  const codigo = decodeURIComponent(params[2]);
+  const filas = (doc.registrosPersonalizados ??= REGISTROS_DEL_CONSOLIDADO.map((c) => ({ ...c })));
+  const fila = filas.find((c) => c.clasificador.split(' ')[0] === codigo);
+  if (!fila) return error(404, 'El registro no existe.');
+  fila.estadoEvaluacion = dto.estado;
+  fila.comentarioEvaluacion = dto.estado === 'Observado' ? dto.comentario?.trim() : undefined;
+  fila.evaluadoPor = nombreCompleto(sesion.usuario);
+  fila.fechaEvaluacion = new Date().toISOString();
+  guardarDatos(datos);
+  return ok(fila);
+};
+
 // Eliminar un consolidado (solo en Elaborado, como la solicitud).
 const consolidadoPliegoEliminar: Manejador = ({ datos, params }) => {
-  const lista = datos.consolidadosPliegoEstimacion ?? [];
-  const indice = lista.findIndex((d) => d.id === params[0]);
-  if (indice === -1 || !consolidadoDe(datos, params[0])) return error(404, 'El documento no existe.');
+  const lista = consolidadosDe(datos, ambitoDe(params));
+  const indice = lista.findIndex((d) => d.id === params[1]);
+  if (indice === -1) return error(404, 'El documento no existe.');
   lista.splice(indice, 1);
   guardarDatos(datos);
   return ok(null, 204);
@@ -683,7 +779,14 @@ const estimacionIngresosCrear: Manejador = ({ req, datos, sesion }) => {
   return ok(nuevo, 201);
 };
 
+/**
+ * Registros de una solicitud que no los personalizó: las aprobadas sembradas (`esti-apr-*`) son las que llegaron al
+ * consolidado, con el año 2027 completado y su documento de sustento; el resto, la tabla de la demo.
+ */
+const registrosPorDefecto = (id: string) => (id.startsWith('esti-apr-') ? REGISTROS_CONSOLIDADO_ESTIMACION : CLASIFICADORES_ESTIMACION_INGRESOS);
+
 const estimacionIngresosDetalle: Manejador = ({ datos, params, sesion }) => {
+  sembrarAprobadas(datos);
   const doc = datos.estimacionIngresos.find((d) => d.id === params[0]);
   if (!doc) return error(404, 'El documento no existe.');
   return ok({
@@ -697,7 +800,7 @@ const estimacionIngresosDetalle: Manejador = ({ datos, params, sesion }) => {
     estado: doc.estado,
     tipoAccion: doc.tipoAccion,
     tipoModificacion: doc.tipoAccion === 'Modificación' ? (doc.tipoModificacionTexto ?? 'Montos') : undefined,
-    clasificadores: doc.clasificadoresPersonalizados ?? CLASIFICADORES_ESTIMACION_INGRESOS,
+    clasificadores: doc.clasificadoresPersonalizados ?? registrosPorDefecto(doc.id),
     elaboradoPor: doc.elaboradoPor ?? nombreCompleto(USUARIOS_DEMO[0]),
     fechaElaborado: doc.fecha,
     verificadoPor: doc.verificadoPor,
@@ -747,11 +850,13 @@ const estimacionIngresosEvaluarRegistro: Manejador = ({ req, datos, params, sesi
   if (dto.estado !== 'Validado' && dto.estado !== 'Observado') return error(400, 'Estado de evaluación no válido.');
   if (dto.estado === 'Observado' && !dto.comentario?.trim()) return error(400, 'Escriba el comentario de la observación.');
   const codigo = decodeURIComponent(params[1]);
-  const filas = (doc.clasificadoresPersonalizados ??= CLASIFICADORES_ESTIMACION_INGRESOS.map((c) => ({ ...c })));
+  const filas = (doc.clasificadoresPersonalizados ??= registrosPorDefecto(doc.id).map((c) => ({ ...c })));
   const fila = filas.find((c) => c.clasificador.split(' ')[0] === codigo);
   if (!fila) return error(404, 'El registro no existe.');
   fila.estadoEvaluacion = dto.estado;
   fila.comentarioEvaluacion = dto.estado === 'Observado' ? dto.comentario?.trim() : undefined;
+  fila.evaluadoPor = nombreCompleto(sesion.usuario);
+  fila.fechaEvaluacion = new Date().toISOString();
   guardarDatos(datos);
   return ok(fila);
 };
@@ -825,14 +930,16 @@ const RUTAS: [string, RegExp, Manejador][] = [
   ['GET', /^\/ingresos-tributarios-sunat\/([^/]+)\/detalle$/, ingresosTributariosSunatDetalle],
   ['POST', /^\/ingresos-tributarios-sunat\/reiniciar-simulacion$/, ingresosTributariosSunatReiniciarSimulacion],
   ['GET', /^\/estimacion-ingresos$/, estimacionIngresos],
-  ['GET', /^\/consolidado-pliego-estimacion-ingresos$/, consolidadosPliegoEstimacion],
-  ['GET', /^\/consolidado-pliego-estimacion-ingresos\/precarga$/, consolidadoPliegoPrecarga],
-  ['POST', /^\/consolidado-pliego-estimacion-ingresos$/, consolidadoPliegoCrear],
-  ['GET', /^\/consolidado-pliego-estimacion-ingresos\/([^/]+)\/detalle$/, consolidadoPliegoDetalle],
-  ['POST', /^\/consolidado-pliego-estimacion-ingresos\/([^/]+)\/verificar$/, consolidadoPliegoVerificar],
-  ['POST', /^\/consolidado-pliego-estimacion-ingresos\/([^/]+)\/aprobar$/, consolidadoPliegoAprobar],
-  ['POST', /^\/consolidado-pliego-estimacion-ingresos\/([^/]+)\/observar$/, consolidadoPliegoObservar],
-  ['DELETE', /^\/consolidado-pliego-estimacion-ingresos\/([^/]+)$/, consolidadoPliegoEliminar],
+  // Consolidado del pliego y de la DGTP: el primer grupo es el ámbito.
+  ['GET', /^\/consolidado-(pliego|dgtp|proyeccion)-estimacion-ingresos$/, consolidadosPliegoEstimacion],
+  ['POST', /^\/consolidado-(pliego|dgtp|proyeccion)-estimacion-ingresos$/, consolidadoPliegoCrear],
+  ['GET', /^\/consolidado-(pliego|dgtp|proyeccion)-estimacion-ingresos\/([^/]+)\/detalle$/, consolidadoPliegoDetalle],
+  ['POST', /^\/consolidado-(pliego|dgtp|proyeccion)-estimacion-ingresos\/([^/]+)\/verificar$/, consolidadoPliegoVerificar],
+  ['POST', /^\/consolidado-(pliego|dgtp|proyeccion)-estimacion-ingresos\/([^/]+)\/aprobar$/, consolidadoPliegoAprobar],
+  ['POST', /^\/consolidado-(pliego|dgtp|proyeccion)-estimacion-ingresos\/([^/]+)\/observar$/, consolidadoPliegoObservar],
+  ['POST', /^\/consolidado-(pliego|dgtp|proyeccion)-estimacion-ingresos\/([^/]+)\/recalcular$/, consolidadoPliegoRecalcular],
+  ['DELETE', /^\/consolidado-(pliego|dgtp|proyeccion)-estimacion-ingresos\/([^/]+)$/, consolidadoPliegoEliminar],
+  ['POST', /^\/consolidado-(pliego|dgtp|proyeccion)-estimacion-ingresos\/([^/]+)\/registros\/([^/]+)\/evaluar$/, consolidadoEvaluarRegistro],
   ['GET', /^\/estimacion-ingresos\/precarga$/, estimacionIngresosPrecarga],
   ['POST', /^\/estimacion-ingresos$/, estimacionIngresosCrear],
   ['GET', /^\/estimacion-ingresos\/([^/]+)\/detalle$/, estimacionIngresosDetalle],

@@ -88,8 +88,36 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
                 ],
                 actionTypeOptions: ['Creación'],
               },
-              { id: 'estimacion-ingresos-consolidado-dgtp', label: 'Documentos de consolidado DGTP de estimación de ingresos', comingSoon: true },
-              { id: 'estimacion-ingresos-proyeccion-dgtp', label: 'Documentos de proyección DGTP de ingresos', comingSoon: true },
+              {
+                id: 'estimacion-ingresos-consolidado-dgtp',
+                label: 'Documentos de consolidado DGTP de estimación de ingresos',
+                moduleRoute: '/procesos/consolidado-dgtp-estimacion-ingresos',
+                createRoute: '/procesos/consolidado-dgtp-estimacion-ingresos/consolidado',
+                documentOptions: ['Consolidado DGTP de estimación de ingresos'],
+                documentCreateOptions: [
+                  {
+                    label: 'Consolidado DGTP de estimación de ingresos',
+                    route: '/procesos/consolidado-dgtp-estimacion-ingresos/consolidado',
+                    actionTypes: ['Creación', 'Modificación'],
+                  },
+                ],
+                actionTypeOptions: ['Creación', 'Modificación'],
+              },
+              {
+                id: 'estimacion-ingresos-proyeccion-dgtp',
+                label: 'Documentos de proyección DGTP de ingresos',
+                moduleRoute: '/procesos/proyeccion-dgtp-ingresos',
+                createRoute: '/procesos/proyeccion-dgtp-ingresos/proyeccion',
+                documentOptions: ['Proyección DGTP de ingresos'],
+                documentCreateOptions: [
+                  {
+                    label: 'Proyección DGTP de ingresos',
+                    route: '/procesos/proyeccion-dgtp-ingresos/proyeccion',
+                    actionTypes: ['Creación'],
+                  },
+                ],
+                actionTypeOptions: ['Creación'],
+              },
             ],
           },
           {

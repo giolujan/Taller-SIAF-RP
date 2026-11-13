@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { EMPTY } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
 import { PermissionService } from '../../../../../core/auth/permission.service';
@@ -13,9 +14,9 @@ import { SolicitudeFormCardComponent } from '../../../../../shared/components/so
 import { SolicitudeHeaderRole, SolicitudeHeaderState } from '../../../../../shared/components/solicitude-header/solicitude-header.component';
 import { SolicitudeInfoCardComponent, SolicitudeInfoField } from '../../../../../shared/components/solicitude-info-card/solicitude-info-card.component';
 import { SolicitudePageLayoutComponent } from '../../../../../shared/components/solicitude-page-layout/solicitude-page-layout.component';
-import { TableControlsComponent } from '../../../../../shared/components/table-controls/table-controls.component';
 import { ActionTrackerComponent, ActionTrackerSummary } from '../../../../../shared/ui/action-tracker/action-tracker.component';
 import { AlertComponent } from '../../../../../shared/ui/alert/alert.component';
+import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
 import { ButtonGroupItem, ButtonsGroupComponent } from '../../../../../shared/ui/buttons-group/buttons-group.component';
 import { DocumentSummaryCardComponent } from '../../../../../shared/ui/document-summary-card/document-summary-card.component';
 import { IconComponent } from '../../../../../shared/ui/icon/icon.component';
@@ -23,10 +24,20 @@ import { IconDropdownMenuComponent, IconDropdownMenuItem } from '../../../../../
 import { SnackbarVariant } from '../../../../../shared/ui/snackbar/snackbar.component';
 import { buildProcessBreadcrumbs } from '../../../../../shared/utils/breadcrumbs.util';
 import { EstimacionIngresosApiService } from '../../api/estimacion-ingresos-api.service';
-import { CONSOLIDADO_PLIEGO_ID, CONSOLIDADO_PLIEGO_ROUTE, consolidadoPliegoRoute } from '../../config/estimacion-ingresos.rutas';
-import { DetalleConsolidadoPliego, NodoConsolidadoPliego, PrecargaConsolidadoPliego } from '../../models/consolidado-pliego.model';
-import { ClasificadorEstimacionIngresos, UMBRAL_VARIACION_ESTIMACION_INGRESOS } from '../../models/estimacion-ingresos.model';
+import { AMBITOS_CONSOLIDADO, AmbitoConsolidado } from '../../config/estimacion-ingresos.rutas';
+import { DetalleConsolidadoPliego, NodoConsolidadoPliego } from '../../models/consolidado-pliego.model';
+import { ClasificadorEstimacionIngresos, UMBRAL_VARIACION_ESTIMACION_INGRESOS, estadoExpedienteEstimacion } from '../../models/estimacion-ingresos.model';
 import { EstimacionIngresosDetalleBaseLegalComponent } from '../solicitud/detalles/estimacion-ingresos-detalle-base-legal.component';
+import {
+  accionesRegistroEstimacion,
+  accionesRevisorRegistro,
+  descargarSustentoRegistro,
+  historialRegistro,
+  textoEstadoEvaluacion,
+} from '../solicitud/detalles/acciones-registro';
+import { AccionEvaluarRegistro, EstimacionIngresosEvaluarRegistroComponent } from '../solicitud/detalles/estimacion-ingresos-evaluar-registro.component';
+import { DocumentHistoryPanelComponent, DocumentHistorySummary } from '../../../../../shared/components/document-history-panel/document-history-panel.component';
+import { RecordStatusTagComponent } from '../../../../../shared/ui/record-status-tag/record-status-tag.component';
 import { EstimacionIngresosDetalleRecaudacionComponent } from '../solicitud/detalles/estimacion-ingresos-detalle-recaudacion.component';
 
 /** Una fila visible del árbol: el nodo, su nivel y su variación ya calculada. */
@@ -65,16 +76,17 @@ function coincide(nodo: NodoConsolidadoPliego, texto: string): boolean {
 }
 
 /**
- * «Consolidado pliego de estimación de ingresos». Sin `:id` es el consolidado «Nuevo»: la pantalla de creación de la
- * solicitud con la «Relación de pliegos consolidados» (Figma node 7606:466337), los checkbox deshabilitados y Grabar
- * y Verificar habilitados. Con `:id` es el consolidado grabado (Figma node 7606:466323): aviso de variación, ficha con
- * N° y estado, la relación en solo lectura agrupada por Fuente de financiamiento, Clasificador (node 8349:509061) o
+ * «Consolidado pliego de estimación de ingresos». «Crear documento» (ruta sin `:id`) crea el consolidado directo en
+ * Elaborado y abre `:id`, el consolidado grabado (Figma node 7606:466323): aviso de variación, ficha con N° y estado, la relación en solo lectura agrupada por Fuente de financiamiento, Clasificador (node 8349:509061) o
  * Entidad (node 8349:491365), con el menú ⋮ de cada clasificador, y la trazabilidad. En este documento Eliminar y
  * Editar se ven deshabilitados.
  *
  * Aprobador (mismo flujo que la solicitud de estimación de ingresos): en Verificado ve solo Observar y Aprobar
  * (Rechazar no está habilitado en este producto). Observar pide el comentario y deja el consolidado en Observado,
  * con las pestañas Detalle / Historial; Aprobar lo deja en Aprobado y firma «Aprobado por».
+ *
+ * Con `data: { ambito: 'dgtp' }` es el «Consolidado DGTP de estimación de ingresos» (Figma page «F.1 Rol Creador»,
+ * node 4760:174853): igual, pero la ficha lleva solo Fecha y Ente rector, el «Universo consolidado» empieza contraído y solo Verificar está habilitado.
  */
 @Component({
   selector: 'siaf-consolidado-pliego',
@@ -82,10 +94,14 @@ function coincide(nodo: NodoConsolidadoPliego, texto: string): boolean {
   imports: [
     ActionTrackerComponent,
     AlertComponent,
+    ButtonComponent,
     ButtonsGroupComponent,
     DecimalPipe,
     DetailHistoryTabsComponent,
+    DocumentHistoryPanelComponent,
     DocumentSummaryCardComponent,
+    EstimacionIngresosEvaluarRegistroComponent,
+    RecordStatusTagComponent,
     EstimacionIngresosDetalleBaseLegalComponent,
     EstimacionIngresosDetalleRecaudacionComponent,
     FormTableSearchComponent,
@@ -95,7 +111,6 @@ function coincide(nodo: NodoConsolidadoPliego, texto: string): boolean {
     SolicitudeFormCardComponent,
     SolicitudeInfoCardComponent,
     SolicitudePageLayoutComponent,
-    TableControlsComponent,
   ],
   templateUrl: './consolidado-pliego.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -107,15 +122,22 @@ export class ConsolidadoPliegoComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly permissions = inject(PermissionService);
 
-  readonly breadcrumbs: BreadcrumbItem[] = buildProcessBreadcrumbs(
-    CONSOLIDADO_PLIEGO_ID,
-    CONSOLIDADO_PLIEGO_ROUTE,
-    'Consolidado pliego de estimación de ingresos',
-  );
+  /** Consolidado del pliego o de la DGTP (`data.ambito` de la ruta): textos, rutas y datos. */
+  private readonly ambito: AmbitoConsolidado = this.route.snapshot.data['ambito'] ?? 'pliego';
+  private readonly datosAmbito = AMBITOS_CONSOLIDADO[this.ambito];
+  readonly titulo = this.datosAmbito.documento;
+  readonly tituloSeccion = this.datosAmbito.seccion;
+  readonly breadcrumbs: BreadcrumbItem[] = buildProcessBreadcrumbs(this.datosAmbito.procesoId, this.datosAmbito.bandeja, this.titulo);
   readonly umbralVariacion = UMBRAL_VARIACION_ESTIMACION_INGRESOS;
+  /**
+   * Proyección DGTP de ingresos (Figma node 4760:328500): la tabla solo lleva el «Universo consolidado» fijo y la
+   * «Recaudación estimada» de 2027 a 2036, sin histórico, participación, base legal, variación ni menú ⋮.
+   * Es el único ámbito con Observar habilitado para el aprobador (Verificado → Observado, con comentario).
+   */
+  readonly esProyeccion = this.ambito === 'proyeccion';
+  readonly aniosProyeccion = Array.from({ length: 10 }, (_, i) => 2027 + i);
   readonly cargando = signal(true);
   readonly saving = signal(false);
-  readonly modalGrabar = signal(false);
   readonly modalVerificar = signal(false);
   readonly modalEliminar = signal(false);
   readonly modalAprobar = signal(false);
@@ -124,11 +146,8 @@ export class ConsolidadoPliegoComponent implements OnInit {
   readonly snackbarAbierto = signal(false);
   readonly snackbarVariante = signal<SnackbarVariant>('creation-elaborated');
 
-  /** Consolidado «Nuevo» (sin `:id`). */
-  readonly precarga = signal<PrecargaConsolidadoPliego | null>(null);
   /** Consolidado grabado (`:id`). */
   readonly detalle = signal<DetalleConsolidadoPliego | null>(null);
-  readonly esNuevo = computed(() => this.precarga() !== null);
 
   readonly busqueda = signal('');
   readonly abiertas = signal<Set<string>>(new Set());
@@ -147,21 +166,19 @@ export class ConsolidadoPliegoComponent implements OnInit {
         switchMap((params) => {
           const id = params.get('id');
           this.cargando.set(true);
-          return id ? this.api.obtenerConsolidadoPliego(id) : this.api.obtenerPrecargaConsolidadoPliego();
+          if (!id) {
+            this.crearDirecto();
+            return EMPTY;
+          }
+          return this.api.obtenerConsolidadoPliego(id, this.ambito);
         }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (datos) => {
-          if ('documentoId' in datos) {
-            this.detalle.set(datos);
-            this.precarga.set(null);
-          } else {
-            this.precarga.set(datos);
-            this.detalle.set(null);
-          }
-          const arboles = 'documentoId' in datos ? [datos.pliegos, datos.pliegosPorClasificador, datos.pliegosPorEntidad] : [datos.pliegos];
-          this.abiertas.set(new Set(arboles.flatMap(ramasConDetalle)));
+          this.detalle.set(datos);
+          const arboles = [datos.pliegos, datos.pliegosPorClasificador, datos.pliegosPorEntidad];
+          this.abiertas.set(new Set(this.datosAmbito.abrirRamas ? arboles.flatMap(ramasConDetalle) : []));
           this.cargando.set(false);
           this.saving.set(false);
           const estado = history.state as { aviso?: SnackbarVariant } | null;
@@ -174,9 +191,27 @@ export class ConsolidadoPliegoComponent implements OnInit {
   readonly headerRole = computed<SolicitudeHeaderRole>(() => (this.permissions.currentRole() === 'approver' ? 'approver' : 'creator'));
   /** Revisor / Evaluador (rol `reviewer`): revisa los registros en solo lectura; la cabecera va sin botones. */
   readonly esEvaluador = computed(() => this.permissions.currentRole() === 'reviewer');
+  /**
+   * Revisor / Evaluador del consolidado pliego: el mismo diseño y flujo que en la solicitud de estimación de ingresos
+   * (Figma node 14733:117688): «Estado de la estimación», N° de expediente y su estado en la ficha, sin trazabilidad,
+   * la columna Estado (Pendiente, Observado, Validado) solo en las filas de registro, y Validar / Observar / historial
+   * en su menú ⋮. El expediente pasa de Creado a En trámite al evaluar un registro y a Archivado con todos validados.
+   */
+  readonly modoRevisor = computed(() => this.esEvaluador() && this.ambito === 'pliego');
+  readonly ambitoConsolidado = this.ambito;
+
+  readonly mostrarAvisoEvaluacion = computed(() => this.modoRevisor() && !!this.detalle() && !this.avisoUmbralCerrado());
+  readonly textoAvisoEvaluacion = computed(() =>
+    textoEstadoEvaluacion(this.detalle()?.registros ?? [], this.registrosFueraDelUmbral(), this.umbralVariacion),
+  );
+  readonly estadoExpediente = computed(() => estadoExpedienteEstimacion(this.detalle()?.registros));
+  /** N° de expediente en la ficha (Figma: «0000001-2026»): N° del documento y año. */
+  readonly numeroExpediente = computed(() => {
+    const d = this.detalle();
+    return d ? `${d.numero.padStart(7, '0')}-${new Date(d.fecha).getFullYear()}` : null;
+  });
 
   readonly headerState = computed<SolicitudeHeaderState>(() => {
-    if (this.esNuevo()) return 'new';
     const estado = this.detalle()?.estado;
     if (estado === 'Aprobado') return 'approved';
     if (estado === 'Verificado') return 'verified';
@@ -185,25 +220,17 @@ export class ConsolidadoPliegoComponent implements OnInit {
   });
 
   readonly campos = computed<SolicitudeInfoField[]>(() => {
-    const p = this.precarga();
-    if (p) {
-      return [
-        { label: 'Fecha', value: aFechaHoraPe(p.fecha) },
-        { label: 'Ente rector', value: p.enteRector },
-        { label: 'Entidad', value: p.entidad },
-        { label: 'Unidad ejecutora', value: p.unidadEjecutora },
-      ];
-    }
     const d = this.detalle();
     if (!d) return [];
+    // El consolidado DGTP no es de una entidad: su ficha lleva solo Fecha y Ente rector (Figma node 4760:174853).
     return [
       { label: 'Fecha', value: aFechaHoraPe(d.fecha) },
       { label: 'Ente rector', value: d.enteRector },
-      { label: 'Entidad', value: d.entidad },
+      ...(d.entidad ? [{ label: 'Entidad', value: d.entidad }] : []),
     ];
   });
 
-  private readonly pliegos = computed(() => this.precarga()?.pliegos ?? this.detalle()?.pliegos ?? []);
+  private readonly pliegos = computed(() => this.detalle()?.pliegos ?? []);
 
   /** Raíz según la agrupación: cada una es su propio árbol del backend (Figma nodes 8349:509061 y 8349:491365). */
   private readonly raiz = computed(() => {
@@ -254,11 +281,32 @@ export class ConsolidadoPliegoComponent implements OnInit {
     };
   });
 
+  /** TOTAL de la proyección: suma de las fuentes de financiamiento, año por año. */
+  readonly totalProyeccion = computed(() =>
+    this.aniosProyeccion.map((anio) => this.pliegos().reduce((s, n) => s + this.montoProyectado(n, anio), 0)),
+  );
+
+  /**
+   * Recaudación estimada de un año de la proyección. 2027–2029 son los del consolidado; de 2030 en adelante se
+   * proyecta con el crecimiento de 2029 sobre 2028 (en el Figma es un crecimiento constante año a año).
+   */
+  montoProyectado(nodo: Pick<NodoConsolidadoPliego, 'anio2027' | 'anio2028' | 'anio2029'>, anio: number): number {
+    if (anio <= 2027) return nodo.anio2027;
+    if (anio === 2028) return nodo.anio2028;
+    if (anio === 2029) return nodo.anio2029;
+    const crecimiento = nodo.anio2028 ? nodo.anio2029 / nodo.anio2028 : 1;
+    return Math.round(nodo.anio2029 * crecimiento ** (anio - 2029));
+  }
+
   /** «Variación fuera del umbral» (Figma node 7606:466323): clasificadores con (f) sobre el umbral. */
   readonly registrosFueraDelUmbral = computed(
     () => clasificadores(this.pliegos()).filter((n) => n.promedioAnual && ((n.anio2027 - n.promedioAnual) / n.promedioAnual) * 100 > this.umbralVariacion).length,
   );
-  readonly mostrarAvisoUmbral = computed(() => !!this.detalle() && this.registrosFueraDelUmbral() > 0 && !this.avisoUmbralCerrado());
+  readonly mostrarAvisoUmbral = computed(
+    // La proyección no muestra variación, así que tampoco su aviso.
+    () =>
+      !this.esProyeccion && !this.modoRevisor() && !!this.detalle() && this.registrosFueraDelUmbral() > 0 && !this.avisoUmbralCerrado(),
+  );
   readonly textoAvisoUmbral = computed(() => {
     const n = this.registrosFueraDelUmbral();
     const registros = n === 1 ? '1 registro supera' : `${n} registros superan`;
@@ -276,10 +324,14 @@ export class ConsolidadoPliegoComponent implements OnInit {
     ];
   });
 
-  /** Observado: el comentario del aprobador en la pestaña Detalle. */
+  /**
+   * Observado: el comentario del aprobador en la pestaña Detalle. Solo en la proyección DGTP, una vez observada, las
+   * pestañas Detalle e Historial se quedan en todos los estados siguientes (Elaborado, Verificado y Aprobado).
+   */
   readonly comentarioObservacion = computed<DetailHistoryComment | null>(() => {
     const d = this.detalle();
-    return d?.estado === 'Observado' && d.motivoObservacion ? { label: 'Comentario de observación', texto: d.motivoObservacion } : null;
+    const conObservacion = d?.estado === 'Observado' || this.esProyeccion;
+    return conObservacion && d?.motivoObservacion ? { label: 'Comentario de observación', texto: d.motivoObservacion } : null;
   });
 
   /** Pestaña Historial: una fila por observación (hoy una sola iteración). */
@@ -294,26 +346,26 @@ export class ConsolidadoPliegoComponent implements OnInit {
       descripcion: d.motivoObservacion ?? '',
       fecha,
       hora,
-      rol: 'Aprobador\nUE',
+      // El consolidado DGTP y la proyección DGTP los observa el aprobador de la DGTP; el del pliego, el de la UE.
+      rol: this.ambito === 'pliego' ? 'Aprobador\nUE' : 'Aprobador\nDGTP',
       usuario: d.observadoPor,
     }];
   });
 
-  // ── Menú ⋮ de cada clasificador: los mismos detalles que en la solicitud ──
-  private readonly accionesConBaseLegal: IconDropdownMenuItem[] = [
-    { label: 'Ver detalle recaudación histórica', value: 'recaudacion-historica', icon: 'calculate' },
-    { label: 'Ver detalle base legal de uso específico', value: 'base-legal', icon: 'balance' },
-  ];
-  private readonly accionesSinBaseLegal = this.accionesConBaseLegal.map((a) => (a.value === 'base-legal' ? { ...a, disabled: true } : a));
+  // ── Menú ⋮ y clic en cada clasificador: lo mismo que en la solicitud ──
   readonly filaRecaudacion = signal<ClasificadorEstimacionIngresos | null>(null);
   readonly filaBaseLegal = signal<ClasificadorEstimacionIngresos | null>(null);
 
-  accionesDe(nodo: NodoConsolidadoPliego): IconDropdownMenuItem[] {
-    return nodo.baseLegal === 'SI' ? this.accionesConBaseLegal : this.accionesSinBaseLegal;
+  /** El registro de la solicitud con el mismo código de clasificador (ej. «3.1.5.1»), si llegó al consolidado. */
+  private registroDe(nodo: NodoConsolidadoPliego): ClasificadorEstimacionIngresos | undefined {
+    const codigo = nodo.etiqueta.split(' ')[0];
+    return this.detalle()?.registros?.find((r) => r.clasificador.split(' ')[0] === codigo);
   }
 
-  /** El clasificador del consolidado con la forma que piden los paneles de detalle de la solicitud. */
+  /** El registro completo de la solicitud; si no está, uno armado con los montos de la fila. */
   private comoClasificador(nodo: NodoConsolidadoPliego): ClasificadorEstimacionIngresos {
+    const registro = this.registroDe(nodo);
+    if (registro) return registro;
     const variacionMonto = nodo.anio2027 - nodo.promedioAnual;
     return {
       ff: '2.09',
@@ -330,9 +382,61 @@ export class ConsolidadoPliegoComponent implements OnInit {
     };
   }
 
+  /** Menú ⋮ de la solicitud (`acciones-registro.ts`), con el registro completo; el revisor, el suyo. */
+  accionesDe(nodo: NodoConsolidadoPliego): IconDropdownMenuItem[] {
+    const fila = this.comoClasificador(nodo);
+    return this.modoRevisor() && this.registroDe(nodo) ? accionesRevisorRegistro(fila) : accionesRegistroEstimacion(fila);
+  }
+
+  /** Estado de la evaluación de la fila; solo las filas de registro lo tienen. */
+  estadoEvaluacionDe(nodo: NodoConsolidadoPliego): string | null {
+    if (!nodo.clasificador) return null;
+    const registro = this.registroDe(nodo);
+    return registro ? (registro.estadoEvaluacion ?? 'Pendiente') : null;
+  }
+
   onAccion(nodo: NodoConsolidadoPliego, accion: string): void {
-    if (accion === 'recaudacion-historica') this.filaRecaudacion.set(this.comoClasificador(nodo));
-    if (accion === 'base-legal') this.filaBaseLegal.set(this.comoClasificador(nodo));
+    const fila = this.comoClasificador(nodo);
+    if (accion === 'recaudacion-historica') this.filaRecaudacion.set(fila);
+    if (accion === 'base-legal') this.filaBaseLegal.set(fila);
+    if (accion === 'descargar-sustento') descargarSustentoRegistro(fila);
+    if (accion === 'validar' || accion === 'observar') {
+      this.filaEvaluar.set(fila);
+      this.accionEvaluar.set(accion);
+    }
+    if (accion === 'historial') this.abrirHistorialRegistro(fila);
+  }
+
+  /** Validar (modal) u Observar (panel), en `siaf-estimacion-ingresos-evaluar-registro`. */
+  readonly filaEvaluar = signal<ClasificadorEstimacionIngresos | null>(null);
+  readonly accionEvaluar = signal<AccionEvaluarRegistro | null>(null);
+
+  /** Tras evaluar: cambian la columna Estado, el aviso y el estado del expediente. */
+  onRegistroEvaluado(fila: ClasificadorEstimacionIngresos): void {
+    this.detalle.update((d) =>
+      d ? { ...d, registros: d.registros.map((r) => (r.clasificador === fila.clasificador ? fila : r)) } : d,
+    );
+  }
+
+  readonly historialRegistroAbierto = signal(false);
+  readonly resumenHistorialRegistro = signal<DocumentHistorySummary>({ solicitudId: '', document: '', number: '', actionType: '' });
+
+  private abrirHistorialRegistro(fila: ClasificadorEstimacionIngresos): void {
+    const d = this.detalle();
+    if (!d) return;
+    this.resumenHistorialRegistro.set(historialRegistro(d, fila));
+    this.historialRegistroAbierto.set(true);
+  }
+
+  /** La fila de un clasificador con registro abre su «Detalle de estimación de ingresos», como en la solicitud. */
+  tieneDetalle(nodo: NodoConsolidadoPliego): boolean {
+    return !!nodo.clasificador && !!this.registroDe(nodo);
+  }
+
+  abrirRegistro(nodo: NodoConsolidadoPliego): void {
+    const id = this.detalle()?.documentoId;
+    if (!id || !this.tieneDetalle(nodo)) return;
+    void this.router.navigateByUrl(this.datosAmbito.registro(id, nodo.etiqueta.split(' ')[0]));
   }
 
   toggleRama(id: string): void {
@@ -344,7 +448,7 @@ export class ConsolidadoPliegoComponent implements OnInit {
   }
 
   regresar(): void {
-    void this.router.navigateByUrl(CONSOLIDADO_PLIEGO_ROUTE);
+    void this.router.navigateByUrl(this.datosAmbito.bandeja);
   }
 
   private mostrarAviso(variante: SnackbarVariant): void {
@@ -352,37 +456,23 @@ export class ConsolidadoPliegoComponent implements OnInit {
     this.snackbarAbierto.set(true);
   }
 
-  /** Los clasificadores del consolidado: en «Nuevo» van todos (los checkbox están deshabilitados). */
-  private registros(): string[] {
-    return clasificadores(this.pliegos()).map((n) => n.id);
-  }
-
-  /** Grabar en «Nuevo»: el consolidado queda «Elaborado» y se abre grabado. */
-  onConfirmarGrabar(): void {
-    this.modalGrabar.set(false);
-    this.saving.set(true);
-    this.api.crearConsolidadoPliego({ registros: this.registros() }).subscribe({
-      next: (creado) => void this.router.navigate([consolidadoPliegoRoute(creado.id)], { replaceUrl: true, state: { aviso: 'creation-elaborated' } }),
-      error: () => this.saving.set(false),
+  /** «Crear documento»: crea el consolidado en Elaborado y lo abre (reemplaza la ruta de creación). */
+  private crearDirecto(): void {
+    this.api.crearConsolidadoPliego(this.ambito).subscribe({
+      next: (creado) =>
+        void this.router.navigate([this.datosAmbito.detalle(creado.id)], { replaceUrl: true, state: { aviso: 'creation-elaborated' } }),
+      error: () => this.cargando.set(false),
     });
   }
 
-  /** Verificar: en «Nuevo» graba y verifica de una vez; grabado, pasa de Elaborado a Verificado. */
+  /** Verificar: Elaborado → Verificado. */
   onConfirmarVerificar(): void {
+    const id = this.detalle()?.documentoId;
+    if (!id) return;
     this.modalVerificar.set(false);
     this.saving.set(true);
-    const id = this.detalle()?.documentoId;
-    const verificar$ = id
-      ? this.api.verificarConsolidadoPliego(id)
-      : this.api.crearConsolidadoPliego({ registros: this.registros() }).pipe(switchMap((creado) => this.api.verificarConsolidadoPliego(creado.id)));
-    verificar$.subscribe({
-      next: (doc) => {
-        if (!id) {
-          void this.router.navigate([consolidadoPliegoRoute(doc.id)], { replaceUrl: true, state: { aviso: 'creation-verified' } });
-          return;
-        }
-        this.refrescar(id, 'creation-verified');
-      },
+    this.api.verificarConsolidadoPliego(id, this.ambito).subscribe({
+      next: () => this.refrescar(id, 'creation-verified'),
       error: () => this.saving.set(false),
     });
   }
@@ -393,8 +483,31 @@ export class ConsolidadoPliegoComponent implements OnInit {
     if (!id) return;
     this.modalAprobar.set(false);
     this.saving.set(true);
-    this.api.aprobarConsolidadoPliego(id).subscribe({
+    this.api.aprobarConsolidadoPliego(id, this.ambito).subscribe({
       next: () => this.refrescar(id, 'creation-approved'),
+      error: () => this.saving.set(false),
+    });
+  }
+
+  /**
+   * Proyección DGTP observada, vista del creador: en vez de Editar y Eliminar, el encabezado lleva solo «Recalcular».
+   * Recalcular la devuelve a Elaborado (Eliminar y Editar deshabilitados, Verificar), como el flujo de creación.
+   */
+  readonly accionesRecalculo = computed(
+    () => this.esProyeccion && this.headerRole() === 'creator' && this.detalle()?.estado === 'Observado',
+  );
+
+  /** Creador: recalcula la proyección observada y la deja en Elaborado (sin verificador en la trazabilidad). */
+  recalcular(): void {
+    const id = this.detalle()?.documentoId;
+    if (!id) return;
+    this.saving.set(true);
+    this.api.recalcularConsolidadoPliego(id, this.ambito).subscribe({
+      next: () =>
+        this.api.obtenerConsolidadoPliego(id, this.ambito).subscribe((detalle) => {
+          this.detalle.set(detalle);
+          this.saving.set(false);
+        }),
       error: () => this.saving.set(false),
     });
   }
@@ -411,7 +524,7 @@ export class ConsolidadoPliegoComponent implements OnInit {
     if (!id || !motivo) return;
     this.modalObservar.set(false);
     this.saving.set(true);
-    this.api.observarConsolidadoPliego(id, motivo).subscribe({
+    this.api.observarConsolidadoPliego(id, motivo, this.ambito).subscribe({
       next: () => this.refrescar(id, 'creation-observed'),
       error: () => this.saving.set(false),
     });
@@ -436,7 +549,7 @@ export class ConsolidadoPliegoComponent implements OnInit {
 
   /** Misma ruta: el router no vuelve a cargar, así que se refresca el detalle aquí. */
   private refrescar(id: string, aviso: SnackbarVariant): void {
-    this.api.obtenerConsolidadoPliego(id).subscribe((detalle) => {
+    this.api.obtenerConsolidadoPliego(id, this.ambito).subscribe((detalle) => {
       this.detalle.set(detalle);
       this.saving.set(false);
       this.mostrarAviso(aviso);
@@ -448,7 +561,7 @@ export class ConsolidadoPliegoComponent implements OnInit {
     if (!id) return;
     this.modalEliminar.set(false);
     this.saving.set(true);
-    this.api.eliminarConsolidadoPliego(id).subscribe({
+    this.api.eliminarConsolidadoPliego(id, this.ambito).subscribe({
       next: () => this.regresar(),
       error: () => this.saving.set(false),
     });

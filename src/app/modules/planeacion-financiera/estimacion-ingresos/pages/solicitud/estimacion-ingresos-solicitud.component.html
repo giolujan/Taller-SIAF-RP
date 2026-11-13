@@ -459,6 +459,22 @@
   />
   <siaf-estimacion-ingresos-detalle-base-legal [fila]="filaBaseLegal()" (closed)="filaBaseLegal.set(null)" />
 
+  <!-- Revisor / Evaluador: Validar (modal) y Observar (panel) desde el menú ⋮ de cada registro. -->
+  @if (esEvaluador()) {
+    <siaf-estimacion-ingresos-evaluar-registro
+      [solicitudId]="detalle()?.documentoId ?? ''"
+      [fila]="filaEvaluar()"
+      [accion]="accionEvaluar()"
+      (cerrado)="accionEvaluar.set(null)"
+      (evaluado)="onRegistroEvaluado($event)"
+    />
+    <siaf-document-history-panel
+      [open]="historialRegistroAbierto()"
+      [summary]="resumenHistorialRegistro()"
+      (closed)="historialRegistroAbierto.set(false)"
+    />
+  }
+
   <!-- Prototipo: doble clic en «Comentario de la observación» lo completa con el texto del Figma. -->
   <siaf-request-approval-modals
     (dblclick)="completarObservacionDemo($event)"

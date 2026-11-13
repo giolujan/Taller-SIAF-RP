@@ -14,10 +14,9 @@ import {
 import {
   BandejaConsolidadoPliego,
   ConsolidadoPliegoRegistro,
-  CrearConsolidadoPliegoPayload,
   DetalleConsolidadoPliego,
-  PrecargaConsolidadoPliego,
 } from '../models/consolidado-pliego.model';
+import { AmbitoConsolidado } from '../config/estimacion-ingresos.rutas';
 
 /**
  * Endpoint propio del proceso. En el taller lo responde el backend simulado
@@ -34,42 +33,56 @@ export class EstimacionIngresosApiService {
   }
 
   /** Bandeja «Documentos de consolidado pliego de estimación de ingresos». */
-  listarConsolidadosPliego(): Observable<BandejaConsolidadoPliego> {
-    return this.http.get<BandejaConsolidadoPliego>(`${this.base}/consolidado-pliego-estimacion-ingresos`);
+  listarConsolidadosPliego(ambito: AmbitoConsolidado = 'pliego'): Observable<BandejaConsolidadoPliego> {
+    return this.http.get<BandejaConsolidadoPliego>(`${this.base}/consolidado-${ambito}-estimacion-ingresos`);
   }
 
-  /** Cabecera y relación de pliegos con las que se abre un consolidado «Nuevo», antes de Grabar. */
-  obtenerPrecargaConsolidadoPliego(): Observable<PrecargaConsolidadoPliego> {
-    return this.http.get<PrecargaConsolidadoPliego>(`${this.base}/consolidado-pliego-estimacion-ingresos/precarga`);
-  }
-
-  /** Graba un consolidado «Nuevo» con los registros elegidos: queda «Elaborado». */
-  crearConsolidadoPliego(payload: CrearConsolidadoPliegoPayload): Observable<ConsolidadoPliegoRegistro> {
-    return this.http.post<ConsolidadoPliegoRegistro>(`${this.base}/consolidado-pliego-estimacion-ingresos`, payload);
+  /** «Crear documento»: crea el consolidado en «Elaborado» con todos los registros del universo. */
+  crearConsolidadoPliego(ambito: AmbitoConsolidado = 'pliego'): Observable<ConsolidadoPliegoRegistro> {
+    return this.http.post<ConsolidadoPliegoRegistro>(`${this.base}/consolidado-${ambito}-estimacion-ingresos`, {});
   }
 
   /** Consolidado grabado: cabecera, relación de pliegos y trazabilidad. */
-  obtenerConsolidadoPliego(id: string): Observable<DetalleConsolidadoPliego> {
-    return this.http.get<DetalleConsolidadoPliego>(`${this.base}/consolidado-pliego-estimacion-ingresos/${id}/detalle`);
+  obtenerConsolidadoPliego(id: string, ambito: AmbitoConsolidado = 'pliego'): Observable<DetalleConsolidadoPliego> {
+    return this.http.get<DetalleConsolidadoPliego>(`${this.base}/consolidado-${ambito}-estimacion-ingresos/${id}/detalle`);
   }
 
   /** Creador: Elaborado → Verificado. */
-  verificarConsolidadoPliego(id: string): Observable<ConsolidadoPliegoRegistro> {
-    return this.http.post<ConsolidadoPliegoRegistro>(`${this.base}/consolidado-pliego-estimacion-ingresos/${id}/verificar`, {});
+  verificarConsolidadoPliego(id: string, ambito: AmbitoConsolidado = 'pliego'): Observable<ConsolidadoPliegoRegistro> {
+    return this.http.post<ConsolidadoPliegoRegistro>(`${this.base}/consolidado-${ambito}-estimacion-ingresos/${id}/verificar`, {});
+  }
+
+  /** Creador, proyección DGTP observada: la recalcula y la devuelve a Elaborado (sin verificador). */
+  recalcularConsolidadoPliego(id: string, ambito: AmbitoConsolidado): Observable<ConsolidadoPliegoRegistro> {
+    return this.http.post<ConsolidadoPliegoRegistro>(`${this.base}/consolidado-${ambito}-estimacion-ingresos/${id}/recalcular`, {});
   }
 
   /** Aprobador: Verificado → Aprobado. */
-  aprobarConsolidadoPliego(id: string): Observable<ConsolidadoPliegoRegistro> {
-    return this.http.post<ConsolidadoPliegoRegistro>(`${this.base}/consolidado-pliego-estimacion-ingresos/${id}/aprobar`, {});
+  aprobarConsolidadoPliego(id: string, ambito: AmbitoConsolidado = 'pliego'): Observable<ConsolidadoPliegoRegistro> {
+    return this.http.post<ConsolidadoPliegoRegistro>(`${this.base}/consolidado-${ambito}-estimacion-ingresos/${id}/aprobar`, {});
   }
 
   /** Aprobador: Verificado → Observado, con el comentario de la observación. */
-  observarConsolidadoPliego(id: string, motivo: string): Observable<ConsolidadoPliegoRegistro> {
-    return this.http.post<ConsolidadoPliegoRegistro>(`${this.base}/consolidado-pliego-estimacion-ingresos/${id}/observar`, { motivo });
+  observarConsolidadoPliego(id: string, motivo: string, ambito: AmbitoConsolidado = 'pliego'): Observable<ConsolidadoPliegoRegistro> {
+    return this.http.post<ConsolidadoPliegoRegistro>(`${this.base}/consolidado-${ambito}-estimacion-ingresos/${id}/observar`, { motivo });
   }
 
-  eliminarConsolidadoPliego(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.base}/consolidado-pliego-estimacion-ingresos/${id}`);
+  /** Revisor / Evaluador: valida u observa un registro de un consolidado aprobado. */
+  evaluarRegistroConsolidado(
+    ambito: AmbitoConsolidado,
+    id: string,
+    codigo: string,
+    estado: 'Validado' | 'Observado',
+    comentario?: string,
+  ): Observable<ClasificadorEstimacionIngresos> {
+    return this.http.post<ClasificadorEstimacionIngresos>(
+      `${this.base}/consolidado-${ambito}-estimacion-ingresos/${id}/registros/${encodeURIComponent(codigo)}/evaluar`,
+      { estado, comentario },
+    );
+  }
+
+  eliminarConsolidadoPliego(id: string, ambito: AmbitoConsolidado = 'pliego'): Observable<void> {
+    return this.http.delete<void>(`${this.base}/consolidado-${ambito}-estimacion-ingresos/${id}`);
   }
 
   /** Cabecera y clasificadores con los que se abre una solicitud «Nuevo», antes de Grabar. */

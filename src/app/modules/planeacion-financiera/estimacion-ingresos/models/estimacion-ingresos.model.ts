@@ -73,6 +73,9 @@ export interface ClasificadorEstimacionIngresos {
   estadoEvaluacion?: EstadoEvaluacionRegistro;
   /** Comentario del Revisor / Evaluador al observar el registro. */
   comentarioEvaluacion?: string;
+  /** Quién evaluó el registro y cuándo (ISO). */
+  evaluadoPor?: string;
+  fechaEvaluacion?: string;
 }
 
 /** Estados de la evaluación de un registro: «status items tags» del Figma (`siaf-record-status-tag`). */
@@ -206,8 +209,10 @@ export type EstadoExpedienteEstimacion = 'Creado' | 'En trámite' | 'Archivado';
 
 /**
  * «Creado» mientras todos los registros sigan pendientes de evaluación; «En trámite» en cuanto uno se valida u observa
- * (Figma CEL-005 node 9788:214369).
+ * (Figma CEL-005 node 9788:214369); «Archivado» cuando todos están validados.
  */
 export function estadoExpedienteEstimacion(registros: { estadoEvaluacion?: EstadoEvaluacionRegistro }[] | undefined): EstadoExpedienteEstimacion {
-  return (registros ?? []).some((r) => (r.estadoEvaluacion ?? 'Pendiente') !== 'Pendiente') ? 'En trámite' : 'Creado';
+  const estados = (registros ?? []).map((r) => r.estadoEvaluacion ?? 'Pendiente');
+  if (estados.length && estados.every((e) => e === 'Validado')) return 'Archivado';
+  return estados.some((e) => e !== 'Pendiente') ? 'En trámite' : 'Creado';
 }

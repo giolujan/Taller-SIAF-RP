@@ -50,6 +50,10 @@ export interface DatosTaller {
   estimacionIngresos: EstimacionIngresosRegistro[];
   /** Opcional: los datos guardados antes de esta bandeja no la traen; el backend simulado la siembra al leerla. */
   consolidadosPliegoEstimacion?: ConsolidadoPliegoRegistro[];
+  /** Opcional, como la del pliego: bandeja del consolidado DGTP. */
+  consolidadosDgtpEstimacion?: ConsolidadoPliegoRegistro[];
+  /** Opcional, como la del consolidado DGTP: bandeja de la proyección DGTP de ingresos. */
+  proyeccionesDgtpIngresos?: ConsolidadoPliegoRegistro[];
   notificaciones: NotificacionMock[];
   correlativoDocumento: number;
   correlativoDocumentoSaldos: number;
@@ -271,6 +275,25 @@ export const CONSOLIDADO_PLIEGO_SEMILLA: ConsolidadoPliegoRegistro[] = (['Elabor
   }),
 );
 
+/**
+ * Consolidados pliego ya aprobados, para que la bandeja del Revisor / Evaluador (solo recibe Aprobados) no salga vacía,
+ * como `ESTIMACION_INGRESOS_APROBADAS_SEMILLA`. Elaboró y verificó Ana; aprobó Luis. El número se asigna al sembrarlos.
+ */
+export const CONSOLIDADO_PLIEGO_APROBADOS_SEMILLA: Omit<ConsolidadoPliegoRegistro, 'numero'>[] = [1, 2, 3].map((n) => ({
+  id: `cpe-apr-${n}`,
+  documento: 'Consolidado pliego de estimación de ingresos',
+  tipoAccion: 'Creación',
+  estado: 'Aprobado' as const,
+  sistema: 'Tesorería',
+  fecha: `2026-02-20T${String(7 + n).padStart(2, '0')}:00:59`,
+  entidad: '009 Ministerio de Economía y Finanzas',
+  elaboradoPor: 'Ana Torres Díaz',
+  verificadoPor: 'Ana Torres Díaz',
+  fechaVerificado: `2026-02-20T${String(7 + n).padStart(2, '0')}:30:59`,
+  aprobadoPor: 'Luis Ramírez Soto',
+  fechaAprobado: `2026-02-20T${String(10 + n).padStart(2, '0')}:00:59`,
+}));
+
 /** Unidades ejecutoras del pliego que ya validaron su solicitud (el aviso «Consolidado disponible» del Figma). */
 export const UNIDADES_EJECUTORAS_PLIEGO = 5;
 
@@ -287,7 +310,7 @@ const clasificadorNodo = (id: string, etiqueta: string, montos: Montos, baseLega
 const hoja = (id: string, etiqueta: string, montos: Montos): NodoConsolidadoPliego => ({ ...nodo(id, etiqueta, montos), hoja: true });
 
 /**
- * «Relación de pliegos consolidados» de un consolidado nuevo (Figma node 7606:466337), con los montos del diseño. Solo
+ * «Relación de pliegos consolidados» del consolidado pliego (Figma node 7606:466323), con los montos del diseño. Solo
  * la «003 Secretaría General - PCM» trae sus clasificadores; el resto de unidades y fuentes vienen sin detalle.
  */
 export const RELACION_PLIEGOS_CONSOLIDADOS: NodoConsolidadoPliego[] = [
@@ -352,6 +375,120 @@ export const RELACION_PLIEGOS_POR_ENTIDAD: NodoConsolidadoPliego[] = [
 ];
 
 /**
+ * Bandeja «Documentos de consolidado DGTP de estimación de ingresos» (Figma node 4938:253880): cuatro consolidados ya
+ * aprobados; el que crea «Crear documento» es el siguiente correlativo.
+ */
+export const CONSOLIDADO_DGTP_SEMILLA: ConsolidadoPliegoRegistro[] = [5, 4, 3, 2].map((n) => ({
+  id: `cde-${n}`,
+  documento: 'Consolidado DGTP de estimación de ingresos',
+  numero: String(n).padStart(4, '0'),
+  tipoAccion: 'Creación',
+  estado: 'Aprobado',
+  sistema: 'Tesorería',
+  fecha: `2026-02-15T${String(3 + n).padStart(2, '0')}:00:59`,
+  entidad: '009 Ministerio de Economía y Finanzas',
+  elaboradoPor: 'Ana Torres Díaz',
+  verificadoPor: 'Ana Torres Díaz',
+  fechaVerificado: `2026-02-15T${String(3 + n).padStart(2, '0')}:30:59`,
+  aprobadoPor: 'Luis Ramírez Soto',
+  fechaAprobado: `2026-02-15T${String(10 + n).padStart(2, '0')}:00:59`,
+}));
+
+/** Bandeja «Documentos de proyección DGTP de ingresos»: como la del consolidado DGTP, cuatro proyecciones aprobadas. */
+export const PROYECCION_DGTP_SEMILLA: ConsolidadoPliegoRegistro[] = CONSOLIDADO_DGTP_SEMILLA.map((d, i) => ({
+  ...d,
+  id: `pdi-${5 - i}`,
+  documento: 'Proyección DGTP de ingresos',
+}));
+
+/** Clasificadores de la «003 Secretaría General - PCM» en el universo DGTP (participación sobre el total DGTP). */
+const clasificadoresDgtp = (prefijo: string): NodoConsolidadoPliego[] => [
+  registro(`${prefijo}-3.1.5.1`, '3.1.5.1 Venta de Publicaciones', [66249, 66582, 66917, 67253, 1.3], 'SI'),
+  registro(`${prefijo}-3.2.1.1`, '3.2.1.1 Tasas Registrales', [9999, 11549, 10309, 10618, 0.22], 'NO'),
+  registro(`${prefijo}-3.2.5.2`, '3.2.5.2 Licencia de Construcción', [212500, 223468, 230172, 237077, 4.35], 'NO'),
+];
+
+/**
+ * «Universo consolidado» del consolidado DGTP agrupado por fuente de financiamiento (Figma nodes 4760:174853,
+ * 7741:73358 y 8546:409105), con los montos del diseño: fuente › rubro › pliego › unidad ejecutora › clasificador.
+ * Solo la PCM y su «003 Secretaría General» traen detalle.
+ */
+export const UNIVERSO_DGTP_POR_FUENTE: NodoConsolidadoPliego[] = [
+  nodo('d-ff-2', '2 Recursos Directamente Recaudados', [3711621, 3860881, 3970343, 4066517, 75.13], [
+    nodo('d-rb-09', '09 Recursos Directamente Recaudados', [3711621, 3860881, 3970343, 4066517, 75.13], [
+      nodo('d-0001', '0001 PRESIDENCIA DEL CONSEJO DE MINISTROS', [1193950, 1238413, 1270748, 1301281, 24.1], [
+        nodo('d-0001-003', '003 SECRETARIA GENERAL - PCM', [288748, 301599, 307398, 314948, 5.87], clasificadoresDgtp('d-003')),
+        nodo('d-0001-1733', '1733 PCM SEC TEC', [231051, 238958, 245806, 250236, 4.65]),
+        nodo('d-0001-1763', '1763 PROY TRANS', [313899, 323840, 334373, 344351, 6.3]),
+        nodo('d-0001-1781', '1781 ANATP CHANCAY', [176217, 184033, 187965, 191910, 3.58]),
+        nodo('d-0001-1788', '1788 PROG MEJ AT CID', [184035, 189983, 195206, 199836, 3.7]),
+      ]),
+      nodo('d-0009', '0009 MEF', [870680, 907902, 940667, 962819, 17.67]),
+      nodo('d-0011', '0011 MINEDU', [605891, 622398, 642936, 655093, 12.11]),
+      nodo('d-0002', '0002 INEI', [243244, 254015, 260277, 265026, 4.94]),
+      nodo('d-0010', '0010 DIRECCIÓN NACIONAL DE INTELIGENCIA', [123431, 128680, 131785, 135180, 2.5]),
+      nodo('d-0440', '0440 GOBIERNO REGIONAL DE AMAZONAS', [430020, 452531, 461282, 476630, 8.81]),
+      nodo('d-0005', '0005 MANCOMUNIDAD REGIONAL LOS ANDES', [141862, 148349, 151607, 156094, 2.89]),
+      nodo('d-0006', '0006 MANCOMUNIDAD MUNICIPAL MANSURLA', [102543, 108593, 111041, 114394, 2.11]),
+    ]),
+  ]),
+  nodo('d-ff-3', '3 Recursos por Operaciones Oficiales de Crédito', [610640, 635879, 652006, 671416, 12.37]),
+  nodo('d-ff-4', '4 Donaciones y Transferencias', [616789, 641914, 660223, 678198, 12.49]),
+];
+
+/** El universo DGTP agrupado por clasificador de ingresos (Figma nodes 8349:537334 y 8546:411133). */
+export const UNIVERSO_DGTP_POR_CLASIFICADOR: NodoConsolidadoPliego[] = [
+  nodo('dc-ff-2', '2 Recursos Directamente Recaudados', [3711621, 3860881, 3970343, 4066517, 75.13], [
+    nodo('dc-rb-09', '09 Recursos Directamente Recaudados', [3711621, 3860881, 3970343, 4066517, 75.13], [
+      clasificadorNodo('dc-3.1.5.1', '3.1.5.1 Venta de Publicaciones', [66249, 66582, 66917, 67253, 1.3], 'SI', [
+        nodo('dc-3.1.5.1-0001', '0001 PRESIDENCIA DEL CONSEJO DE MINISTROS', [288545, 298996, 304598, 309823, 5.82], [
+          hoja('dc-3.1.5.1-003', '003 SECRETARIA GENERAL - PCM', [66249, 66582, 66917, 67253, 1.3]),
+          hoja('dc-3.1.5.1-1733', '1733 PCM SEC TEC', [34208, 35619, 36165, 36999, 0.69]),
+          hoja('dc-3.1.5.1-1763', '1763 PROY TRANS', [87396, 90304, 92440, 94334, 1.76]),
+          hoja('dc-3.1.5.1-1781', '1781 ANATP CHANCAY', [73281, 77666, 79361, 80695, 1.51]),
+          hoja('dc-3.1.5.1-1788', '1788 PROG MEJ AT CID', [27411, 28825, 29715, 30542, 0.56]),
+        ]),
+        nodo('dc-3.1.5.1-0009', '0009 MEF', [142798, 151566, 155023, 159009, 2.95]),
+        nodo('dc-3.1.5.1-0011', '0011 MINEDU', [255133, 260616, 268374, 273777, 5.07]),
+        nodo('dc-3.1.5.1-0002', '0002 INEI', [89231, 93289, 94979, 96603, 1.82]),
+        nodo('dc-3.1.5.1-0010', '0010 DIRECCIÓN NACIONAL DE INTELIGENCIA', [51559, 55197, 56719, 57852, 1.07]),
+        nodo('dc-3.1.5.1-0440', '0440 GOBIERNO REGIONAL DE AMAZONAS', [170994, 183142, 186670, 191723, 3.56]),
+        nodo('dc-3.1.5.1-0005', '0005 MANCOMUNIDAD REGIONAL LOS ANDES', [14640, 14994, 15364, 15656, 0.29]),
+        nodo('dc-3.1.5.1-0006', '0006 MANCOMUNIDAD MUNICIPAL MANSURLA', [31777, 33767, 34707, 35794, 0.66]),
+      ]),
+      clasificadorNodo('dc-3.2.1.1', '3.2.1.1 Tasas Registrales', [335382, 349536, 358625, 369110, 6.8], 'NO'),
+      clasificadorNodo('dc-3.2.5.2', '3.2.5.2 Licencia de Construcción', [2331562, 2419778, 2495284, 2557170, 47.09], 'NO'),
+    ]),
+  ]),
+  nodo('dc-ff-3', '3 Recursos por Operaciones Oficiales de Crédito', [610640, 635879, 652006, 671416, 12.37]),
+  nodo('dc-ff-4', '4 Donaciones y Transferencias', [616789, 641914, 660223, 678198, 12.49]),
+];
+
+/** El universo DGTP agrupado por entidad (Figma nodes 8349:521345 a 8546:413194). */
+export const UNIVERSO_DGTP_POR_ENTIDAD: NodoConsolidadoPliego[] = [
+  nodo('de-0001', '0001 PRESIDENCIA DEL CONSEJO DE MINISTROS', [1599642, 1661810, 1703756, 1744667, 32.34], [
+    nodo('de-0001-003', '003 SECRETARIA GENERAL - PCM', [337098, 350916, 357701, 366257, 6.83], [
+      nodo('de-003-ff-2', '2 Recursos Directamente Recaudados', [288748, 301599, 307398, 314948, 5.87], [
+        nodo('de-003-rb-09', '09 Recursos Directamente Recaudados', [288748, 301599, 307398, 314948, 5.87],
+          clasificadoresDgtp('de-003').map((n) => ({ ...n, seleccionable: false, hoja: true }))),
+      ]),
+      nodo('de-003-ff-4', '4 Donaciones y Transferencias', [48350, 49317, 50303, 51309, 0.96]),
+    ]),
+    nodo('de-0001-1733', '1733 PCM SEC TEC', [339299, 352558, 362092, 369636, 6.86]),
+    nodo('de-0001-1763', '1763 PROY TRANS', [414614, 429847, 443029, 455868, 8.36]),
+    nodo('de-0001-1781', '1781 ANATP CHANCAY', [267973, 280094, 285956, 291424, 5.45]),
+    nodo('de-0001-1788', '1788 PROG MEJ AT CID', [240658, 248395, 254978, 261482, 4.83]),
+  ]),
+  nodo('de-0009', '0009 MEF', [1172086, 1221249, 1263833, 1297704, 23.77]),
+  nodo('de-0011', '0011 MINEDU', [729531, 749162, 773226, 789232, 14.58]),
+  nodo('de-0002', '0002 INEI', [314439, 329363, 338389, 345477, 6.41]),
+  nodo('de-0010', '0010 DIRECCIÓN NACIONAL DE INTELIGENCIA', [203924, 212733, 218181, 223359, 4.14]),
+  nodo('de-0440', '0440 GOBIERNO REGIONAL DE AMAZONAS', [597729, 627694, 640101, 660561, 12.22]),
+  nodo('de-0005', '0005 MANCOMUNIDAD REGIONAL LOS ANDES', [184977, 192242, 197144, 202700, 3.74]),
+  nodo('de-0006', '0006 MANCOMUNIDAD MUNICIPAL MANSURLA', [136722, 144421, 147942, 152431, 2.81]),
+];
+
+/**
  * Tabla de clasificadores de ingresos (Figma node 4021:103273, «Table Estimacion_Ingresos»): la misma para
  * cualquier «Solicitud de estimación de ingresos» que se crea desde «Crear documento» (es un taller de demo).
  */
@@ -393,6 +530,29 @@ export const CLASIFICADORES_ESTIMACION_INGRESOS: ClasificadorEstimacionIngresos[
     distribucionMensual: distribuirPorMes(49317, [4089, 4165, 4199, 4294, 4164]),
   },
 ];
+
+/**
+ * Registros de la «003 Secretaría General - PCM» tal como llegan al consolidado (pliego y DGTP): los de su solicitud
+ * aprobada, con el año 2027 ya completado (el de la fila del consolidado), su distribución mensual cuadrada y el
+ * documento de sustento adjunto. El menú ⋮ y el detalle del registro del consolidado los muestran igual que la
+ * solicitud.
+ */
+export const REGISTROS_CONSOLIDADO_ESTIMACION: ClasificadorEstimacionIngresos[] = CLASIFICADORES_ESTIMACION_INGRESOS.map((c) => {
+  const anio2027 = c.anio2027Propuesto ?? c.anio2027;
+  const meses = [...(c.distribucionMensual ?? [])];
+  if (meses.length === 12) meses[11] += anio2027 - meses.reduce((suma, m) => suma + m, 0);
+  const variacionMonto = anio2027 - c.promedioAnual;
+  const codigo = c.clasificador.split(' ')[0];
+  return {
+    ...c,
+    anio2027,
+    anio2027Propuesto: undefined,
+    distribucionMensual: meses,
+    variacionMonto,
+    variacionPorcentaje: Math.round((variacionMonto / c.promedioAnual) * 1000) / 10,
+    sustento: { name: `Sustento ${codigo}.pdf`, size: 245760 },
+  };
+});
 
 /** Reparte un monto anual en 12 meses: enero a mayo con las cifras del Figma «Distribución mensual» (node
  *  8083:261486) y junio a diciembre en partes iguales con lo que falta; diciembre absorbe el redondeo para que la

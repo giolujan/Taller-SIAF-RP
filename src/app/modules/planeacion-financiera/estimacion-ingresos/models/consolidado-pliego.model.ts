@@ -3,7 +3,7 @@
  * Estimación de ingresos). El pliego consolida las solicitudes de estimación de ingresos de sus unidades ejecutoras
  * cuando todas están validadas (Figma CEL-005.01.01.01.01, node 4938:92579).
  */
-import { EstadoEstimacionIngresos } from './estimacion-ingresos.model';
+import { ClasificadorEstimacionIngresos, EstadoEstimacionIngresos } from './estimacion-ingresos.model';
 
 /** Un documento de la bandeja del consolidado pliego. */
 export interface ConsolidadoPliegoRegistro {
@@ -26,6 +26,8 @@ export interface ConsolidadoPliegoRegistro {
   observadoPor?: string;
   fechaObservado?: string;
   motivoObservacion?: string;
+  /** Registros con la evaluación del Revisor / Evaluador (se copian al evaluar el primero). */
+  registrosPersonalizados?: ClasificadorEstimacionIngresos[];
 }
 
 /** Consolidado ya grabado (Figma node 7606:466323): cabecera, relación de pliegos y trazabilidad. */
@@ -44,6 +46,11 @@ export interface DetalleConsolidadoPliego {
   pliegosPorClasificador: NodoConsolidadoPliego[];
   /** Agrupada por entidad (Figma node 8349:491365). */
   pliegosPorEntidad: NodoConsolidadoPliego[];
+  /**
+   * Registros completos de las solicitudes consolidadas (fuente, distribución mensual, base legal, sustento): los
+   * filas de clasificador con el mismo código abren su detalle y su menú ⋮ igual que en la solicitud.
+   */
+  registros: ClasificadorEstimacionIngresos[];
   elaboradoPor: string;
   fechaElaborado: string;
   verificadoPor?: string;
@@ -83,7 +90,7 @@ export interface NodoConsolidadoPliego {
   participacion: number;
   /** ¿Base legal de uso específico? Solo los clasificadores la traen. */
   baseLegal?: 'SI' | 'NO';
-  /** Clasificadores que se pueden elegir para el consolidado (solo los registros de una unidad ejecutora). */
+  /** Registro de una unidad ejecutora (cuenta para el aviso «Variación fuera del umbral»). */
   seleccionable?: boolean;
   /** Fila de un clasificador de ingresos (lleva el menú ⋮ de detalles), aunque se despliegue en otra agrupación. */
   clasificador?: boolean;
@@ -91,18 +98,4 @@ export interface NodoConsolidadoPliego {
   hoja?: boolean;
   /** Sin `hijos`, la fila no se despliega (en la demo solo trae detalle la «003 Secretaría General - PCM»). */
   hijos?: NodoConsolidadoPliego[];
-}
-
-/** Lo que muestra un consolidado «Nuevo» antes de Grabar: cabecera y relación de pliegos. */
-export interface PrecargaConsolidadoPliego {
-  fecha: string;
-  enteRector: string;
-  entidad: string;
-  unidadEjecutora: string;
-  pliegos: NodoConsolidadoPliego[];
-}
-
-/** Grabar un consolidado «Nuevo»: los clasificadores elegidos (ids de nodo). */
-export interface CrearConsolidadoPliegoPayload {
-  registros: string[];
 }
